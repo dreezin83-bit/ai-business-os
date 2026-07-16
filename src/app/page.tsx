@@ -1,79 +1,118 @@
 import Link from "next/link";
-import { Bot } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { ArrowRight, Bot, Users, Calendar, MessageSquare, Phone, BookOpen } from "lucide-react";
 
-export default function Home() {
+const features = [
+  {
+    name: "AI Chatbot",
+    description: "Answer customer questions 24/7, capture leads, and book appointments automatically.",
+    icon: Bot,
+  },
+  {
+    name: "CRM & Lead Management",
+    description: "Every lead automatically enters your pipeline. Track from new to won.",
+    icon: Users,
+  },
+  {
+    name: "Appointment Booking",
+    description: "Let customers book online. Syncs with Google Calendar. No double bookings.",
+    icon: Calendar,
+  },
+  {
+    name: "AI Brain",
+    description: "Configure your AI with business info, services, FAQs, and pricing. No coding required.",
+    icon: MessageSquare,
+  },
+  {
+    name: "Missed Call Automation",
+    description: "Miss a call? Auto-SMS the customer, create a lead, and offer to book.",
+    icon: Phone,
+  },
+  {
+    name: "Knowledge Base",
+    description: "Upload PDFs, DOCX, or website URLs. Your AI answers using your documents.",
+    icon: BookOpen,
+  },
+];
+
+export default function LandingPage() {
   return (
-    <div className="flex min-h-screen flex-col">
-      <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <div className="container mx-auto flex h-14 items-center justify-between px-4">
+    <div className="min-h-screen bg-background">
+      {/* Nav */}
+      <header className="border-b">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between h-14">
           <div className="flex items-center gap-2">
-            <Bot className="h-6 w-6 text-primary" />
-            <span className="font-bold text-lg">AI Business OS</span>
+            <div className="h-7 w-7 rounded-md bg-primary flex items-center justify-center text-xs font-bold text-primary-foreground">
+              AI
+            </div>
+            <span className="font-semibold">AI Business OS</span>
           </div>
-          <nav className="flex items-center gap-4">
-            <Link
-              href="/sign-in"
-              className="text-sm text-muted-foreground hover:text-foreground transition-colors"
-            >
-              Sign In
+          <div className="flex items-center gap-3">
+            <Link href="/sign-in">
+              <Button variant="ghost" size="sm">Sign In</Button>
             </Link>
-            <Link
-              href="/sign-up"
-              className="text-sm bg-primary text-primary-foreground px-4 py-2 rounded-md hover:bg-primary/90 transition-colors"
-            >
-              Get Started
+            <Link href="/sign-up">
+              <Button size="sm">Get Started</Button>
             </Link>
-          </nav>
+          </div>
         </div>
       </header>
 
-      <main className="flex-1">
-        <section className="container mx-auto px-4 py-24 text-center">
-          <h1 className="text-5xl font-bold tracking-tight sm:text-6xl mb-6">
-            AI-Powered OS for{" "}
-            <span className="text-primary">Service Businesses</span>
+      {/* Hero */}
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 md:py-32">
+        <div className="text-center max-w-3xl mx-auto">
+          <h1 className="text-4xl md:text-6xl font-bold tracking-tight mb-6">
+            AI-Powered OS for Your{" "}
+            <span className="text-blue-500">Service Business</span>
           </h1>
-          <p className="text-xl text-muted-foreground max-w-2xl mx-auto mb-10">
-            Automate customer communication, lead management, appointment booking,
-            and support — all from one intelligent dashboard.
+          <p className="text-lg text-muted-foreground mb-8 max-w-2xl mx-auto">
+            Automate customer communication, capture every lead, book appointments,
+            and never miss a follow-up — all from one dashboard.
           </p>
-          <div className="flex gap-4 justify-center">
-            <Link
-              href="/sign-up"
-              className="bg-primary text-primary-foreground px-8 py-3 rounded-lg text-lg font-medium hover:bg-primary/90 transition-colors"
-            >
-              Start Free Trial
+          <div className="flex items-center justify-center gap-4">
+            <Link href="/sign-up">
+              <Button size="lg" className="gap-2">
+                Start Free Trial <ArrowRight className="h-4 w-4" />
+              </Button>
             </Link>
-            <Link
-              href="#features"
-              className="bg-muted text-foreground px-8 py-3 rounded-lg text-lg font-medium hover:bg-muted/80 transition-colors border"
-            >
-              Learn More
+            <Link href="/sign-in">
+              <Button variant="outline" size="lg">
+                Sign In
+              </Button>
             </Link>
           </div>
-        </section>
+        </div>
+      </section>
 
-        <section id="features" className="border-t bg-muted/50 py-24">
-          <div className="container mx-auto px-4">
-            <h2 className="text-3xl font-bold text-center mb-12">Everything you need to run your business</h2>
-            <div className="grid md:grid-cols-3 gap-8">
-              {[
-                { title: "AI Brain", desc: "Train AI on your business knowledge, policies, and services" },
-                { title: "Smart CRM", desc: "Track leads, customers, and interactions in one place" },
-                { title: "Auto Booking", desc: "AI-powered appointment scheduling and reminders" },
-                { title: "SMS & Email", desc: "Automated follow-ups, campaigns, and notifications" },
-                { title: "AI Chatbot", desc: "24/7 website chatbot that answers customer questions" },
-                { title: "Analytics", desc: "Real-time reports on leads, conversions, and revenue" },
-              ].map((feature) => (
-                <div key={feature.title} className="bg-background p-6 rounded-lg border">
-                  <h3 className="font-semibold text-lg mb-2">{feature.title}</h3>
-                  <p className="text-muted-foreground">{feature.desc}</p>
+      {/* Features */}
+      <section className="border-t py-20">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <h2 className="text-2xl md:text-3xl font-bold text-center mb-12">
+            Everything your business needs
+          </h2>
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {features.map((feature) => (
+              <div
+                key={feature.name}
+                className="rounded-xl border bg-card p-6 hover:shadow-md transition-shadow"
+              >
+                <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center mb-4">
+                  <feature.icon className="h-5 w-5 text-primary" />
                 </div>
-              ))}
-            </div>
+                <h3 className="font-semibold mb-2">{feature.name}</h3>
+                <p className="text-sm text-muted-foreground">{feature.description}</p>
+              </div>
+            ))}
           </div>
-        </section>
-      </main>
+        </div>
+      </section>
+
+      {/* Footer */}
+      <footer className="border-t py-8">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center text-sm text-muted-foreground">
+          AI Business OS &mdash; Run your service business with AI.
+        </div>
+      </footer>
     </div>
   );
 }

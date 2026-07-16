@@ -1,89 +1,98 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
-  MessageSquare, Pencil, Copy, Check, Eye, X,
-  Palette, Move, Type, Sun, Moon, Settings, Share2,
-  Bot, User, ChevronDown, Sparkles,
+  MessageSquare, Bot, Copy, Check, Eye, X, User, ChevronDown,
+  Code, Loader2, ExternalLink, Hash,
 } from "lucide-react";
-
-const suggestedQuestions = [
-  "Book Appointment",
-  "Request Quote",
-  "What are your hours?",
-  "Do you offer emergency service?",
-  "How much does it cost?",
-];
+import { useToast } from "@/components/toaster";
 
 export default function ChatbotPage() {
   const [enabled, setEnabled] = useState(true);
-  const [primaryColor, setPrimaryColor] = useState("#3B82F6");
-  const [position, setPosition] = useState("right");
-  const [welcomeMessage, setWelcomeMessage] = useState("Hello! 👋 How can I help you today?");
-  const [widgetTitle, setWidgetTitle] = useState("Chat with us");
-  const [copied, setCopied] = useState(false);
+  const [copiedSimple, setCopiedSimple] = useState(false);
+  const [copiedAsync, setCopiedAsync] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
+  const [businessId, setBusinessId] = useState<string>("YOUR_BUSINESS_ID");
+  const [loading, setLoading] = useState(true);
   const [chatMessages, setChatMessages] = useState<{ role: string; content: string }[]>([
-    { role: "assistant", content: welcomeMessage },
+    { role: "assistant", content: "Hello! 👋 How can I help you today?" },
   ]);
+  const { toast } = useToast();
 
-  const embedCode = `<script>
-  (function() {
-    window.AIBotConfig = {
-      businessId: "YOUR_BUSINESS_ID",
-      primaryColor: "${primaryColor}",
-      position: "${position}",
-      title: "${widgetTitle}",
-      welcomeMessage: "${welcomeMessage}"
-    };
-    var s = document.createElement('script');
-    s.src = "https://app.aibusinessos.com/widget.js";
-    s.async = true;
-    document.body.appendChild(s);
-  })();
+  useEffect(() => {
+    fetch("/api/settings")
+      .then((r) => r.ok ? r.json() : Promise.reject("No settings"))
+      .then((data) => {
+        if (data?.id) {
+          setBusinessId(data.id);
+        }
+        setLoading(false);
+      })
+      .catch(() => setLoading(false));
+  }, []);
+
+  const simpleEmbed = `<script src="/widget.js" data-business-id="${businessId}"></script>`;
+
+  const asyncEmbed = `<script>
+  (function(w,d,s,o,f,js,fjs){
+    w['AIWidgetConfig']=o;w[o]=w[o]||function(){(w[o].q=w[o].q||[]).push(arguments)};
+    js=d.createElement(s),fjs=d.getElementsByTagName(s)[0];
+    js.id=o;js.src=f;js.async=1;fjs.parentNode.insertBefore(js,fjs);
+  })(window,document,'script','aiChatbot','/api/public/chatbot/widget.js');
+  aiChatbot('init', { businessId: '${businessId}' });
 </script>`;
 
-  const copyEmbed = () => {
-    navigator.clipboard.writeText(embedCode);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+  const copyToClipboard = async (text: string, type: "simple" | "async") => {
+    try {
+      await navigator.clipboard.writeText(text);
+      if (type === "simple") {
+        setCopiedSimple(true);
+        setTimeout(() => setCopiedSimple(false), 2000);
+      } else {
+        setCopiedAsync(true);
+        setTimeout(() => setCopiedAsync(false), 2000);
+      }
+      toast("Embed code copied to clipboard", "success");
+    } catch {
+      toast("Failed to copy", "error");
+    }
   };
+
+  const suggestedQuestions = [
+    "Book Appointment",
+    "What are your hours?",
+    "Do you offer emergency service?",
+    "How much does it cost?",
+  ];
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight flex items-center gap-3">
-            <MessageSquare className="h-8 w-8 text-primary" />
-            AI Chatbot
-          </h1>
-          <p className="text-muted-foreground">Configure your website&apos;s AI chat widget</p>
-        </div>
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm">
-            <Eye className="h-3.5 w-3.5 mr-1" /> Preview
-          </Button>
-          <Button size="sm">
-            <Save className="h-3.5 w-3.5 mr-1" /> Save
-          </Button>
-        </div>
+      <div>
+        <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
+          <MessageSquare className="h-6 w-6" /> AI Chatbot
+        </h1>
+        <p className="text-sm text-muted-foreground mt-1">
+          Configure your website&apos;s AI chat widget
+        </p>
       </div>
 
       <div className="grid gap-6 lg:grid-cols-5">
-        {/* Settings Panel */}
+        {/* Settings */}
         <div className="lg:col-span-3 space-y-6">
-          {/* Enable/disable */}
+          {/* Enable toggle */}
           <Card>
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className={`w-12 h-6 rounded-full ${enabled ? "bg-primary" : "bg-muted"} relative cursor-pointer transition-colors`}
-                    onClick={() => setEnabled(!enabled)}>
+                  <div
+                    className={`w-11 h-6 rounded-full ${enabled ? "bg-primary" : "bg-muted"} relative cursor-pointer transition-colors`}
+                    onClick={() => setEnabled(!enabled)}
+                  >
                     <div className={`w-5 h-5 rounded-full bg-white absolute top-0.5 shadow transition-all ${
-                      enabled ? "left-6" : "left-0.5"
+                      enabled ? "left-5" : "left-0.5"
                     }`} />
                   </div>
                   <div>
@@ -91,226 +100,188 @@ export default function ChatbotPage() {
                     <p className="text-xs text-muted-foreground">Widget will appear on your website</p>
                   </div>
                 </div>
-                <Badge variant={enabled ? "success" : "secondary"}>{enabled ? "Live" : "Off"}</Badge>
+                <Badge variant={enabled ? "default" : "secondary"} className="text-[10px]">
+                  {enabled ? "Live" : "Off"}
+                </Badge>
               </div>
             </CardContent>
           </Card>
 
-          {/* Appearance */}
+          {/* Business ID Display */}
           <Card>
             <CardHeader>
-              <CardTitle className="text-base flex items-center gap-2">
-                <Palette className="h-4 w-4 text-primary" /> Appearance
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="text-xs font-medium text-muted-foreground">Primary Color</label>
-                  <div className="flex items-center gap-2 mt-1">
-                    <input
-                      type="color"
-                      value={primaryColor}
-                      onChange={(e) => setPrimaryColor(e.target.value)}
-                      className="h-9 w-9 rounded-lg border border-input cursor-pointer"
-                    />
-                    <input
-                      type="text"
-                      value={primaryColor}
-                      onChange={(e) => setPrimaryColor(e.target.value)}
-                      className="flex-1 h-9 rounded-lg border border-input bg-background px-3 text-sm font-mono"
-                    />
-                  </div>
-                </div>
-                <div>
-                  <label className="text-xs font-medium text-muted-foreground">Widget Title</label>
-                  <input
-                    type="text"
-                    value={widgetTitle}
-                    onChange={(e) => setWidgetTitle(e.target.value)}
-                    className="w-full h-9 rounded-lg border border-input bg-background px-3 text-sm mt-1"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="text-xs font-medium text-muted-foreground">Widget Position</label>
-                <div className="flex gap-2 mt-1">
-                  {[
-                    { id: "left", label: "Bottom Left" },
-                    { id: "right", label: "Bottom Right" },
-                  ].map((pos) => (
-                    <button
-                      key={pos.id}
-                      onClick={() => setPosition(pos.id)}
-                      className={`flex-1 p-2.5 rounded-lg border text-sm transition-colors ${
-                        position === pos.id
-                          ? "border-primary bg-primary/5 text-primary font-medium"
-                          : "border-border hover:bg-muted"
-                      }`}
-                    >
-                      {pos.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Welcome Message */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base flex items-center gap-2">
-                <MessageSquare className="h-4 w-4 text-primary" /> Welcome Message
+              <CardTitle className="text-sm flex items-center gap-2">
+                <Hash className="h-4 w-4" /> Your Business ID
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <textarea
-                value={welcomeMessage}
-                onChange={(e) => setWelcomeMessage(e.target.value)}
-                className="w-full h-24 rounded-xl border border-input bg-background p-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring resize-none"
-              />
-            </CardContent>
-          </Card>
-
-          {/* Suggested Questions */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Suggested Questions</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="flex flex-wrap gap-2">
-                {suggestedQuestions.map((q, i) => (
-                  <div key={i} className="flex items-center gap-1 px-3 py-1.5 rounded-full bg-muted text-sm group">
-                    <span>{q}</span>
-                    <button className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive">
-                      <X className="h-3 w-3" />
-                    </button>
+              {loading ? (
+                <div className="flex items-center gap-2">
+                  <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                  <span className="text-sm text-muted-foreground">Loading...</span>
+                </div>
+              ) : (
+                <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
+                  <div>
+                    <p className="text-sm font-mono font-medium">{businessId}</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      Used to identify your business in the embed code
+                    </p>
                   </div>
-                ))}
-                <button className="px-3 py-1.5 rounded-full border border-dashed border-border text-sm text-muted-foreground hover:text-foreground hover:border-primary">
-                  + Add
-                </button>
-              </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      navigator.clipboard.writeText(businessId);
+                      toast("Business ID copied", "success");
+                    }}
+                  >
+                    <Copy className="h-3.5 w-3.5 mr-1" /> Copy ID
+                  </Button>
+                </div>
+              )}
             </CardContent>
           </Card>
 
-          {/* Lead Capture */}
+          {/* Simple Embed Code */}
           <Card>
             <CardHeader>
-              <CardTitle className="text-base">Lead Capture</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              {[
-                { label: "Name", enabled: true },
-                { label: "Phone", enabled: true },
-                { label: "Email", enabled: true },
-                { label: "Address", enabled: false },
-                { label: "Service Requested", enabled: true },
-                { label: "Preferred Date", enabled: false },
-              ].map((field) => (
-                <label key={field.label} className="flex items-center justify-between cursor-pointer">
-                  <span className="text-sm">{field.label}</span>
-                  <div className={`w-10 h-5 rounded-full ${field.enabled ? "bg-primary" : "bg-muted"} relative transition-colors`}>
-                    <div className={`w-4 h-4 rounded-full bg-white absolute top-0.5 shadow transition-all ${
-                      field.enabled ? "left-5" : "left-0.5"
-                    }`} />
-                  </div>
-                </label>
-              ))}
-            </CardContent>
-          </Card>
-
-          {/* Escalation */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Escalation Settings</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <div className="p-3 rounded-lg bg-muted/50 text-sm">
-                <p className="font-medium mb-1">When to hand off to human</p>
-                <p className="text-muted-foreground text-xs">AI will automatically escalate when customer asks for human, expresses frustration, or asks about pricing.</p>
-              </div>
-              <div className="flex gap-2">
-                {["Email", "SMS", "Both"].map((opt) => (
-                  <button key={opt} className={`px-3 py-1.5 rounded-lg border text-xs ${
-                    opt === "Both" ? "border-primary bg-primary/5 text-primary" : "border-border"
-                  }`}>
-                    Notify via {opt}
-                  </button>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Embed Code */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base flex items-center gap-2">
-                <Share2 className="h-4 w-4 text-primary" /> Embed Code
+              <CardTitle className="text-sm flex items-center gap-2">
+                <Code className="h-4 w-4" /> Simple Embed
               </CardTitle>
             </CardHeader>
             <CardContent>
+              <p className="text-xs text-muted-foreground mb-3">
+                Quick and lightweight. Paste this before your closing {"</body>"} tag.
+              </p>
               <div className="relative">
-                <pre className="bg-muted rounded-xl p-4 text-xs font-mono overflow-x-auto">
-                  {embedCode}
+                <pre className="bg-muted rounded-lg p-4 text-xs font-mono overflow-x-auto whitespace-pre-wrap">
+                  {simpleEmbed}
                 </pre>
                 <Button
                   size="sm"
                   variant="outline"
                   className="absolute top-2 right-2"
-                  onClick={copyEmbed}
+                  onClick={() => copyToClipboard(simpleEmbed, "simple")}
                 >
-                  {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
-                  {copied ? "Copied!" : "Copy"}
+                  {copiedSimple ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
+                  {copiedSimple ? "Copied!" : "Copy"}
                 </Button>
               </div>
-              <p className="text-xs text-muted-foreground mt-2">
-                Add this code just before the closing {"</body>"} tag on your website.
+            </CardContent>
+          </Card>
+
+          {/* Async Embed Code (Recommended) */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-sm flex items-center gap-2">
+                <Code className="h-4 w-4" /> Async Embed <Badge variant="default" className="text-[8px] ml-1">Recommended</Badge>
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-xs text-muted-foreground mb-3">
+                Loads asynchronously for better performance. Includes the business ID pre-configured.
               </p>
+              <div className="relative">
+                <pre className="bg-muted rounded-lg p-4 text-xs font-mono overflow-x-auto whitespace-pre-wrap max-h-[200px] overflow-y-auto">
+                  {asyncEmbed}
+                </pre>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="absolute top-2 right-2"
+                  onClick={() => copyToClipboard(asyncEmbed, "async")}
+                >
+                  {copiedAsync ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
+                  {copiedAsync ? "Copied!" : "Copy"}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Setup Instructions */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-sm">Setup Instructions</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3 text-sm">
+              <div className="flex items-start gap-3">
+                <div className="h-6 w-6 rounded-full bg-primary/10 flex items-center justify-center text-xs font-medium text-primary shrink-0">1</div>
+                <div>
+                  <p className="font-medium">Copy the embed code</p>
+                  <p className="text-xs text-muted-foreground">
+                    Choose either the <strong>Simple</strong> or <strong>Async</strong> embed above. The async version is recommended for better performance.
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-start gap-3">
+                <div className="h-6 w-6 rounded-full bg-primary/10 flex items-center justify-center text-xs font-medium text-primary shrink-0">2</div>
+                <div>
+                  <p className="font-medium">Paste in your website</p>
+                  <p className="text-xs text-muted-foreground">
+                    Add it just before the closing {"</body>"} tag on your website. The business ID is already pre-filled.
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-start gap-3">
+                <div className="h-6 w-6 rounded-full bg-primary/10 flex items-center justify-center text-xs font-medium text-primary shrink-0">3</div>
+                <div>
+                  <p className="font-medium">Customize your AI Brain</p>
+                  <p className="text-xs text-muted-foreground">
+                    Go to <strong>AI Brain</strong> settings to configure your chatbot&apos;s behavior, business info, and knowledge base.
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-start gap-3">
+                <div className="h-6 w-6 rounded-full bg-primary/10 flex items-center justify-center text-xs font-medium text-primary shrink-0">4</div>
+                <div>
+                  <p className="font-medium">That&apos;s it!</p>
+                  <p className="text-xs text-muted-foreground">
+                    The chatbot will appear on your website. Test it below with the live preview.
+                  </p>
+                </div>
+              </div>
             </CardContent>
           </Card>
         </div>
 
-        {/* Preview Panel */}
+        {/* Preview */}
         <div className="lg:col-span-2">
           <Card className="sticky top-6">
             <CardHeader>
               <CardTitle className="text-sm flex items-center gap-2">
-                <Eye className="h-4 w-4 text-primary" /> Live Preview
+                <Eye className="h-4 w-4" /> Live Preview
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="relative bg-muted/30 rounded-xl overflow-hidden" style={{ height: "520px" }}>
-                {/* Mock website content */}
+              <div className="relative bg-muted/30 rounded-lg overflow-hidden" style={{ height: "520px" }}>
+                {/* Mock website background */}
                 <div className="p-4 space-y-2">
                   <div className="h-3 w-32 bg-muted rounded" />
-                  <div className="h-2 w-48 bg-muted rounded" />
-                  <div className="h-20 bg-muted rounded-lg" />
-                  <div className="h-2 w-40 bg-muted rounded" />
-                  <div className="h-2 w-36 bg-muted rounded" />
+                  <div className="h-2 w-48 bg-muted rounded mt-2" />
+                  <div className="h-20 bg-muted rounded-lg mt-3" />
+                  <div className="h-2 w-40 bg-muted rounded mt-2" />
+                  <div className="h-2 w-36 bg-muted rounded mt-1" />
+                  <div className="h-2 w-44 bg-muted rounded mt-1" />
                 </div>
 
                 {/* Chatbot Widget */}
                 {enabled && (
-                  <div className={`absolute bottom-4 ${position === "right" ? "right-4" : "left-4"} z-10`}>
+                  <div className="absolute bottom-4 right-4 z-10">
                     {!chatOpen ? (
                       <button
                         onClick={() => setChatOpen(true)}
-                        className="flex items-center justify-center h-14 w-14 rounded-full shadow-lg transition-transform hover:scale-105"
-                        style={{ backgroundColor: primaryColor }}
+                        className="flex items-center justify-center h-12 w-12 rounded-full bg-primary shadow-lg hover:scale-105 transition-transform"
                       >
-                        <MessageSquare className="h-6 w-6 text-white" />
+                        <MessageSquare className="h-5 w-5 text-primary-foreground" />
                       </button>
                     ) : (
-                      <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl w-80 border border-border overflow-hidden"
-                        style={{ maxHeight: "420px" }}>
+                      <div className="bg-card rounded-2xl shadow-2xl w-72 border border-border overflow-hidden">
                         {/* Header */}
-                        <div className="p-3 text-white flex items-center justify-between"
-                          style={{ backgroundColor: primaryColor }}>
+                        <div className="p-3 bg-primary text-primary-foreground flex items-center justify-between">
                           <div className="flex items-center gap-2">
-                            <Bot className="h-5 w-5" />
-                            <span className="text-sm font-medium">{widgetTitle}</span>
+                            <Bot className="h-4 w-4" />
+                            <span className="text-sm font-medium">AI Assistant</span>
                           </div>
                           <button onClick={() => setChatOpen(false)}>
                             <X className="h-4 w-4" />
@@ -322,32 +293,37 @@ export default function ChatbotPage() {
                           {chatMessages.map((msg, i) => (
                             <div key={i} className={`flex gap-2 ${msg.role === "user" ? "justify-end" : ""}`}>
                               {msg.role === "assistant" && (
-                                <div className="h-6 w-6 rounded-full flex items-center justify-center shrink-0"
-                                  style={{ backgroundColor: `${primaryColor}20` }}>
-                                  <Bot className="h-3 w-3" style={{ color: primaryColor }} />
+                                <div className="h-6 w-6 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                                  <Bot className="h-3 w-3 text-primary" />
                                 </div>
                               )}
                               <div className={`max-w-[80%] rounded-xl p-2.5 text-xs ${
                                 msg.role === "user"
-                                  ? "text-white"
+                                  ? "bg-primary text-primary-foreground"
                                   : "bg-muted"
-                              }`}
-                                style={msg.role === "user" ? { backgroundColor: primaryColor } : {}}>
+                              }`}>
                                 {msg.content}
                               </div>
+                              {msg.role === "user" && (
+                                <div className="h-6 w-6 rounded-full bg-muted flex items-center justify-center shrink-0">
+                                  <User className="h-3 w-3" />
+                                </div>
+                              )}
                             </div>
                           ))}
                         </div>
 
                         {/* Suggested questions */}
                         <div className="px-3 pb-2 flex flex-wrap gap-1">
-                          {suggestedQuestions.slice(0, 3).map((q) => (
+                          {suggestedQuestions.map((q) => (
                             <button
                               key={q}
-                              onClick={() => setChatMessages(prev => [...prev,
-                                { role: "user", content: q },
-                                { role: "assistant", content: `Sure! Let me help with that. Based on what you've asked about "${q}", I can assist you right away.` }
-                              ])}
+                              onClick={() => {
+                                setChatMessages(prev => [...prev,
+                                  { role: "user", content: q },
+                                  { role: "assistant", content: `Let me help you with that! Based on what you've asked about "${q}", I can assist you right away.` }
+                                ]);
+                              }}
                               className="text-[10px] px-2 py-1 rounded-full border border-border hover:bg-muted"
                             >
                               {q}
@@ -372,13 +348,12 @@ export default function ChatbotPage() {
                                       role: "assistant",
                                       content: "Thanks for your message! Let me check on that for you right away."
                                     }]);
-                                  }, 1000);
+                                  }, 800);
                                 }
                               }}
                             />
-                            <div className="h-6 w-6 rounded-lg flex items-center justify-center"
-                              style={{ backgroundColor: primaryColor }}>
-                              <ChevronDown className="h-3 w-3 text-white rotate-90" />
+                            <div className="h-7 w-7 rounded-lg bg-primary flex items-center justify-center">
+                              <ChevronDown className="h-3 w-3 text-primary-foreground rotate-90" />
                             </div>
                           </div>
                         </div>
@@ -394,6 +369,3 @@ export default function ChatbotPage() {
     </div>
   );
 }
-
-// Missing Save import
-import { Save } from "lucide-react";
