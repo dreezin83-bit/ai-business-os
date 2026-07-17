@@ -50,15 +50,33 @@ export default function AiBrainPage() {
       .then((r) => r.ok ? r.json() : Promise.reject("No config"))
       .then((data) => {
         if (data && data.id) {
+          const safeParse = (val: string | null | undefined) => {
+            if (!val) return "";
+            try {
+              const parsed = JSON.parse(val);
+              return Array.isArray(parsed) ? parsed.join("\n") : "";
+            } catch {
+              return "";
+            }
+          };
+          const safeBusinessHours = (val: string | null | undefined) => {
+            if (!val) return defaultConfig.businessHours;
+            try {
+              const parsed = JSON.parse(val);
+              return Array.isArray(parsed) ? val : defaultConfig.businessHours;
+            } catch {
+              return defaultConfig.businessHours;
+            }
+          };
           setConfig({
             systemPrompt: data.systemPrompt || "",
             businessInfo: data.businessInfo || "",
-            services: data.services ? JSON.parse(data.services).join("\n") : "",
-            faqs: data.faqs ? JSON.parse(data.faqs).join("\n") : "",
+            services: safeParse(data.services),
+            faqs: safeParse(data.faqs),
             pricingGuidance: data.pricingGuidance || "",
             companyPolicies: data.companyPolicies || "",
-            serviceAreas: data.serviceAreas ? JSON.parse(data.serviceAreas).join("\n") : "",
-            businessHours: data.businessHours || defaultConfig.businessHours,
+            serviceAreas: safeParse(data.serviceAreas),
+            businessHours: safeBusinessHours(data.businessHours),
             greetingMessage: data.greetingMessage || defaultConfig.greetingMessage,
           });
         }
