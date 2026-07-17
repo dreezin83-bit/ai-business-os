@@ -58,13 +58,11 @@ export default function AutomationPage() {
   const { toast } = useToast();
 
   useEffect(() => {
-    Promise.all([
-      fetch("/api/automation").then((r) => r.ok ? r.json() : []),
-      fetch("/api/automation/missed-calls").then((r) => r.ok ? r.json() : []),
-    ])
-      .then(([rulesData, callsData]) => {
-        setRules(rulesData);
-        setMissedCalls(callsData);
+    fetch("/api/automation")
+      .then((r) => r.ok ? r.json() : { rules: [], missedCalls: [] })
+      .then((data) => {
+        setRules(data.rules || []);
+        setMissedCalls(data.missedCalls || []);
         setLoading(false);
       })
       .catch(() => setLoading(false));
