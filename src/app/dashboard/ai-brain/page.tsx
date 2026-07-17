@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -98,7 +98,14 @@ export default function AiBrainPage() {
     );
   }
 
-  const hours = JSON.parse(config.businessHours || "[]");
+  const hours = useMemo(() => {
+    try {
+      const parsed = JSON.parse(config.businessHours || "[]");
+      return Array.isArray(parsed) ? parsed : JSON.parse(defaultConfig.businessHours);
+    } catch {
+      return JSON.parse(defaultConfig.businessHours);
+    }
+  }, [config.businessHours]);
 
   return (
     <div className="space-y-6">
