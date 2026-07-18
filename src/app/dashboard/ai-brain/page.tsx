@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Bot, Loader2, Save } from "lucide-react";
 import { useToast } from "@/components/toaster";
+import { ErrorBoundary } from "@/components/error-boundary";
 
 interface AIConfig {
   systemPrompt: string;
@@ -40,6 +41,14 @@ const defaultConfig: AIConfig = {
 };
 
 export default function AiBrainPage() {
+  return (
+    <ErrorBoundary>
+      <AiBrainPageInner />
+    </ErrorBoundary>
+  );
+}
+
+function AiBrainPageInner() {
   const [config, setConfig] = useState<AIConfig>(defaultConfig);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
