@@ -146,14 +146,6 @@ function AiBrainContent() {
     }
   };
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-      </div>
-    );
-  }
-
   const hours = useMemo(() => {
     try {
       const parsed = JSON.parse(config.businessHours || "[]");
@@ -162,6 +154,14 @@ function AiBrainContent() {
       return JSON.parse(defaultConfig.businessHours);
     }
   }, [config.businessHours]);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
