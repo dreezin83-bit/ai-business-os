@@ -156,13 +156,14 @@ export async function POST(request: Request) {
     }));
 
     // Call LLM (supports OpenAI, OpenAI-compatible, and Gemini)
-    const completion = await createLlmCompletion([
+    const { completion, error: llmError } = await createLlmCompletion([
       { role: "system", content: ctx.systemPrompt },
       ...history,
     ]);
     if (!completion) {
       return NextResponse.json({
         response: ctx.greetingMessage || "I'm sorry, I'm having trouble connecting right now. Please try again later.",
+        error: llmError,
       });
     }
 

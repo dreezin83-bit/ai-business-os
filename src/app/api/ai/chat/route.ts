@@ -125,12 +125,12 @@ export async function POST(request: Request) {
     }));
 
     // Call LLM (supports OpenAI, OpenAI-compatible, and Gemini)
-    const completion = await createLlmCompletion([
+    const { completion, error: llmError } = await createLlmCompletion([
       { role: "system", content: ctx.systemPrompt },
       ...history,
     ]);
     if (!completion) {
-      return NextResponse.json({ error: "AI not configured (missing API key)" }, { status: 503 });
+      return NextResponse.json({ error: "AI not configured", detail: llmError || "Missing API key or configuration" }, { status: 503 });
     }
 
     let reply = completion.content;

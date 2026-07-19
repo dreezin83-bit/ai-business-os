@@ -136,11 +136,14 @@ function AiBrainContent() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ message: testMessage, conversationId: "test" }),
       });
-      if (!res.ok) throw new Error("AI test failed");
       const data = await res.json();
+      if (!res.ok) {
+        setTestResponse(`Error: ${data.error || "AI test failed. Check your configuration."}${data.detail ? ` (${data.detail})` : ""}`);
+        return;
+      }
       setTestResponse(data.response || "No response");
     } catch {
-      setTestResponse("Error: AI test failed. Check your configuration.");
+      setTestResponse("Error: Network error. Please check your connection.");
     } finally {
       setTesting(false);
     }

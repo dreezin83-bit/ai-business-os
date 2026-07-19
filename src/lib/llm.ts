@@ -7,15 +7,20 @@ export interface LlmCompletion {
   content: string;
 }
 
+export interface LlmResult {
+  completion: LlmCompletion | null;
+  error: string | null;
+}
+
 /**
  * Create an LLM completion using the configured provider.
- * Supports OpenAI and OpenAI-compatible providers (Groq, Together, OpenRouter, etc.).
+ * Supports OpenAI, OpenAI-compatible providers (Groq, Together, OpenRouter, etc.).
  *
- * Returns null if the provider's API key is missing or if any error occurs.
+ * Returns { completion: null, error: "reason" } if the API key is missing or any error occurs.
  */
 export async function createLlmCompletion(
   messages: LlmMessage[]
-): Promise<LlmCompletion | null> {
+): Promise<LlmResult> {
   const provider = process.env.AI_PROVIDER || "openai";
 
   try {
@@ -25,21 +30,23 @@ export async function createLlmCompletion(
       case "openai-compatible":
         return await callOpenAICompatible(messages);
       default:
-        console.error(`Unknown AI provider: ${provider}`);
-        return null;
+        return { completion: null, error: `Unknown AI provider: "${provider}". Use "openai" or "openai-compatible".` };
     }
-  } catch (error) {
-    console.error(`LLM error (${provider}):`, error);
-    return null;
+  } catch (error: any) {
+    const message = error?.message || error?.toString() || "Unknown LLM error";
+    console.error(`LLM error (${provider}):`, message);
+    return { completion: null, error: `AI provider error: ${message}` };
   }
 }
 
 /**
  * Call OpenAI using the OpenAI SDK.
  */
-async function callOpenAI(messages: LlmMessage[]): Promise<LlmCompletion | null> {
+async function callOpenAI(messages: LlmMessage[]): Promise<LlmResult> {
   const apiKey = process.env.OPENAI_API_KEY;
-  if (!apiKey) return null;
+  if (!apiKey) {
+    return { completion: null, error: "OPENAI_API_KEY is not configured in environment variables." };
+  }
 
   const { default: OpenAI } = await import("openai");
   const openai = new OpenAI({ apiKey });
@@ -52,9 +59,11 @@ async function callOpenAI(messages: LlmMessage[]): Promise<LlmCompletion | null>
   });
 
   const content = completion.choices[0]?.message?.content;
-  if (!content) return null;
+  if (!content) {
+    return { completion: null, error: "AI returned an empty response." };
+  }
 
-  return { content };
+  return { completion: { content }, error: null };
 }
 
 /**
@@ -63,10 +72,16 @@ async function callOpenAI(messages: LlmMessage[]): Promise<LlmCompletion | null>
  */
 async function callOpenAICompatible(
   messages: LlmMessage[]
-): Promise<LlmCompletion | null> {
+): Promise<LlmResult> {
   const apiKey = process.env.OPENAI_API_KEY;
   const baseURL = process.env.OPENAI_BASE_URL;
-  if (!apiKey || !baseURL) return null;
+
+  if (!apiKey) {
+    return { completion: null, error: "OPENAI_API_KEY is not configured. Required for OpenAI-compatible providers (Groq, etc.)." };
+  }
+  if (!baseURL) {
+    return { completion: null, error: "OPENAI_BASE_URL is not configured. Required for OpenAI-compatible providers (Groq, etc.). Set it to the provider's API endpoint (e.g. https://api.groq.com/openai/v1)." };
+  }
 
   const { default: OpenAI } = await import("openai");
   const openai = new OpenAI({ apiKey, baseURL });
@@ -79,7 +94,9 @@ async function callOpenAICompatible(
   });
 
   const content = completion.choices[0]?.message?.content;
-  if (!content) return null;
+  if (!content) {
+    return { completion: null, error: "AI returned an empty response." };
+  }
 
-  return { content };
+  return { completion: { content }, error: null };
 }
