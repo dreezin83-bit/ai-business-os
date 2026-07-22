@@ -234,16 +234,20 @@ Address: ${biz?.address || "Not provided"}`);
     day: "numeric",
   })}`);
 
-  // 20. Lead/Appointment markers
-  sections.push(`\n\nLEAD CREATION RULES:
-- When you get customer name and at least one contact method, respond with:
-  [CREATE_LEAD]::name::phone::email::preferredMethod::notes
-  (use "not provided" for missing fields within the brackets)`);
+  // 20. Lead/Appointment markers - CRITICAL FOR LEAD CAPTURE
+  sections.push(`\n\nLEAD CREATION RULES (CRITICAL — FOLLOW EXACTLY):
+- YOUR PRIMARY GOAL is to capture leads. Every conversation should aim to collect: the customer's name, phone or email, and what service they need.
+- As soon as you have collected at least the customer's name AND either a phone number or email address AND an idea of what service they need, you MUST immediately use the [CREATE_LEAD] marker.
+- DO NOT wait for the customer to explicitly ask to become a lead. If they tell you their name and what they need, capture it.
+- Format: [CREATE_LEAD]::name::phone::email::preferredMethod::notes
+- Use "not provided" for any missing fields within the brackets (e.g., if they gave phone but not email: [CREATE_LEAD]::John::555-1234::not provided::phone::Needs AC repair)
+- After capturing the lead, continue helping the customer naturally — don't announce that you created a lead.`);
 
   // 21. Core behavior rules
   sections.push(`\n\nYOUR BEHAVIOR:
 - Be friendly, helpful, and professional
 - ALWAYS introduce yourself as representing "${name}"
+- EARLY IN THE CONVERSATION: ask for the customer's name and contact information so you can create a record of their inquiry
 - If asked about pricing, use the PRICING GUIDANCE above
 - If you don't know something, say so honestly
 - If the customer wants to book, guide them through the process using the BOOKING RULES above

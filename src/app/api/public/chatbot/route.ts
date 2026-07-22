@@ -5,6 +5,7 @@ import { eq, desc, and } from "drizzle-orm";
 import { generateId } from "@/lib/utils";
 import { buildAiContext } from "@/lib/ai-context";
 import { createLlmCompletion } from "@/lib/llm";
+import { notifyContractorOfNewLead, sendCustomerConfirmation } from "@/lib/notifications";
 
 /** Parse [CONFIRM_APPOINTMENT]::date::startTime::endTime::service::name::phone::email */
 function parseAppointmentMarker(text: string): {
@@ -228,6 +229,10 @@ export async function POST(request: Request) {
           });
           createdLeadId = leadId;
           await db.update(conversation).set({ leadId }).where(eq(conversation.id, convId));
+
+          // Fire-and-forget: notify contractor and customer
+          notifyContractorOfNewLead(businessId, leadId).catch((e) => console.error("[chatbot] notifyContractor failed:", e));
+          sendCustomerConfirmation(businessId, leadId).catch((e) => console.error("[chatbot] sendConfirmation failed:", e));
         }
       }
     }
