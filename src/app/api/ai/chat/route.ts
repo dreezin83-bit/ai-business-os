@@ -229,8 +229,14 @@ export async function POST(request: Request) {
       appointmentId: createdAppointmentId,
       leadId: createdLeadId,
     });
-  } catch (error) {
-    console.error("AI chat error:", error);
-    return NextResponse.json({ error: "Failed to process chat" }, { status: 500 });
+  } catch (error: any) {
+    const detail = error?.message || String(error);
+    const stack = error?.stack || "";
+    const cause = error?.cause ? String(error.cause) : "";
+    console.error("AI chat error:", detail, stack.substring(0, 300));
+    return NextResponse.json(
+      { error: "Failed to process chat", detail: `${detail}${cause ? ` (cause: ${cause})` : ""}` },
+      { status: 500 }
+    );
   }
 }
