@@ -7,6 +7,7 @@ import { ensureBusiness } from "@/lib/business";
 import { buildAiContext } from "@/lib/ai-context";
 import { createLlmCompletion } from "@/lib/llm";
 import { notifyContractorOfNewLead, sendCustomerConfirmation } from "@/lib/notifications";
+import { extractLeadFromConversation } from "@/lib/lead-extractor";
 
 /** Parse [CONFIRM_APPOINTMENT]::date::startTime::endTime::service::name::phone::email from AI response */
 function parseAppointmentMarker(text: string): {
@@ -227,6 +228,51 @@ export async function POST(request: Request) {
       role: "assistant",
       content: cleanReply,
     });
+
+    // If no lead was created via marker, try server-side extraction
+    if (!createdLeadId) {
+      try {
+        const extracted = await extractLeadFromConversation([
+          ...history,
+          { role: "assistant", content: cleanReply },
+        ]);
+        if (extracted) {
+          const [existingLead] = await db
+            .select()
+            .from(lead)
+            .where(and(eq(lead.businessId, businessId), eq(lead.name, extracted.name!)))
+            .limit(1);
+
+          if (!existingLead) {
+            const newLeadId = generateId();
+            await db.insert(lead).values({
+              id: newLeadId,
+              businessId,
+              name: extracted.name!,
+              phone: extracted.phone || "",
+              email: extracted.email || "",
+              preferredMethod: extracted.preferredMethod || "",
+              contactValue:
+                extracted.preferredMethod === "phone"
+                  ? extracted.phone
+                  : extracted.preferredMethod === "email"
+                  ? extracted.email
+                  : "",
+              serviceRequest: extracted.serviceRequest || "",
+              source: "ai_chat",
+              status: "new",
+            });
+            createdLeadId = newLeadId;
+            await db.update(conversation).set({ leadId: newLeadId }).where(eq(conversation.id, convId));
+
+            notifyContractorOfNewLead(businessId, newLeadId).catch((e) => console.error("[ai/chat] notifyContractor failed:", e));
+            sendCustomerConfirmation(businessId, newLeadId).catch((e) => console.error("[ai/chat] sendConfirmation failed:", e));
+          }
+        }
+      } catch (extractErr: any) {
+        console.error("[ai/chat] Lead extraction error:", extractErr?.message || String(extractErr));
+      }
+    }
 
     return NextResponse.json({
       response: cleanReply,
