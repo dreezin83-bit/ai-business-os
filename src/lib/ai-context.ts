@@ -235,13 +235,28 @@ Address: ${biz?.address || "Not provided"}`);
   })}`);
 
   // 20. Lead/Appointment markers - CRITICAL FOR LEAD CAPTURE
-  sections.push(`\n\nLEAD CREATION RULES (CRITICAL — FOLLOW EXACTLY):
-- YOUR PRIMARY GOAL is to capture leads. Every conversation should aim to collect: the customer's name, phone or email, and what service they need.
-- As soon as you have collected at least the customer's name AND either a phone number or email address AND an idea of what service they need, you MUST immediately use the [CREATE_LEAD] marker.
-- DO NOT wait for the customer to explicitly ask to become a lead. If they tell you their name and what they need, capture it.
-- Format: [CREATE_LEAD]::name::phone::email::preferredMethod::notes
-- Use "not provided" for any missing fields within the brackets (e.g., if they gave phone but not email: [CREATE_LEAD]::John::555-1234::not provided::phone::Needs AC repair)
-- After capturing the lead, continue helping the customer naturally — don't announce that you created a lead.`);
+  sections.push(`\n\nLEAD CREATION — YOUR MOST IMPORTANT JOB:
+You MUST create a lead IMMEDIATELY when you have these three things:
+  1. The customer's name
+  2. Their phone number OR email address
+  3. A general idea of what service they need (even if vague, like "sink problem" or "need a quote")
+
+When you have ALL THREE, you MUST include this exact line in your response:
+[CREATE_LEAD]::John Smith::555-1234::john@email.com::sms::Kitchen sink repair
+
+Replace the values with what you actually collected:
+  - name: the customer's full name
+  - phone: their phone number, or "not provided"
+  - email: their email address, or "not provided"
+  - preferredMethod: "sms" or "email" or "whatsapp" (based on what they told you)
+  - notes: a short description of what they need
+
+Examples of when to create a lead:
+  - Customer says "I'm Mike, my phone is 555-0000, I need AC repair" → CREATE LEAD NOW
+  - Customer says "Jane here, jane@email.com, can you quote me a new roof?" → CREATE LEAD NOW
+  - Customer says "Hi" with no name or service → do NOT create lead yet, ask for their info first
+
+After using the [CREATE_LEAD] marker, continue the conversation naturally. Do NOT say "I created a lead" or mention the marker.`);
 
   // 21. Core behavior rules
   sections.push(`\n\nYOUR BEHAVIOR:
