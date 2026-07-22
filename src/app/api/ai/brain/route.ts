@@ -34,6 +34,10 @@ export async function GET() {
           { day: "Sunday", open: "", close: "", closed: true },
         ]),
         greetingMessage: "Hello! How can I help you today?",
+        leadCollectionRules: "",
+        appointmentBookingRules: "",
+        responseStyle: "",
+        escalationRules: "",
       });
     }
     return NextResponse.json(config);
@@ -69,6 +73,10 @@ export async function PUT(request: Request) {
         { day: "Sunday", open: "", close: "", closed: true },
       ]),
       greetingMessage: body.greetingMessage || "Hello! How can I help you today?",
+      leadCollectionRules: body.leadCollectionRules || "",
+      appointmentBookingRules: body.appointmentBookingRules || "",
+      responseStyle: body.responseStyle || "",
+      escalationRules: body.escalationRules || "",
     };
 
     if (existing) {

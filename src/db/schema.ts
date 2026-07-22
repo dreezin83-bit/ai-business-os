@@ -33,6 +33,10 @@ export const aiBrainConfig = pgTable("ai_brain_config", {
   serviceAreas: text("service_areas").default("[]"),
   businessHours: text("business_hours").default("{}"),
   greetingMessage: text("greeting_message").default("Hello! How can I help you today?"),
+  leadCollectionRules: text("lead_collection_rules").default(""),
+  appointmentBookingRules: text("appointment_booking_rules").default(""),
+  responseStyle: text("response_style").default(""),
+  escalationRules: text("escalation_rules").default(""),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
