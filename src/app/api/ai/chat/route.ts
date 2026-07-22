@@ -94,6 +94,17 @@ export async function POST(request: Request) {
 
     // Get or create conversation
     let convId = conversationId;
+    if (convId) {
+      // Verify the conversation exists
+      const [existingConv] = await db
+        .select({ id: conversation.id })
+        .from(conversation)
+        .where(eq(conversation.id, convId))
+        .limit(1);
+      if (!existingConv) {
+        convId = generateId();
+      }
+    }
     if (!convId) {
       convId = generateId();
       await db.insert(conversation).values({

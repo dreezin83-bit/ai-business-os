@@ -134,7 +134,7 @@ function AiBrainContent() {
       const res = await fetch("/api/ai/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: testMessage, conversationId: "test" }),
+        body: JSON.stringify({ message: testMessage }),
       });
       const data = await res.json();
       if (!res.ok) {

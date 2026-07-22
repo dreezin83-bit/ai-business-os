@@ -22,20 +22,31 @@ export async function createLlmCompletion(
   messages: LlmMessage[]
 ): Promise<LlmResult> {
   const provider = process.env.AI_PROVIDER || "openai";
+  const model = process.env.AI_MODEL || "gpt-4o-mini";
+  const baseURL = process.env.OPENAI_BASE_URL || "(default)";
+  const hasKey = !!process.env.OPENAI_API_KEY;
+
+  // Runtime diagnostics — log provider config without exposing the API key
+  console.log(`[LLM] Provider: ${provider} | Model: ${model} | Base URL: ${baseURL} | API Key set: ${hasKey}`);
 
   try {
     switch (provider) {
       case "openai":
+        console.log("[LLM] Routing to OpenAI");
         return await callOpenAI(messages);
       case "openai-compatible":
+        console.log("[LLM] Routing to OpenAI-compatible provider");
         return await callOpenAICompatible(messages);
       default:
+        console.error("[LLM] Unknown provider:", provider);
         return { completion: null, error: `Unknown AI provider: "${provider}". Use "openai" or "openai-compatible".` };
     }
   } catch (error: any) {
+    const status = error?.status || error?.statusCode;
     const message = error?.message || error?.toString() || "Unknown LLM error";
-    console.error(`LLM error (${provider}):`, message);
-    return { completion: null, error: `AI provider error: ${message}` };
+    const responseData = error?.response?.data || error?.response?.body;
+    console.error(`[LLM] Error from ${provider}: status=${status || "?"} message=${message} responseBody=${JSON.stringify(responseData || "").substring(0, 300)}`);
+    return { completion: null, error: `AI provider error (${provider}/${model}): ${message}` };
   }
 }
 
