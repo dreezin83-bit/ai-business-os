@@ -186,21 +186,44 @@ async function buildContext(businessId: string, leadId: string): Promise<Notific
 /**
  * Notify the contractor about a new lead.
  * Reads communication settings and sends notifications through enabled channels.
+ * Always creates a communication log even on failure.
  */
-export async function notifyContractorOfNewLead(businessId: string, leadId: string): Promise<void> {
+export async function notifyContractorOfNewLead(
+  businessId: string,
+  leadId: string,
+  conversationSummary?: string
+): Promise<void> {
   const ctx = await buildContext(businessId, leadId);
-  if (!ctx) {
-    console.error("[notifications] Could not build context for businessId=", businessId, "leadId=", leadId);
-    return;
-  }
-
+  
   // Load communication settings
   const [settings] = await db
     .select()
     .from(communicationSettings)
     .where(eq(communicationSettings.businessId, businessId));
 
+  if (!ctx) {
+    // Log failure to build context
+    await logCommunication({
+      businessId,
+      leadId,
+      type: "email",
+      toAddress: settings ? "(contractor email not set)" : "(unknown)",
+      subject: "Contractor Notification Failed",
+      body: "Could not build notification context — business or lead not found.",
+      status: "failed",
+      errorMessage: "buildContext returned null",
+    });
+    console.error("[notifications] buildContext failed for contractor notification");
+    return;
+  }
+
   const { lead } = ctx;
+
+  // Build the conversation summary line
+  const summaryLine = conversationSummary
+    ? `\nConversation: ${conversationSummary}`
+    : "";
+
   const subject = `New Lead: ${lead.name} — ${lead.serviceRequest || "Service Inquiry"}`;
   const body = [
     `NEW LEAD NOTIFICATION`,
@@ -210,27 +233,42 @@ export async function notifyContractorOfNewLead(businessId: string, leadId: stri
     `Email: ${lead.email || "Not provided"}`,
     `Preferred Contact: ${lead.preferredMethod || "Not specified"}`,
     `Service Request: ${lead.serviceRequest || "Not specified"}`,
+    summaryLine,
     `━━━━━━━━━━━━━━━━━━━━━`,
-    `View lead: https://ai-business-os-six.vercel.app/dashboard/leads`,
-  ].join("\n");
+    `View all leads: https://ai-business-os-six.vercel.app/dashboard/leads`,
+  ].filter(Boolean).join("\n");
 
   console.log(`[notifications] Notifying contractor about lead ${leadId} for business ${businessId}`);
 
   // Email notification to contractor
-  if (settings?.emailEnabled && ctx.businessEmail) {
-    console.log(`[notifications] Sending email to contractor at ${ctx.businessEmail}`);
-    const result = await sendEmail(ctx.businessEmail, subject, body);
-    await logCommunication({
-      businessId,
-      leadId,
-      type: "email",
-      toAddress: ctx.businessEmail,
-      subject,
-      body,
-      status: result.success ? "sent" : "failed",
-      errorMessage: result.error,
-      externalId: result.messageId,
-    });
+  if (settings?.emailEnabled) {
+    if (ctx.businessEmail) {
+      console.log(`[notifications] Sending email to contractor at ${ctx.businessEmail}`);
+      const result = await sendEmail(ctx.businessEmail, subject, body);
+      await logCommunication({
+        businessId,
+        leadId,
+        type: "email",
+        toAddress: ctx.businessEmail,
+        subject,
+        body,
+        status: result.success ? "sent" : "failed",
+        errorMessage: result.error,
+        externalId: result.messageId,
+      });
+    } else {
+      // Log that email is enabled but no address is configured
+      await logCommunication({
+        businessId,
+        leadId,
+        type: "email",
+        toAddress: "(no business email configured)",
+        subject,
+        body,
+        status: "failed",
+        errorMessage: "Business email not set in profile. Contractor needs to add their email address.",
+      });
+    }
   }
 
   // SMS notification to contractor
@@ -243,7 +281,7 @@ export async function notifyContractorOfNewLead(businessId: string, leadId: stri
       leadId,
       type: "sms",
       toAddress: ctx.businessPhone,
-      subject: "New Lead",
+      subject: "New Lead Notification",
       body: smsBody,
       status: result.success ? "sent" : "failed",
       errorMessage: result.error,
@@ -261,7 +299,7 @@ export async function notifyContractorOfNewLead(businessId: string, leadId: stri
       leadId,
       type: "whatsapp",
       toAddress: ctx.businessPhone,
-      subject: "New Lead",
+      subject: "New Lead Notification",
       body: waBody,
       status: result.success ? "sent" : "failed",
       errorMessage: result.error,

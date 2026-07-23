@@ -212,8 +212,9 @@ export async function POST(request: Request) {
           await db.update(conversation).set({ leadId }).where(eq(conversation.id, convId));
 
           // Fire-and-forget: notify contractor and customer
+          const summary = history.slice(-4).map((m: any) => `${m.role}: ${m.content.substring(0, 100)}`).join(" | ");
           Promise.all([
-            notifyContractorOfNewLead(businessId, leadId),
+            notifyContractorOfNewLead(businessId, leadId, summary),
             sendCustomerConfirmation(businessId, leadId),
           ]).catch((e) => console.error("[ai/chat] notifications failed:", e));
         }
@@ -268,9 +269,10 @@ export async function POST(request: Request) {
             await db.update(conversation).set({ leadId: newLeadId }).where(eq(conversation.id, convId));
 
             // Await notifications before returning response
+            const summary = history.slice(-4).map((m: any) => `${m.role}: ${m.content.substring(0, 100)}`).join(" | ");
             try {
               await Promise.all([
-                notifyContractorOfNewLead(businessId, newLeadId),
+                notifyContractorOfNewLead(businessId, newLeadId, summary),
                 sendCustomerConfirmation(businessId, newLeadId),
               ]);
             } catch (e: any) {

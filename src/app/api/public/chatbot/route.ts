@@ -231,9 +231,10 @@ export async function POST(request: Request) {
           createdLeadId = leadId;
           await db.update(conversation).set({ leadId }).where(eq(conversation.id, convId));
 
-            // Fire-and-forget: notify contractor and customer
+          // Fire-and-forget: notify contractor and customer
+          const summary = history.slice(-4).map((m: any) => `${m.role}: ${m.content.substring(0, 100)}`).join(" | ");
           Promise.all([
-            notifyContractorOfNewLead(businessId, leadId),
+            notifyContractorOfNewLead(businessId, leadId, summary),
             sendCustomerConfirmation(businessId, leadId),
           ]).catch((e) => console.error("[chatbot] notifications failed:", e));
         }
@@ -288,10 +289,13 @@ export async function POST(request: Request) {
             createdLeadId = newLeadId;
             await db.update(conversation).set({ leadId: newLeadId }).where(eq(conversation.id, convId));
 
+            // Build conversation summary for contractor notification
+            const summary = history.slice(-4).map((m) => `${m.role}: ${m.content.substring(0, 100)}`).join(" | ");
+
             // Await notifications before returning response
             try {
               await Promise.all([
-                notifyContractorOfNewLead(businessId, newLeadId),
+                notifyContractorOfNewLead(businessId, newLeadId, summary),
                 sendCustomerConfirmation(businessId, newLeadId),
               ]);
             } catch (e: any) {
