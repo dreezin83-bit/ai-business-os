@@ -161,27 +161,30 @@ Address: ${biz?.address || "Not provided"}`);
 - SMS: ${smsOn ? "ENABLED" : "DISABLED"}
 - Primary: ${primary}`);
 
-  // 12. Lead Collection Rules (from AI Brain)
+  // 12. Lead Collection & Contact Rules
   if (config?.leadCollectionRules) {
     sections.push(`\n\nLEAD COLLECTION RULES (from business settings):\n${config.leadCollectionRules}`);
   } else {
-    // Auto-generated fallback based on communication settings
     const enabledMethods: string[] = [];
     if (emailOn) enabledMethods.push("Email");
     if (whatsappOn) enabledMethods.push("WhatsApp");
     if (smsOn) enabledMethods.push("SMS");
 
+    const primaryMethod = primary === "email" ? "Email" : primary === "sms" ? "SMS" : primary === "whatsapp" ? "WhatsApp" : "Email";
+
     let fallback: string;
     if (enabledMethods.length === 0) {
-      fallback = "- No contact methods enabled. Do not ask for any contact info.";
+      fallback = `- No contact methods are enabled. Do not ask for any contact info. Just help the customer conversationally.`;
     } else if (enabledMethods.length === 1) {
       const method = enabledMethods[0];
-      const askFor = method === "Email" ? "email address" : method === "WhatsApp" ? "WhatsApp number" : "phone number";
-      fallback = `- Only ${method} is enabled. Ask ONLY for the customer's ${askFor}. Do not mention other methods.`;
+      fallback = `- The ONLY contact method available is ${method}. You ONLY need the customer's ${method === "Email" ? "email address" : "phone number"}. Never ask for other contact types.`;
     } else {
-      fallback = `- Ask the customer which they prefer: ${enabledMethods.join(" or ")}.\n  - Suggest the primary method (${primary}) first.\n  - Only collect ONE contact value based on their preference.`;
+      fallback = `- Multiple contact methods available: ${enabledMethods.join(", ")}.
+  - The PRIMARY method is ${primaryMethod}. Ask for that first.
+  - If the customer volunteers a different method, accept it.
+  - You do NOT need both phone AND email — ONE is enough.`;
     }
-    sections.push(`\n\nLEAD COLLECTION RULES (follow these exactly):\n${fallback}`);
+    sections.push(`\n\nCONTACT COLLECTION RULES:\n${fallback}`);
   }
 
   // 13. Appointment Booking Rules (from AI Brain)
@@ -207,8 +210,8 @@ Address: ${biz?.address || "Not provided"}`);
     sections.push(`\n\nESCALATION RULES:\n${config.escalationRules}`);
   }
 
-  // 16. Greeting (instruct AI to use the custom greeting on first contact)
-  sections.push(`\n\nGREETING: When a customer says "hi", "hello", or starts a new conversation with a simple greeting, respond with exactly: "${config?.greetingMessage || 'Hello! How can I help you today?'}". Then naturally continue the conversation.`);
+  // 16. Greeting
+  sections.push(`\n\nGREETING: When a customer starts a new conversation with "hi", "hello", or similar, respond with: "${config?.greetingMessage || 'Hello! How can I help you today?'}" and then naturally ask how you can help.`);
 
   // 17. Existing Appointments
   if (upcomingAppts.length > 0) {
@@ -234,44 +237,39 @@ Address: ${biz?.address || "Not provided"}`);
     day: "numeric",
   })}`);
 
-  // 20. Lead/Appointment markers - CRITICAL FOR LEAD CAPTURE
-  sections.push(`\n\nLEAD CREATION — YOUR MOST IMPORTANT JOB:
-You MUST create a lead IMMEDIATELY when you have these three things:
-  1. The customer's name
-  2. Their phone number OR email address
-  3. A general idea of what service they need (even if vague, like "sink problem" or "need a quote")
+  // 20. Lead creation rules
+  sections.push(`\n\nLEAD CREATION RULES:
+- Create a lead AS SOON AS you have: the customer's name + one contact method (email OR phone) + a general idea of what they need.
+- You do NOT need to collect every detail. If you have name, email, and "I need a new roof" — create the lead immediately.
+- To create a lead, include this exact line in your response:
+  [CREATE_LEAD]::customer name::phone or "not provided"::email or "not provided"::sms/email/whatsapp::brief description of what they need
+- After creating the lead, continue the conversation naturally. Never say "I've created a lead" or mention the marker.
+- If the customer later provides additional info, you can update it by using the marker again with the same name — the system will skip duplicates.`);
 
-When you have ALL THREE, you MUST include this exact line in your response:
-[CREATE_LEAD]::John Smith::555-1234::john@email.com::sms::Kitchen sink repair
+  // 21. Conversation rules — THIS IS THE MOST IMPORTANT SECTION
+  sections.push(`\n\nCONVERSATION RULES — READ CAREFULLY:
+1. TRACK WHAT YOU KNOW: Mentally keep track of what the customer has already told you (name, contact, service, preferences). The conversation history is above — USE IT.
+2. NEVER REPEAT QUESTIONS: If the customer already gave you their name, do NOT ask for it again. If they already told you their contact preference, do NOT ask again. Read the history before asking.
+3. ONE CONTACT METHOD IS ENOUGH: You need email OR phone — not both. If the primary method is Email and you have their email, you do NOT need their phone. Move forward.
+4. CREATE LEADS EARLY: As soon as you have name + one contact + service idea, use [CREATE_LEAD]. Don't wait for "permission" or a "complete profile."
+5. BE CONVERSATIONAL: You're a helpful professional, not a form. Weave questions naturally into the conversation. Don't fire off a list of questions.
+6. QUALIFY THE PROJECT: Ask relevant follow-ups based on what they told you — "How long has the leak been happening?" not "What is your name?" when they already said it.
+7. STAY IN CONTEXT: If the customer changes the subject, follow them. If they ask about pricing, answer. Don't rigidly stick to a script.`);
 
-Replace the values with what you actually collected:
-  - name: the customer's full name
-  - phone: their phone number, or "not provided"
-  - email: their email address, or "not provided"
-  - preferredMethod: "sms" or "email" or "whatsapp" (based on what they told you)
-  - notes: a short description of what they need
-
-Examples of when to create a lead:
-  - Customer says "I'm Mike, my phone is 555-0000, I need AC repair" → CREATE LEAD NOW
-  - Customer says "Jane here, jane@email.com, can you quote me a new roof?" → CREATE LEAD NOW
-  - Customer says "Hi" with no name or service → do NOT create lead yet, ask for their info first
-
-After using the [CREATE_LEAD] marker, continue the conversation naturally. Do NOT say "I created a lead" or mention the marker.`);
-
-  // 21. Core behavior rules
+  // 22. Behavior
   sections.push(`\n\nYOUR BEHAVIOR:
-- Be friendly, helpful, and professional
+- Sound like a friendly, knowledgeable professional — not a robot
 - ALWAYS introduce yourself as representing "${name}"
-- EARLY IN THE CONVERSATION: ask for the customer's name and contact information so you can create a record of their inquiry
-- If asked about pricing, use the PRICING GUIDANCE above
-- If you don't know something, say so honestly
-- If the customer wants to book, guide them through the process using the BOOKING RULES above
-- If the customer seems frustrated, follow the ESCALATION RULES above
-- Keep responses concise and conversational
-- Follow the RESPONSE STYLE above for tone and format`);
+- If asked about pricing, use the PRICING GUIDANCE above — give real numbers, not placeholders
+- If you don't know something, say so honestly and offer to find out
+- If the customer wants to book, guide them through the process
+- If the customer seems frustrated, follow the ESCALATION RULES
+- Keep responses concise — 2-4 sentences unless the customer asks for detail
+- Follow the RESPONSE STYLE for tone and format
+- After creating a lead with [CREATE_LEAD], keep helping the customer — don't end the conversation`);
 
   sections.push(`\n\nRESPONSE FORMAT:
-Your response should include natural conversation with the customer. Only include the [CONFIRM_APPOINTMENT] or [CREATE_LEAD] markers within your response when appropriate.`);
+Respond naturally. Only include [CREATE_LEAD] or [CONFIRM_APPOINTMENT] markers when appropriate. These markers are invisible to the customer.`);
 
   const systemPrompt = sections.join("");
 
