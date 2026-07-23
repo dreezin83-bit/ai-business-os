@@ -6,7 +6,7 @@ import { generateId } from "@/lib/utils";
 import { buildAiContext } from "@/lib/ai-context";
 import { createLlmCompletion } from "@/lib/llm";
 import { notifyContractorOfNewLead, sendCustomerConfirmation } from "@/lib/notifications";
-import { extractLeadFromConversation } from "@/lib/lead-extractor";
+import { extractLeadFromConversation, isValidLead } from "@/lib/lead-extractor";
 
 /** Parse [CONFIRM_APPOINTMENT]::date::startTime::endTime::service::name::phone::email */
 function parseAppointmentMarker(text: string): {
@@ -204,7 +204,17 @@ export async function POST(request: Request) {
     const leadData = parseLeadMarker(reply);
     if (leadData) {
       const { name, phone, email, preferredMethod, notes } = leadData;
-      if (name && name !== "not provided") {
+
+      // Server-side validation: reject placeholders, empty values, "not provided"
+      const extractedLead = {
+        name: name || null,
+        phone: phone || null,
+        email: email || null,
+        preferredMethod: preferredMethod || null,
+        serviceRequest: notes || null,
+      };
+
+      if (isValidLead(extractedLead)) {
         const existingLeads = await db
           .select()
           .from(lead)
