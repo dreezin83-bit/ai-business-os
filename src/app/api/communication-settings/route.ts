@@ -19,7 +19,6 @@ export async function GET() {
       return NextResponse.json({
         emailEnabled: true,
         whatsappEnabled: false,
-        smsEnabled: true,
         primaryMethod: "email",
       });
     }
@@ -37,7 +36,7 @@ export async function PUT(request: Request) {
     if (!businessId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const body = await request.json();
-    const { emailEnabled, whatsappEnabled, smsEnabled, primaryMethod } = body;
+    const { emailEnabled, whatsappEnabled, primaryMethod } = body;
 
     const [existing] = await db
       .select()
@@ -47,7 +46,6 @@ export async function PUT(request: Request) {
     const data = {
       emailEnabled: emailEnabled ?? true,
       whatsappEnabled: whatsappEnabled ?? false,
-      smsEnabled: smsEnabled ?? true,
       primaryMethod: primaryMethod || "email",
     };
 
