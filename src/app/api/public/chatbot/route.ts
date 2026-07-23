@@ -78,19 +78,39 @@ function cleanResponse(text: string): string {
     .trim();
 }
 
+/** Wrap a response with CORS headers for cross-origin widget access */
+function corsResponse(body: any, status = 200) {
+  return NextResponse.json(body, {
+    status,
+    headers: { "Access-Control-Allow-Origin": "*" },
+  });
+}
+
+export async function OPTIONS() {
+  return new Response(null, {
+    status: 204,
+    headers: {
+      "Access-Control-Allow-Origin": "*",
+      "Access-Control-Allow-Methods": "POST, OPTIONS",
+      "Access-Control-Allow-Headers": "Content-Type",
+      "Access-Control-Max-Age": "86400",
+    },
+  });
+}
+
 export async function POST(request: Request) {
   try {
     const body = await request.json();
     const { businessId, message: userMessage, conversationId, customerName, customerPhone, customerEmail } = body;
 
     if (!businessId || !userMessage) {
-      return NextResponse.json({ error: "businessId and message are required" }, { status: 400 });
+      return corsResponse({ error: "businessId and message are required" }, 400);
     }
 
     // Verify business exists
     const [biz] = await db.select().from(business).where(eq(business.id, businessId));
     if (!biz) {
-      return NextResponse.json({ error: "Business not found" }, { status: 404 });
+      return corsResponse({ error: "Business not found" }, 404);
     }
 
     // Build AI context using the shared engine
@@ -163,7 +183,7 @@ export async function POST(request: Request) {
       ...history,
     ]);
     if (!completion) {
-      return NextResponse.json({
+      return corsResponse({
         response: ctx.greetingMessage || "I'm sorry, I'm having trouble connecting right now. Please try again later.",
         error: llmError,
       });
@@ -318,7 +338,7 @@ export async function POST(request: Request) {
       }
     }
 
-    return NextResponse.json({
+    return corsResponse({
       response: cleanReply,
       conversationId: convId,
       appointmentId: createdAppointmentId,
@@ -326,7 +346,7 @@ export async function POST(request: Request) {
     });
   } catch (error) {
     console.error("Chatbot error:", error);
-    return NextResponse.json({
+    return corsResponse({
       response: "I'm sorry, I'm having trouble connecting right now. Please try again later.",
     });
   }
