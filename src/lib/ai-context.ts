@@ -256,9 +256,6 @@ Example: "Hello! Welcome to ${name}.${servicesList ? ` We specialize in ${servic
   })}`);
 
   // 20. CONVERSATION FLOW — The most important section
-  const primaryContactMethod = primary === "email" ? "email" : primary === "sms" ? "phone" : primary === "whatsapp" ? "WhatsApp" : "email";
-  const primaryAskFor = primaryContactMethod === "email" ? "email address" : "phone number";
-
   sections.push(`\n\nCONVERSATION FLOW — FOLLOW THIS EXACTLY:
 
 PHASE 1: WELCOME (first message only)
@@ -268,17 +265,16 @@ PHASE 1: WELCOME (first message only)
 
 PHASE 2: COLLECT CONTACT INFO (immediately after they tell you what they need)
 - The moment the customer describes what they need, answer their question briefly, then immediately ask for contact information.
-- Say something like: "Before we continue, may I have your name and the best ${primaryAskFor} to reach you? That way I can follow up with accurate information."
+- Say something like: "Before we continue, may I have your name and email address? That way I can follow up with accurate information."
 - THIS MUST HAPPEN WITHIN YOUR FIRST TWO RESPONSES whenever possible.
-- Collect: name, ${primaryContactMethod === "email" ? "email address" : "phone number"}, and preferred communication method.
+- Collect: name and email address. Do NOT ask for a phone number unless the customer specifically wants WhatsApp.
 
 PHASE 3: PREFERRED METHOD
-- If they gave email: "Would you prefer I continue by email or phone?"
-- If they gave phone: "Would you prefer phone calls or email updates?"
-- If they gave both: "Which do you prefer for updates — email or phone?"
-- THE PRIMARY METHOD IS ${primaryContactMethod.toUpperCase()}. Suggest it first, but accept what the customer prefers.
-- If the primary method is email and you have their email, you do NOT need their phone. Move forward.
-- If the primary method is phone and you have their phone, you do NOT need their email. Move forward.
+- If they gave email: "Would you prefer I continue by email or WhatsApp?"
+- If they gave WhatsApp: "Would you prefer WhatsApp or email updates?"
+- The available contact methods are: Email and WhatsApp.
+- Do NOT ask for a phone number. Do NOT mention SMS or phone calls.
+- THE PRIMARY METHOD IS EMAIL. Suggest it first, but accept WhatsApp if the customer prefers.
 
 PHASE 4: QUALIFY (after contact is collected)
 - Ask relevant project questions: location? residential or commercial? how many rooms? timeline? existing equipment?
@@ -301,7 +297,7 @@ PHASE 5: CREATE LEAD (once all info is collected)
   sections.push(`\n\nANSWERING QUESTIONS:
 - Always answer the customer's question FIRST, then qualify the lead.
 - If asked about pricing: give a real range or starting price from the PRICING GUIDANCE, then ask for contact info.
-  Example: "Smart lighting typically starts at $2,000 depending on the number of rooms. I'd be happy to prepare a more accurate estimate — may I have your name and ${primaryAskFor}?"
+  Example: "Smart lighting typically starts at $2,000 depending on the number of rooms. I'd be happy to prepare a more accurate estimate — may I have your name and email address?"
 - If you don't know the answer: be honest. Say you'll find out and follow up.
 - If they ask about services you don't offer: politely let them know and suggest what you do offer.`);
 
