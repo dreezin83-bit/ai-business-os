@@ -164,13 +164,11 @@ Address: ${biz?.address || "Not provided"}`);
   // 11. Communication Preferences
   const emailOn = commSettings?.emailEnabled !== false;
   const whatsappOn = commSettings?.whatsappEnabled === true;
-  const smsOn = commSettings?.smsEnabled !== false;
   const primary = commSettings?.primaryMethod || "email";
 
   sections.push(`\n\nCOMMUNICATION PREFERENCES:
 - Email: ${emailOn ? "ENABLED" : "DISABLED"}
 - WhatsApp: ${whatsappOn ? "ENABLED" : "DISABLED"}
-- SMS: ${smsOn ? "ENABLED" : "DISABLED"}
 - Primary: ${primary}`);
 
   // 12. Lead Collection & Contact Rules
@@ -180,9 +178,8 @@ Address: ${biz?.address || "Not provided"}`);
     const enabledMethods: string[] = [];
     if (emailOn) enabledMethods.push("Email");
     if (whatsappOn) enabledMethods.push("WhatsApp");
-    if (smsOn) enabledMethods.push("SMS");
 
-    const primaryMethod = primary === "email" ? "Email" : primary === "sms" ? "SMS" : primary === "whatsapp" ? "WhatsApp" : "Email";
+    const primaryMethod = primary === "email" ? "Email" : primary === "whatsapp" ? "WhatsApp" : "Email";
 
     let fallback: string;
     if (enabledMethods.length === 0) {

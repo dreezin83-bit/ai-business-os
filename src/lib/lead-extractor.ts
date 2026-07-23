@@ -47,7 +47,7 @@ function isValidPhone(value: string | null): boolean {
 function isValidPreferredMethod(value: string | null): boolean {
   if (!value || isPlaceholder(value)) return false;
   const v = value.trim().toLowerCase();
-  return v === "sms" || v === "email" || v === "whatsapp" || v === "phone";
+  return v === "email" || v === "whatsapp";
 }
 
 /**
@@ -100,7 +100,7 @@ Extract the customer's information if available. Return ONLY valid JSON, no othe
   "name": "customer's full name or null",
   "phone": "phone number or null",
   "email": "email address or null",
-  "preferredMethod": "sms, email, or whatsapp — or null if not determined",
+  "preferredMethod": "email or whatsapp — or null if not determined",
   "serviceRequest": "what service the customer needs or null"
 }
 

@@ -27,7 +27,7 @@ interface NotificationContext {
 export async function logCommunication(params: {
   businessId: string;
   leadId: string | null;
-  type: "email" | "sms" | "whatsapp";
+  type: "email" | "whatsapp";
   toAddress: string;
   subject: string;
   body: string;
@@ -83,41 +83,6 @@ async function sendEmail(to: string, subject: string, body: string): Promise<{ s
     return { success: true, messageId: data.id };
   } catch (error: any) {
     return { success: false, error: error?.message || "Unknown email error" };
-  }
-}
-
-/**
- * Send an SMS. Uses Twilio if configured, otherwise logs as queued.
- */
-async function sendSms(to: string, body: string): Promise<{ success: boolean; messageId?: string; error?: string }> {
-  const accountSid = process.env.TWILIO_ACCOUNT_SID;
-  const authToken = process.env.TWILIO_AUTH_TOKEN;
-  const fromNumber = process.env.TWILIO_PHONE_NUMBER;
-
-  if (!accountSid || !authToken || !fromNumber) {
-    return { success: false, error: "Twilio not configured (TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_PHONE_NUMBER required)." };
-  }
-
-  try {
-    const encoded = Buffer.from(`${accountSid}:${authToken}`).toString("base64");
-    const res = await fetch(`https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Messages.json`, {
-      method: "POST",
-      headers: {
-        "Authorization": `Basic ${encoded}`,
-        "Content-Type": "application/x-www-form-urlencoded",
-      },
-      body: new URLSearchParams({ To: to, From: fromNumber, Body: body }),
-    });
-
-    if (!res.ok) {
-      const err = await res.text();
-      return { success: false, error: `Twilio API error ${res.status}: ${err.substring(0, 200)}` };
-    }
-
-    const data = await res.json();
-    return { success: true, messageId: data.sid };
-  } catch (error: any) {
-    return { success: false, error: error?.message || "Unknown SMS error" };
   }
 }
 
@@ -203,7 +168,6 @@ export async function notifyContractorOfNewLead(
 
   // Default to email enabled if no settings exist yet
   const emailEnabled = settings ? settings.emailEnabled : true;
-  const smsEnabled = settings ? settings.smsEnabled : false;
   const whatsappEnabled = settings ? settings.whatsappEnabled : false;
 
   if (!ctx) {
@@ -276,24 +240,6 @@ export async function notifyContractorOfNewLead(
     }
   }
 
-  // SMS notification to contractor
-  if (smsEnabled && ctx.businessPhone) {
-    const smsBody = `New Lead: ${lead.name}\n${lead.phone}\n${lead.serviceRequest || "Service inquiry"}\n\nView: https://ai-business-os-six.vercel.app/dashboard/leads`;
-    console.log(`[notifications] Sending SMS to contractor at ${ctx.businessPhone}`);
-    const result = await sendSms(ctx.businessPhone, smsBody);
-    await logCommunication({
-      businessId,
-      leadId,
-      type: "sms",
-      toAddress: ctx.businessPhone,
-      subject: "New Lead Notification",
-      body: smsBody,
-      status: result.success ? "sent" : "failed",
-      errorMessage: result.error,
-      externalId: result.messageId,
-    });
-  }
-
   // WhatsApp notification to contractor
   if (whatsappEnabled && ctx.businessPhone) {
     const waBody = `📋 *New Lead*\n\n*Name:* ${lead.name}\n*Phone:* ${lead.phone || "N/A"}\n*Email:* ${lead.email || "N/A"}\n*Service:* ${lead.serviceRequest || "Not specified"}`;
@@ -342,20 +288,7 @@ export async function sendCustomerConfirmation(businessId: string, leadId: strin
   console.log(`[notifications] Sending confirmation to customer ${leadId} via ${lead.preferredMethod || "email"}`);
 
   // Send via the customer's preferred method (or fall back to email)
-  if (lead.preferredMethod === "sms" && lead.phone) {
-    const result = await sendSms(lead.phone, body);
-    await logCommunication({
-      businessId,
-      leadId,
-      type: "sms",
-      toAddress: lead.phone,
-      subject: "Lead Confirmation",
-      body,
-      status: result.success ? "sent" : "failed",
-      errorMessage: result.error,
-      externalId: result.messageId,
-    });
-  } else if (lead.preferredMethod === "whatsapp" && lead.phone) {
+  if (lead.preferredMethod === "whatsapp" && lead.phone) {
     const result = await sendWhatsApp(lead.phone, body);
     await logCommunication({
       businessId,
