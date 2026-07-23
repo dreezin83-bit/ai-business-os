@@ -5,18 +5,18 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
-  Mail, MessageSquare, Smartphone, Loader2, Search,
+  Mail, MessageSquare, Loader2, Search,
   Send, ArrowUpRight, Clock, Filter,
 } from "lucide-react";
 import Link from "next/link";
 import { formatDateTime } from "@/lib/utils";
 
-type Channel = "all" | "email" | "sms" | "whatsapp";
+type Channel = "all" | "email" | "whatsapp";
 type MessageStatus = "sent" | "delivered" | "failed" | "bounced";
 
 interface MessageItem {
   id: string;
-  type: "email" | "sms" | "whatsapp";
+  type: "email" | "whatsapp";
   to: string;
   subject?: string;
   body: string;
@@ -29,7 +29,6 @@ interface MessageItem {
 const CHANNELS: { key: Channel; label: string; icon: React.ElementType }[] = [
   { key: "all", label: "All", icon: Send },
   { key: "email", label: "Email", icon: Mail },
-  { key: "sms", label: "SMS", icon: Smartphone },
   { key: "whatsapp", label: "WhatsApp", icon: MessageSquare },
 ];
 
@@ -42,7 +41,6 @@ const statusConfig: Record<MessageStatus, { label: string; className: string }> 
 
 const channelIcon: Record<string, React.ElementType> = {
   email: Mail,
-  sms: Smartphone,
   whatsapp: MessageSquare,
 };
 
@@ -188,7 +186,6 @@ export default function MessagesPage() {
                   <div className="flex items-start gap-3">
                     <div className={`h-9 w-9 rounded-lg flex items-center justify-center shrink-0 ${
                       msg.type === "email" ? "bg-blue-500/10 text-blue-500" :
-                      msg.type === "sms" ? "bg-green-500/10 text-green-500" :
                       "bg-purple-500/10 text-purple-500"
                     }`}>
                       <Icon className="h-4 w-4" />

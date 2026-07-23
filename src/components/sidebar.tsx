@@ -30,7 +30,7 @@ const navigation = [
   { name: "Knowledge Base", href: "/dashboard/knowledge-base", icon: BookOpen },
   { name: "Chatbot", href: "/dashboard/chatbot", icon: MessageSquare },
   { name: "Messages", href: "/dashboard/messages", icon: Mail },
-  { name: "Phone & SMS", href: "/dashboard/automation", icon: Phone },
+  { name: "Phone & Message", href: "/dashboard/automation", icon: Phone },
   { name: "Settings", href: "/dashboard/settings", icon: Settings },
 ];
 
