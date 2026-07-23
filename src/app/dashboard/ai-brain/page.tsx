@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -54,9 +54,11 @@ function AiBrainContent() {
   const [config, setConfig] = useState<AIConfig>(defaultConfig);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [testMessage, setTestMessage] = useState("");
-  const [testResponse, setTestResponse] = useState("");
-  const [testing, setTesting] = useState(false);
+  const [messages, setMessages] = useState<{ role: "user" | "assistant"; content: string }[]>([]);
+  const [conversationId, setConversationId] = useState<string | null>(null);
+  const [inputValue, setInputValue] = useState("");
+  const [sending, setSending] = useState(false);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -126,27 +128,54 @@ function AiBrainContent() {
     }
   };
 
-  const handleTestAi = async () => {
-    if (!testMessage.trim()) return;
-    setTesting(true);
-    setTestResponse("");
+  // Auto-scroll to bottom when messages change
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages]);
+
+  const handleSend = async () => {
+    const text = inputValue.trim();
+    if (!text || sending) return;
+
+    // Add user message immediately
+    const userMsg = { role: "user" as const, content: text };
+    setMessages((prev) => [...prev, userMsg]);
+    setInputValue("");
+    setSending(true);
+
     try {
       const res = await fetch("/api/ai/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: testMessage }),
+        body: JSON.stringify({
+          message: text,
+          conversationId: conversationId, // null on first message — server creates one
+        }),
       });
       const data = await res.json();
       if (!res.ok) {
-        setTestResponse(`Error: ${data.error || "AI test failed. Check your configuration."}${data.detail ? ` (${data.detail})` : ""}`);
-        return;
+        setMessages((prev) => [
+          ...prev,
+          { role: "assistant", content: `Error: ${data.error || "AI test failed."}${data.detail ? ` (${data.detail})` : ""}` },
+        ]);
+      } else {
+        setMessages((prev) => [...prev, { role: "assistant", content: data.response || "No response" }]);
+        // Persist conversation ID returned by server
+        if (data.conversationId) {
+          setConversationId(data.conversationId);
+        }
       }
-      setTestResponse(data.response || "No response");
     } catch {
-      setTestResponse("Error: Network error. Please check your connection.");
+      setMessages((prev) => [...prev, { role: "assistant", content: "Error: Network error. Please check your connection." }]);
     } finally {
-      setTesting(false);
+      setSending(false);
     }
+  };
+
+  const handleNewChat = () => {
+    setMessages([]);
+    setConversationId(null);
+    setInputValue("");
   };
 
   const hours = useMemo(() => {
@@ -425,48 +454,91 @@ function AiBrainContent() {
         </CardContent>
       </Card>
 
-      {/* Test AI Feature */}
-      <Card>
-        <CardHeader>
+      {/* Test AI — Persistent Chat */}
+      <Card className="flex flex-col">
+        <CardHeader className="flex flex-row items-center justify-between pb-2">
           <CardTitle className="text-base flex items-center gap-2">
             <Sparkles className="h-4 w-4 text-primary" /> Test AI
           </CardTitle>
+          <div className="flex items-center gap-2">
+            {messages.length > 0 && (
+              <span className="text-xs text-muted-foreground">{messages.length} messages</span>
+            )}
+            <Button variant="outline" size="sm" onClick={handleNewChat} disabled={messages.length === 0 && !conversationId}>
+              <MessageSquare className="h-3.5 w-3.5 mr-1" /> New Chat
+            </Button>
+          </div>
         </CardHeader>
-        <CardContent className="space-y-3">
-          <p className="text-sm text-muted-foreground">
-            Send a test message to see how your AI responds with the current configuration.
-          </p>
-          <div className="flex gap-2">
+        <CardContent className="flex flex-col flex-1 min-h-0">
+          {/* Chat messages area */}
+          <div className="flex-1 overflow-y-auto space-y-3 mb-4 max-h-[400px] pr-1">
+            {messages.length === 0 ? (
+              <div className="flex flex-col items-center justify-center h-32 text-center text-muted-foreground">
+                <Bot className="h-8 w-8 mb-2 opacity-30" />
+                <p className="text-sm">Send a message to test your AI</p>
+                <p className="text-xs opacity-60 mt-1">The AI will remember context from previous messages</p>
+              </div>
+            ) : (
+              messages.map((msg, i) => (
+                <div
+                  key={i}
+                  className={`flex gap-2 ${msg.role === "user" ? "justify-end" : "justify-start"}`}
+                >
+                  {msg.role === "assistant" && (
+                    <div className="h-6 w-6 rounded-full bg-primary/10 flex items-center justify-center shrink-0 mt-1">
+                      <Bot className="h-3.5 w-3.5 text-primary" />
+                    </div>
+                  )}
+                  <div
+                    className={`max-w-[80%] rounded-lg px-3 py-2 text-sm whitespace-pre-wrap ${
+                      msg.role === "user"
+                        ? "bg-primary text-primary-foreground"
+                        : "bg-muted"
+                    }`}
+                  >
+                    {msg.content}
+                  </div>
+                  {msg.role === "user" && (
+                    <div className="h-6 w-6 rounded-full bg-secondary flex items-center justify-center shrink-0 mt-1">
+                      <span className="text-xs font-medium">You</span>
+                    </div>
+                  )}
+                </div>
+              ))
+            )}
+            {sending && (
+              <div className="flex gap-2 justify-start">
+                <div className="h-6 w-6 rounded-full bg-primary/10 flex items-center justify-center shrink-0 mt-1">
+                  <Bot className="h-3.5 w-3.5 text-primary" />
+                </div>
+                <div className="bg-muted rounded-lg px-3 py-2 text-sm">
+                  <Loader2 className="h-4 w-4 animate-spin inline mr-1" />
+                  Thinking...
+                </div>
+              </div>
+            )}
+            <div ref={messagesEndRef} />
+          </div>
+
+          {/* Input area */}
+          <div className="flex gap-2 pt-2 border-t border-border">
             <Input
-              placeholder='e.g. "I need to book an AC repair"'
-              value={testMessage}
-              onChange={(e) => setTestMessage(e.target.value)}
+              placeholder='Type a message... e.g. "I need to book an AC repair"'
+              value={inputValue}
+              onChange={(e) => setInputValue(e.target.value)}
               onKeyDown={(e) => {
                 if (e.key === "Enter" && !e.shiftKey) {
                   e.preventDefault();
-                  handleTestAi();
+                  handleSend();
                 }
               }}
               className="flex-1"
+              disabled={sending}
             />
-            <Button size="sm" onClick={handleTestAi} disabled={testing || !testMessage.trim()}>
-              {testing ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Send className="h-4 w-4 mr-1" />}
-              Send
+            <Button size="sm" onClick={handleSend} disabled={sending || !inputValue.trim()}>
+              {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
             </Button>
           </div>
-          {testResponse && (
-            <div className="rounded-lg border border-border p-4 bg-muted/30">
-              <div className="flex items-start gap-2">
-                <div className="h-6 w-6 rounded-full bg-primary/10 flex items-center justify-center shrink-0 mt-0.5">
-                  <Bot className="h-3.5 w-3.5 text-primary" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs font-medium text-muted-foreground mb-1">AI Response</p>
-                  <p className="text-sm whitespace-pre-wrap">{testResponse}</p>
-                </div>
-              </div>
-            </div>
-          )}
         </CardContent>
       </Card>
     </div>
