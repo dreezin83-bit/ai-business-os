@@ -212,8 +212,10 @@ export async function POST(request: Request) {
           await db.update(conversation).set({ leadId }).where(eq(conversation.id, convId));
 
           // Fire-and-forget: notify contractor and customer
-          notifyContractorOfNewLead(businessId, leadId).catch((e) => console.error("[ai/chat] notifyContractor failed:", e));
-          sendCustomerConfirmation(businessId, leadId).catch((e) => console.error("[ai/chat] sendConfirmation failed:", e));
+          Promise.all([
+            notifyContractorOfNewLead(businessId, leadId),
+            sendCustomerConfirmation(businessId, leadId),
+          ]).catch((e) => console.error("[ai/chat] notifications failed:", e));
         }
       }
     }
@@ -265,8 +267,15 @@ export async function POST(request: Request) {
             createdLeadId = newLeadId;
             await db.update(conversation).set({ leadId: newLeadId }).where(eq(conversation.id, convId));
 
-            notifyContractorOfNewLead(businessId, newLeadId).catch((e) => console.error("[ai/chat] notifyContractor failed:", e));
-            sendCustomerConfirmation(businessId, newLeadId).catch((e) => console.error("[ai/chat] sendConfirmation failed:", e));
+            // Await notifications before returning response
+            try {
+              await Promise.all([
+                notifyContractorOfNewLead(businessId, newLeadId),
+                sendCustomerConfirmation(businessId, newLeadId),
+              ]);
+            } catch (e: any) {
+              console.error("[ai/chat] notifications error:", e?.message);
+            }
           }
         }
       } catch (extractErr: any) {
