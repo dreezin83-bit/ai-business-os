@@ -195,11 +195,16 @@ export async function notifyContractorOfNewLead(
 ): Promise<void> {
   const ctx = await buildContext(businessId, leadId);
   
-  // Load communication settings
+  // Load communication settings (use defaults if not configured)
   const [settings] = await db
     .select()
     .from(communicationSettings)
     .where(eq(communicationSettings.businessId, businessId));
+
+  // Default to email enabled if no settings exist yet
+  const emailEnabled = settings ? settings.emailEnabled : true;
+  const smsEnabled = settings ? settings.smsEnabled : false;
+  const whatsappEnabled = settings ? settings.whatsappEnabled : false;
 
   if (!ctx) {
     // Log failure to build context
@@ -241,7 +246,7 @@ export async function notifyContractorOfNewLead(
   console.log(`[notifications] Notifying contractor about lead ${leadId} for business ${businessId}`);
 
   // Email notification to contractor
-  if (settings?.emailEnabled) {
+  if (emailEnabled) {
     if (ctx.businessEmail) {
       console.log(`[notifications] Sending email to contractor at ${ctx.businessEmail}`);
       const result = await sendEmail(ctx.businessEmail, subject, body);
@@ -272,7 +277,7 @@ export async function notifyContractorOfNewLead(
   }
 
   // SMS notification to contractor
-  if (settings?.smsEnabled && ctx.businessPhone) {
+  if (smsEnabled && ctx.businessPhone) {
     const smsBody = `New Lead: ${lead.name}\n${lead.phone}\n${lead.serviceRequest || "Service inquiry"}\n\nView: https://ai-business-os-six.vercel.app/dashboard/leads`;
     console.log(`[notifications] Sending SMS to contractor at ${ctx.businessPhone}`);
     const result = await sendSms(ctx.businessPhone, smsBody);
@@ -290,7 +295,7 @@ export async function notifyContractorOfNewLead(
   }
 
   // WhatsApp notification to contractor
-  if (settings?.whatsappEnabled && ctx.businessPhone) {
+  if (whatsappEnabled && ctx.businessPhone) {
     const waBody = `📋 *New Lead*\n\n*Name:* ${lead.name}\n*Phone:* ${lead.phone || "N/A"}\n*Email:* ${lead.email || "N/A"}\n*Service:* ${lead.serviceRequest || "Not specified"}`;
     console.log(`[notifications] Sending WhatsApp to contractor at ${ctx.businessPhone}`);
     const result = await sendWhatsApp(ctx.businessPhone, waBody);
