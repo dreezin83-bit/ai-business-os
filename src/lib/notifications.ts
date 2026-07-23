@@ -87,36 +87,41 @@ async function sendEmail(to: string, subject: string, body: string): Promise<{ s
 }
 
 /**
- * Send a WhatsApp message. Uses Twilio's WhatsApp API if configured.
+ * Send a WhatsApp message using Meta Cloud API (free tier).
+ * Requires META_ACCESS_TOKEN and META_PHONE_NUMBER_ID in environment.
  */
 async function sendWhatsApp(to: string, body: string): Promise<{ success: boolean; messageId?: string; error?: string }> {
-  const accountSid = process.env.TWILIO_ACCOUNT_SID;
-  const authToken = process.env.TWILIO_AUTH_TOKEN;
-  const fromNumber = process.env.TWILIO_WHATSAPP_NUMBER;
+  const accessToken = process.env.META_ACCESS_TOKEN;
+  const phoneNumberId = process.env.META_PHONE_NUMBER_ID;
 
-  if (!accountSid || !authToken || !fromNumber) {
-    return { success: false, error: "WhatsApp not configured (TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_WHATSAPP_NUMBER required)." };
+  if (!accessToken || !phoneNumberId) {
+    return { success: false, error: "WhatsApp not configured (META_ACCESS_TOKEN and META_PHONE_NUMBER_ID required)." };
   }
 
   try {
-    const encoded = Buffer.from(`${accountSid}:${authToken}`).toString("base64");
-    const waTo = to.startsWith("whatsapp:") ? to : `whatsapp:${to}`;
-    const res = await fetch(`https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Messages.json`, {
-      method: "POST",
-      headers: {
-        "Authorization": `Basic ${encoded}`,
-        "Content-Type": "application/x-www-form-urlencoded",
-      },
-      body: new URLSearchParams({ To: waTo, From: fromNumber, Body: body }),
-    });
-
-    if (!res.ok) {
-      const err = await res.text();
-      return { success: false, error: `Twilio WhatsApp API error ${res.status}: ${err.substring(0, 200)}` };
-    }
+    const res = await fetch(
+      `https://graph.facebook.com/v21.0/${phoneNumberId}/messages`,
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          messaging_product: "whatsapp",
+          to: to.startsWith("whatsapp:") ? to.replace("whatsapp:", "") : to,
+          type: "text",
+          text: { body: body.substring(0, 1600) },
+        }),
+      }
+    );
 
     const data = await res.json();
-    return { success: true, messageId: data.sid };
+    if (!res.ok) {
+      return { success: false, error: `Meta API error ${res.status}: ${JSON.stringify(data).substring(0, 200)}` };
+    }
+
+    return { success: true, messageId: data.messages?.[0]?.id };
   } catch (error: any) {
     return { success: false, error: error?.message || "Unknown WhatsApp error" };
   }
