@@ -43,21 +43,68 @@ export default function KnowledgeBasePage() {
     if (!url.trim()) return;
     setFetching(true);
     try {
+      // Fetch the webpage content for the AI to use
+      let content = url;
+      try {
+        const pageRes = await fetch(`/api/knowledge/fetch-url`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ url }),
+        });
+        if (pageRes.ok) {
+          const pageData = await pageRes.json();
+          content = pageData.content || url;
+        }
+      } catch {
+        // Fall back to storing URL as-is
+      }
+
       const res = await fetch("/api/knowledge", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: generateId(), title: url, type: "url", content: url }),
+        body: JSON.stringify({ title: new URL(url).hostname + " - " + url.split("/").pop() || url, type: "url", content }),
       });
       if (!res.ok) throw new Error("Failed");
       const doc = await res.json();
       setDocs((prev) => [doc, ...prev]);
       setUrl("");
-      toast("URL fetched and saved", "success");
+      toast("URL added to knowledge base", "success");
     } catch {
-      toast("Failed to fetch URL", "error");
+      toast("Failed to add URL", "error");
     } finally {
       setFetching(false);
     }
+  };
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setFetching(true);
+    try {
+      const reader = new FileReader();
+      reader.onload = async () => {
+        const content = reader.result as string;
+        const res = await fetch("/api/knowledge", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            title: file.name,
+            type: file.name.endsWith(".pdf") ? "pdf" : file.name.endsWith(".docx") ? "docx" : "txt",
+            content: content.substring(0, 10000),
+          }),
+        });
+        if (!res.ok) throw new Error("Failed");
+        const doc = await res.json();
+        setDocs((prev) => [doc, ...prev]);
+        toast("File uploaded", "success");
+        setFetching(false);
+      };
+      reader.readAsText(file);
+    } catch {
+      toast("Failed to upload file", "error");
+      setFetching(false);
+    }
+    e.target.value = "";
   };
 
   const handleAddContent = async () => {
@@ -170,11 +217,17 @@ export default function KnowledgeBasePage() {
             {/* File Upload */}
             <div>
               <label className="text-xs font-medium text-muted-foreground mb-1 block">Upload File</label>
-              <div className="border-2 border-dashed border-border rounded-lg p-6 text-center hover:border-primary/50 transition-colors cursor-pointer">
+              <label className="border-2 border-dashed border-border rounded-lg p-6 text-center hover:border-primary/50 transition-colors cursor-pointer block">
                 <Upload className="h-6 w-6 mx-auto mb-2 text-muted-foreground" />
-                <p className="text-xs text-muted-foreground">PDF, DOCX, or TXT</p>
-                <input type="file" className="hidden" accept=".pdf,.docx,.txt" />
-              </div>
+                <p className="text-xs text-muted-foreground">PDF, TXT, or CSV</p>
+                <input
+                  type="file"
+                  className="hidden"
+                  accept=".pdf,.txt,.csv,.md"
+                  onChange={handleFileUpload}
+                  disabled={fetching}
+                />
+              </label>
             </div>
           </CardContent>
         </Card>

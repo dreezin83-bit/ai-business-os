@@ -51,3 +51,26 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Failed to create document" }, { status: 500 });
   }
 }
+
+export async function DELETE(request: Request) {
+  try {
+    const businessId = await ensureBusiness();
+    if (!businessId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+    const { searchParams } = new URL(request.url);
+    const id = searchParams.get("id");
+    if (!id) return NextResponse.json({ error: "Missing id" }, { status: 400 });
+
+    // Verify the document belongs to this business
+    const [doc] = await db.select().from(knowledgeDocument).where(eq(knowledgeDocument.id, id));
+    if (!doc || doc.businessId !== businessId) {
+      return NextResponse.json({ error: "Not found" }, { status: 404 });
+    }
+
+    await db.delete(knowledgeDocument).where(eq(knowledgeDocument.id, id));
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error("Failed to delete document:", error);
+    return NextResponse.json({ error: "Failed to delete" }, { status: 500 });
+  }
+}
