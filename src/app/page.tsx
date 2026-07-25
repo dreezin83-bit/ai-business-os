@@ -78,41 +78,14 @@ export default function LandingPage() {
                 <a href="https://wa.me/13057071059" target="_blank"><Button variant="outline" size="lg" className="btn-outline text-[15px] h-12 px-8 rounded-full">Talk to Us</Button></a>
               </div>
             </div>
-            {/* Right - Premium Animated Visual */}
-            <div className="hidden lg:block h-[500px] animate-fade-in delay-300 relative">
-              <div className="glass rounded-3xl h-full w-full flex items-center justify-center overflow-hidden relative">
-                {/* Animated rings */}
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <div className="h-48 w-48 rounded-full border border-white/[0.04] animate-[spin_20s_linear_infinite]" />
-                  <div className="absolute h-36 w-36 rounded-full border border-white/[0.06] animate-[spin_15s_linear_infinite_reverse]" />
-                  <div className="absolute h-24 w-24 rounded-full border border-white/[0.08] animate-[spin_10s_linear_infinite]" />
-                </div>
-                {/* Center content */}
-                <div className="relative text-center z-10">
-                  <div className="h-16 w-16 rounded-2xl bg-white flex items-center justify-center mx-auto mb-4 shadow-[0_0_60px_rgba(255,255,255,0.1)]">
-                    <Bot className="h-8 w-8 text-black" />
-                  </div>
-                  <p className="text-white/30 text-xs tracking-widest uppercase">AI Active</p>
-                  <div className="flex items-center justify-center gap-4 mt-4 text-[10px] text-white/20">
-                    <span className="flex items-center gap-1"><span className="h-1.5 w-1.5 rounded-full bg-green-500 animate-pulse-soft" /> Listening</span>
-                    <span className="flex items-center gap-1"><span className="h-1.5 w-1.5 rounded-full bg-blue-500 animate-pulse-soft" /> Learning</span>
-                    <span className="flex items-center gap-1"><span className="h-1.5 w-1.5 rounded-full bg-purple-500 animate-pulse-soft" /> Converting</span>
-                  </div>
-                </div>
-                {/* Floating particles */}
-                {[...Array(6)].map((_, i) => (
-                  <div
-                    key={i}
-                    className="absolute h-1 w-1 rounded-full bg-white/20"
-                    style={{
-                      top: `${20 + Math.random() * 60}%`,
-                      left: `${20 + Math.random() * 60}%`,
-                      animation: `pulse-soft ${2 + Math.random() * 3}s ease-in-out infinite`,
-                      animationDelay: `${i * 0.4}s`,
-                    }}
-                  />
-                ))}
-              </div>
+            {/* Right - Spline 3D Animation */}
+            <div className="hidden lg:block h-[550px] animate-fade-in delay-300 relative -mr-8">
+              <iframe
+                src="https://my.spline.design/genkubgreetingrobot-L8qFJGUIAG7ZEv4Lf7mrPzln/"
+                className="w-full h-full border-0 scale-110"
+                title="AI Robot Animation"
+                allow="autoplay"
+              />
             </div>
           </div>
         </div>
