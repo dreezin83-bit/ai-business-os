@@ -87,10 +87,8 @@ export default function LandingPage() {
               </div>
             </div>
             {/* Spline 3D Animation */}
-            <div className="h-[450px] sm:h-[520px] lg:h-[600px] relative spline-wrapper overflow-hidden">
-              <div style={{ transform: 'translateY(-160px)' }}>
-                <Spline scene="https://prod.spline.design/kDSI4axu7YzxniDc/scene.splinecode" />
-              </div>
+            <div className="h-[400px] sm:h-[480px] lg:h-[550px] relative spline-wrapper overflow-hidden">
+              <Spline scene="https://prod.spline.design/kDSI4axu7YzxniDc/scene.splinecode" />
             </div>
           </div>
         </div>
@@ -137,12 +135,10 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* Mid-page Spline Animation */}
+      {/* Mid-page Image */}
       <section className="py-12 md:py-16 overflow-hidden">
         <div className="max-w-6xl mx-auto px-6 lg:px-8">
-          <div className="spline-wrapper h-[300px] sm:h-[400px] md:h-[500px]">
-            <Spline scene="https://prod.spline.design/XX4MIOykaJKr3ZrK/scene.splinecode" />
-          </div>
+          <img src="/images/mid-section.jpg" alt="AI automation dashboard" className="w-full rounded-2xl" />
         </div>
       </section>
 
@@ -178,10 +174,10 @@ export default function LandingPage() {
 
       {/* CTA */}
       <section className="relative py-24 md:py-32 border-t border-white/[0.04] overflow-hidden">
-        <div className="absolute inset-0 spline-wrapper opacity-60 pointer-events-none">
-          <Spline scene="https://prod.spline.design/ZUumiS2nlhtz9L9d/scene.splinecode" />
+        <div className="absolute inset-0 opacity-40 pointer-events-none">
+          <img src="/images/cta-bg.jpg" alt="" className="w-full h-full object-cover" />
         </div>
-        <div className="absolute inset-0 bg-black/50 z-[5]" />
+        <div className="absolute inset-0 bg-black/60 z-[5]" />
         <div className="max-w-4xl mx-auto px-6 lg:px-8 text-center relative z-10">
           <ScrollReveal>
             <h2 className="text-3xl md:text-5xl font-bold tracking-tight mb-6">Ready to stop missing leads?</h2>
