@@ -66,7 +66,7 @@ export default function LandingPage() {
       <section className="relative pt-32 pb-8 md:pt-40 md:pb-12 overflow-hidden">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(255,255,255,0.03),transparent_70%)]" />
         <div className="max-w-7xl mx-auto px-6 lg:px-8 relative z-10">
-          <div className="grid lg:grid-cols-2 gap-12 items-start lg:items-center">
+          <div className="grid lg:grid-cols-2 gap-12 items-start">
             {/* Left - Text */}
             <div>
               <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/[0.04] border border-white/[0.06] text-[13px] text-white/60 mb-8 animate-fade-in">
