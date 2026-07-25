@@ -1,9 +1,28 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import Script from "next/script";
 import { Button } from "@/components/ui/button";
 import { ArrowRight, Bot, Users, Calendar, Zap, BookOpen, Globe, Star, MessageCircle, Mail } from "lucide-react";
 import Link from "next/link";
+
+function SplineViewer() {
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!containerRef.current) return;
+    const existing = containerRef.current.querySelector("spline-viewer");
+    if (existing) return;
+    
+    const viewer = document.createElement("spline-viewer");
+    viewer.setAttribute("url", "https://my.spline.design/genkubgreetingrobot-L8qFJGUIAG7ZEv4Lf7mrPzln/");
+    viewer.style.width = "100%";
+    viewer.style.height = "100%";
+    containerRef.current.appendChild(viewer);
+  }, []);
+
+  return <div ref={containerRef} className="w-full h-full" />;
+}
 
 const features = [
   { name: "AI that answers 24/7", desc: "Never miss a customer. Your AI qualifies leads, answers questions, and books appointments — even while you sleep.", icon: Bot },
@@ -37,6 +56,7 @@ function ScrollReveal({ children, className = "", delay = 0 }: { children: React
 export default function LandingPage() {
   return (
     <div className="min-h-screen bg-black text-white overflow-x-hidden">
+      <Script src="https://unpkg.com/@splinetool/viewer@1/build/spline-viewer.js" type="module" />
       {/* Nav */}
       <header className="fixed top-0 left-0 right-0 z-50 bg-black/80 backdrop-blur-xl border-b border-white/[0.06]">
         <div className="max-w-7xl mx-auto px-6 lg:px-8 flex items-center justify-between h-16">
@@ -79,13 +99,8 @@ export default function LandingPage() {
               </div>
             </div>
             {/* Right - Spline 3D Animation */}
-            <div className="hidden lg:block h-[550px] animate-fade-in delay-300 relative -mr-8">
-              <iframe
-                src="https://my.spline.design/genkubgreetingrobot-L8qFJGUIAG7ZEv4Lf7mrPzln/"
-                className="w-full h-full border-0 scale-110"
-                title="AI Robot Animation"
-                allow="autoplay"
-              />
+            <div className="hidden lg:block h-[550px] animate-fade-in delay-300 relative">
+              <SplineViewer />
             </div>
           </div>
         </div>
