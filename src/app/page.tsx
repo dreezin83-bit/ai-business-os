@@ -180,7 +180,7 @@ export default function LandingPage() {
 
       {/* CTA */}
       <section className="relative py-24 md:py-32 border-t border-white/[0.04] overflow-hidden">
-        <div className="absolute inset-0 opacity-40 pointer-events-none">
+        <div className="absolute inset-0 opacity-80 pointer-events-none">
           <Spline scene="https://prod.spline.design/ZUumiS2nlhtz9L9d/scene.splinecode" />
         </div>
         <div className="absolute inset-0 bg-black/40 z-[5]" />
