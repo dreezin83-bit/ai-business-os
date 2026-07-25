@@ -154,7 +154,7 @@ export default function LandingPage() {
       <section className="py-12 md:py-16">
         <div className="max-w-6xl mx-auto px-6 lg:px-8">
           <div className="h-[300px] sm:h-[400px] md:h-[500px]">
-            <spline-viewer url="https://prod.spline.design/XX4MIOykaJKr3ZrK/scene.splinecode"></spline-viewer>
+            <Spline scene="https://prod.spline.design/XX4MIOykaJKr3ZrK/scene.splinecode" />
           </div>
         </div>
       </section>
