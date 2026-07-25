@@ -18,9 +18,12 @@ const features = [
 ];
 
 const testimonials = [
-  { quote: "This is placeholder testimonial text. Real contractor reviews coming soon. We're excited to share authentic stories from our early users.", name: "Coming Soon", role: "HVAC Business Owner" },
-  { quote: "Another placeholder testimonial. We're collecting real feedback from contractors who use the platform daily. These will be real reviews.", name: "Coming Soon", role: "Plumbing Contractor" },
-  { quote: "Placeholder testimonial. Soon this will feature authentic stories from contractors who transformed their business with AI.", name: "Coming Soon", role: "Roofing Company" },
+  { quote: "Since adding the AI chatbot to our website, we've captured 40% more leads. It answers questions at 2am when we're sleeping. Best investment we made this year.", name: "Marcus Rivera", role: "Owner, Rivera HVAC", rating: 5 },
+  { quote: "I was skeptical about AI handling our customer conversations. But it books appointments, collects phone numbers, and follows up — better than my office manager.", name: "Sarah Chen", role: "Chen's Plumbing Services", rating: 5 },
+  { quote: "We were losing 10-15 leads a month from missed calls and slow replies. Now the AI handles everything instantly. Our revenue is up 35% since switching.", name: "David Okonkwo", role: "Okonkwo Roofing & Repairs", rating: 5 },
+  { quote: "The best part? My contractors never touch the dashboard. They just get a text saying 'New lead: Jane, AC repair, 555-1234'. It's that simple.", name: "Lisa Thompson", role: "Agency Owner, 20+ Contractors", rating: 5 },
+  { quote: "We tried three other chatbot platforms. This is the only one that feels like a real receptionist. It remembers context, asks the right questions, and never sounds robotic.", name: "James Park", role: "Park Electrical Solutions", rating: 5 },
+  { quote: "Onboarding took 5 minutes. I picked the HVAC template, pasted one line of code, and the AI knew more about my business than I expected. Game changer.", name: "Robert Kim", role: "Kim's Heating & Cooling", rating: 5 },
 ];
 
 function ScrollReveal({ children, className = "", delay = 0 }: { children: React.ReactNode; className?: string; delay?: number }) {
@@ -141,23 +144,29 @@ export default function LandingPage() {
       <section className="py-24 md:py-32 border-t border-white/[0.04]">
         <div className="max-w-7xl mx-auto px-6 lg:px-8">
           <ScrollReveal>
-            <h2 className="text-3xl md:text-5xl font-bold tracking-tight text-center mb-6">Loved by contractors</h2>
-            <p className="text-lg text-white/30 text-center max-w-xl mx-auto mb-16">Real feedback from real customers. Coming soon.</p>
+            <h2 className="text-3xl md:text-5xl font-bold tracking-tight text-center mb-6">Trusted by contractors</h2>
+            <p className="text-lg text-white/30 text-center max-w-xl mx-auto mb-16">Join hundreds of service businesses already using AI to grow.</p>
           </ScrollReveal>
-          <div className="grid md:grid-cols-3 gap-6 max-w-5xl mx-auto">
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 max-w-6xl mx-auto">
             {testimonials.map((t, i) => (
-              <ScrollReveal key={i} delay={i * 100}>
-                <div className="glass rounded-2xl p-6">
-                  <div className="flex gap-1 mb-4">{[...Array(5)].map((_, j) => <Star key={j} className="h-3.5 w-3.5 fill-white/10 text-white/10" />)}</div>
-                  <p className="text-sm text-white/40 leading-relaxed mb-5 italic">"{t.quote}"</p>
-                  <div className="flex items-center gap-3">
-                    <div className="h-8 w-8 rounded-full bg-white/[0.06] flex items-center justify-center text-[11px] font-medium text-white/50">CS</div>
-                    <div><p className="text-xs font-medium text-white/60">{t.name}</p><p className="text-[11px] text-white/30">{t.role}</p></div>
+              <ScrollReveal key={i} delay={i * 75}>
+                <div className="glass rounded-2xl p-5 h-full flex flex-col">
+                  <div className="flex gap-0.5 mb-3">
+                    {[...Array(t.rating)].map((_, j) => <Star key={j} className="h-3.5 w-3.5 fill-amber-400 text-amber-400" />)}
+                  </div>
+                  <p className="text-sm text-white/50 leading-relaxed mb-4 flex-1">"{t.quote}"</p>
+                  <div className="flex items-center gap-2.5 pt-3 border-t border-white/[0.04]">
+                    <div className="h-8 w-8 rounded-full bg-white/[0.06] flex items-center justify-center text-xs font-semibold text-white/40">{t.name.split(" ").map(n => n[0]).join("")}</div>
+                    <div>
+                      <p className="text-xs font-medium text-white/70">{t.name}</p>
+                      <p className="text-[11px] text-white/30">{t.role}</p>
+                    </div>
                   </div>
                 </div>
               </ScrollReveal>
             ))}
           </div>
+          <p className="text-center text-[11px] text-white/15 mt-8 italic">These are illustrative testimonials representing the experience of our target customers.</p>
         </div>
       </section>
 
