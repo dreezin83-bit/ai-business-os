@@ -1,9 +1,13 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import dynamic from "next/dynamic";
+import Script from "next/script";
 import { Button } from "@/components/ui/button";
 import { ArrowRight, Bot, Users, Calendar, Zap, BookOpen, Globe, Star, MessageCircle, Mail } from "lucide-react";
 import Link from "next/link";
+
+const Spline = dynamic(() => import("@splinetool/react-spline/next"), { ssr: false });
 
 const features = [
   { name: "AI that answers 24/7", desc: "Never miss a customer. Your AI qualifies leads, answers questions, and books appointments — even while you sleep.", icon: Bot },
@@ -40,6 +44,7 @@ function ScrollReveal({ children, className = "", delay = 0 }: { children: React
 export default function LandingPage() {
   return (
     <div className="min-h-screen bg-black text-white overflow-x-hidden">
+      <Script src="https://unpkg.com/@splinetool/viewer@1.12.98/build/spline-viewer.js" type="module" />
       {/* Nav */}
       <header className="fixed top-0 left-0 right-0 z-50 bg-black/80 backdrop-blur-xl border-b border-white/[0.06]">
         <div className="max-w-7xl mx-auto px-6 lg:px-8 flex items-center justify-between h-16">
@@ -89,7 +94,9 @@ export default function LandingPage() {
                 AI-Powered Receptionist
               </div>
               {/* AI Hero Image */}
-              <img src="/images/ai-hero.png" alt="AI Receptionist" className="w-full max-w-[320px] sm:max-w-[380px] lg:max-w-[440px] h-auto mx-auto" />
+              <div className="h-[340px] sm:h-[400px] lg:h-[460px] w-full relative spline-wrapper overflow-hidden">
+                <Spline scene="https://prod.spline.design/kDSI4axu7YzxniDc/scene.splinecode" />
+              </div>
               {/* Business features under image */}
               <div className="flex flex-wrap justify-center gap-3 mt-4 animate-fade-in delay-600">
                 <span className="px-3 py-1.5 rounded-full bg-white/[0.03] border border-white/[0.05] text-[12px] text-white/40 flex items-center gap-1.5">
