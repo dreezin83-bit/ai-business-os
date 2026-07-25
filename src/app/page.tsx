@@ -95,20 +95,30 @@ export default function LandingPage() {
               <div className="aspect-[4/5] sm:aspect-[3/4] lg:aspect-square w-full max-w-[360px] lg:max-w-none mx-auto relative spline-wrapper overflow-hidden">
                 <Spline scene="https://prod.spline.design/kDSI4axu7YzxniDc/scene.splinecode" />
               </div>
-              <div className="flex flex-wrap justify-center gap-3 mt-4 animate-fade-in delay-600">
-                <span className="px-3 py-1.5 rounded-full bg-white/[0.03] border border-white/[0.05] text-[12px] text-white/40 flex items-center gap-1.5">
-                  <Zap className="h-3 w-3 text-amber-400" /> 24/7 Customer Service
-                </span>
-                <span className="px-3 py-1.5 rounded-full bg-white/[0.03] border border-white/[0.05] text-[12px] text-white/40 flex items-center gap-1.5">
-                  <Users className="h-3 w-3 text-blue-400" /> Instant Lead Capture
-                </span>
-                <span className="px-3 py-1.5 rounded-full bg-white/[0.03] border border-white/[0.05] text-[12px] text-white/40 flex items-center gap-1.5">
-                  <Calendar className="h-3 w-3 text-green-400" /> Auto Booking
-                </span>
+              {/* Business value props under robot */}
+              <div className="w-full max-w-[360px] lg:max-w-none mt-6 space-y-3 animate-fade-in delay-600">
+                <div className="flex items-start gap-3 p-3 rounded-xl bg-white/[0.02] border border-white/[0.04]">
+                  <MessageCircle className="h-4 w-4 text-blue-400 mt-0.5 shrink-0" />
+                  <div>
+                    <p className="text-[13px] font-medium text-white/70">AI Chatbot on Your Website</p>
+                    <p className="text-[11px] text-white/30 mt-0.5">Answers customer questions 24/7, qualifies leads, and books appointments automatically.</p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-3 p-3 rounded-xl bg-white/[0.02] border border-white/[0.04]">
+                  <Zap className="h-4 w-4 text-amber-400 mt-0.5 shrink-0" />
+                  <div>
+                    <p className="text-[13px] font-medium text-white/70">Instant Lead Notifications</p>
+                    <p className="text-[11px] text-white/30 mt-0.5">Get an email the moment a lead comes in. Name, phone, service needed — all captured.</p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-3 p-3 rounded-xl bg-white/[0.02] border border-white/[0.04]">
+                  <Globe className="h-4 w-4 text-green-400 mt-0.5 shrink-0" />
+                  <div>
+                    <p className="text-[13px] font-medium text-white/70">Works With Your Website</p>
+                    <p className="text-[11px] text-white/30 mt-0.5">One line of code. Paste it and your AI is live. No developers needed.</p>
+                  </div>
+                </div>
               </div>
-              <p className="text-[13px] text-white/25 text-center mt-4 max-w-xs animate-fade-in delay-700">
-                Deploy in 5 minutes. Works on your website, handles conversations, captures leads — all on autopilot.
-              </p>
             </div>
           </div>
         </div>
