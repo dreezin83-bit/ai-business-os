@@ -1,9 +1,12 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import dynamic from "next/dynamic";
 import { Button } from "@/components/ui/button";
 import { ArrowRight, Bot, Users, Calendar, Zap, BookOpen, Globe, Star, MessageCircle, Mail } from "lucide-react";
 import Link from "next/link";
+
+const Spline = dynamic(() => import("@splinetool/react-spline/next"), { ssr: false });
 
 const features = [
   { name: "AI that answers 24/7", desc: "Never miss a customer. Your AI qualifies leads, answers questions, and books appointments — even while you sleep.", icon: Bot },
@@ -78,45 +81,9 @@ export default function LandingPage() {
                 <a href="https://wa.me/13057071059" target="_blank"><Button variant="outline" size="lg" className="btn-outline text-[15px] h-12 px-8 rounded-full">Talk to Us</Button></a>
               </div>
             </div>
-            {/* CSS Animated AI Visual */}
-            <div className="h-[300px] sm:h-[400px] lg:h-[550px] animate-fade-in delay-300 flex items-center justify-center">
-              <div className="relative">
-                {/* Outer glow */}
-                <div className="absolute inset-0 rounded-full bg-white/5 blur-3xl animate-pulse-soft" style={{ transform: "scale(1.5)" }} />
-                {/* Orbiting rings */}
-                <div className="relative h-48 w-48 sm:h-64 sm:w-64 lg:h-80 lg:w-80">
-                  <div className="absolute inset-0 rounded-full border border-white/[0.06] animate-[spin_20s_linear_infinite]" />
-                  <div className="absolute inset-2 rounded-full border border-white/[0.08] animate-[spin_15s_linear_infinite_reverse]" />
-                  <div className="absolute inset-4 rounded-full border border-white/[0.10] animate-[spin_10s_linear_infinite]" />
-                  <div className="absolute inset-6 rounded-full border border-dashed border-white/[0.05] animate-[spin_25s_linear_infinite]" />
-                  {/* Center */}
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <div className="h-20 w-20 sm:h-28 sm:w-28 lg:h-36 lg:w-36 rounded-3xl bg-gradient-to-br from-white/10 to-white/5 backdrop-blur-sm border border-white/10 flex items-center justify-center shadow-[0_0_80px_rgba(255,255,255,0.05)]">
-                      <svg className="h-10 w-10 sm:h-14 sm:w-14 lg:h-20 lg:w-20 text-white/80" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M12 2a3 3 0 0 0-3 3v1a3 3 0 0 0 3 3 3 3 0 0 0 3-3V5a3 3 0 0 0-3-3Z" />
-                        <path d="M19 10a2 2 0 0 1 2 2v1a2 2 0 0 1-2 2" />
-                        <path d="M5 10a2 2 0 0 0-2 2v1a2 2 0 0 0 2 2" />
-                        <path d="M8 14h8" />
-                        <path d="M12 14v5" />
-                        <circle cx="12" cy="9" r="1" fill="currentColor" />
-                      </svg>
-                    </div>
-                  </div>
-                </div>
-                {/* Floating dots */}
-                {[...Array(4)].map((_, i) => (
-                  <div
-                    key={i}
-                    className="absolute h-2 w-2 rounded-full bg-white/40"
-                    style={{
-                      top: `${20 + Math.random() * 60}%`,
-                      left: `${20 + Math.random() * 60}%`,
-                      animation: `pulse-soft ${1.5 + i * 0.5}s ease-in-out infinite`,
-                      animationDelay: `${i * 0.3}s`,
-                    }}
-                  />
-                ))}
-              </div>
+            {/* Spline 3D Animation */}
+            <div className="h-[300px] sm:h-[400px] lg:h-[550px] animate-fade-in delay-300">
+              <Spline scene="https://prod.spline.design/kDSI4axu7YzxniDc/scene.splinecode" />
             </div>
           </div>
         </div>
