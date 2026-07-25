@@ -63,34 +63,30 @@ export async function POST(request: Request) {
 
     const replyText = completion?.content || `Hi! Sorry we missed your call. This is ${businessName} — how can we help you today?`;
 
-    // Send WhatsApp message via Twilio
-    const twilioSid = process.env.TWILIO_ACCOUNT_SID;
-    const twilioToken = process.env.TWILIO_AUTH_TOKEN;
-    const twilioWhatsAppFrom = process.env.TWILIO_WHATSAPP_NUMBER;
+    // Send WhatsApp message via Meta Cloud API (free)
+    const accessToken = process.env.META_ACCESS_TOKEN;
+    const phoneNumberId = process.env.META_PHONE_NUMBER_ID;
 
-    if (twilioSid && twilioToken && twilioWhatsAppFrom) {
+    if (accessToken && phoneNumberId) {
       try {
-        const encoded = Buffer.from(`${twilioSid}:${twilioToken}`).toString("base64");
-        // WhatsApp uses "whatsapp:" prefix
-        const waTo = from.startsWith("whatsapp:") ? from : `whatsapp:${from}`;
-
-        const twilioRes = await fetch(
-          `https://api.twilio.com/2010-04-01/Accounts/${twilioSid}/Messages.json`,
+        const metaRes = await fetch(
+          `https://graph.facebook.com/v21.0/${phoneNumberId}/messages`,
           {
             method: "POST",
             headers: {
-              Authorization: `Basic ${encoded}`,
-              "Content-Type": "application/x-www-form-urlencoded",
+              Authorization: `Bearer ${accessToken}`,
+              "Content-Type": "application/json",
             },
-            body: new URLSearchParams({
-              To: waTo,
-              From: twilioWhatsAppFrom,
-              Body: replyText.substring(0, 1600),
+            body: JSON.stringify({
+              messaging_product: "whatsapp",
+              to: from, // caller's number — assumes WhatsApp-capable
+              type: "text",
+              text: { body: replyText.substring(0, 1600) },
             }),
           }
         );
 
-        const twilioData = await twilioRes.json();
+        const metaData = await metaRes.json();
 
         await db.insert(communicationLog).values({
           id: generateId(),
@@ -100,9 +96,9 @@ export async function POST(request: Request) {
           toAddress: from,
           subject: "Missed Call Auto-Reply",
           body: replyText,
-          status: twilioRes.ok ? "sent" : "failed",
-          errorMessage: twilioRes.ok ? "" : JSON.stringify(twilioData).substring(0, 200),
-          externalId: twilioData.sid || callSid,
+          status: metaRes.ok ? "sent" : "failed",
+          errorMessage: metaRes.ok ? "" : JSON.stringify(metaData).substring(0, 200),
+          externalId: metaData.messages?.[0]?.id || callSid,
         });
 
         // Create a conversation entry so follow-ups work
