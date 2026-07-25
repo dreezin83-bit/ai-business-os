@@ -63,12 +63,12 @@ export default function LandingPage() {
       </header>
 
       {/* Hero */}
-      <section className="relative min-h-screen flex items-center overflow-hidden">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(255,255,255,0.03),transparent_70%)]" />
-        <div className="max-w-7xl mx-auto px-6 lg:px-8 relative z-10 w-full py-24 md:py-0">
-          <div className="grid lg:grid-cols-2 gap-8 lg:gap-16 items-center">
+      <section className="relative pt-28 pb-16 md:pt-36 md:pb-24 overflow-hidden">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_30%,rgba(255,255,255,0.04),transparent_70%)]" />
+        <div className="max-w-7xl mx-auto px-6 lg:px-8 relative">
+          <div className="grid lg:grid-cols-2 gap-10 lg:gap-20 items-center">
             {/* Left - Text */}
-            <div className="pt-0 lg:pt-0">
+            <div>
               <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/[0.04] border border-white/[0.06] text-[13px] text-white/60 mb-6 animate-fade-in">
                 <span className="h-1.5 w-1.5 rounded-full bg-green-500 animate-pulse-soft" />
                 Now accepting early access users
@@ -86,10 +86,16 @@ export default function LandingPage() {
                 <a href="https://wa.me/13057071059" target="_blank"><Button variant="outline" size="lg" className="btn-outline text-[15px] h-12 px-8 rounded-full">Talk to Us</Button></a>
               </div>
             </div>
-            {/* Spline 3D Animation */}
-            <div className="spline-wrapper h-[350px] sm:h-[450px] lg:h-[600px]">
-              <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.06),transparent_70%)] rounded-3xl pointer-events-none" />
+            {/* Spline Robot Card */}
+            <div className="glass rounded-3xl p-6 spline-wrapper h-[380px] sm:h-[480px] lg:h-[580px] relative overflow-hidden">
+              <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.06),transparent)]" />
               <Spline scene="https://prod.spline.design/kDSI4axu7YzxniDc/scene.splinecode" />
+              {/* Feature badges */}
+              <div className="absolute bottom-4 left-4 right-4 flex justify-center gap-2 z-20">
+                {["💬 24/7 Chat", "📋 Lead Capture", "📅 Booking", "⚡ Notify"].map((b) => (
+                  <span key={b} className="text-[10px] sm:text-xs bg-black/60 backdrop-blur-sm border border-white/[0.08] rounded-full px-2.5 py-1 text-white/50">{b}</span>
+                ))}
+              </div>
             </div>
           </div>
         </div>
