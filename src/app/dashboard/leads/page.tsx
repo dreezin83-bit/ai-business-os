@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/select";
 import {
   Users, Plus, Search, Filter, Loader2, Phone, Mail,
-  Calendar, ArrowUpRight, MoreHorizontal, X,
+  Calendar, ArrowUpRight, MoreHorizontal, X, TrendingUp, DollarSign, BarChart3,
 } from "lucide-react";
 import Link from "next/link";
 import { useToast } from "@/components/toaster";
@@ -171,6 +171,62 @@ export default function LeadsPage() {
             </div>
           </DialogContent>
         </Dialog>
+      </div>
+
+      {/* ROI Dashboard */}
+      <div className="grid gap-4 grid-cols-2 sm:grid-cols-4">
+        <Card className="bg-gradient-to-br from-blue-500/5 to-blue-500/10 border-blue-500/20">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-2 mb-1">
+              <Users className="h-4 w-4 text-blue-500" />
+              <span className="text-xs text-muted-foreground">Total Leads</span>
+            </div>
+            <p className="text-2xl font-bold">{leads.length}</p>
+            <p className="text-xs text-muted-foreground mt-1">
+              {leads.filter((l) => ["won", "appointment_booked"].includes(l.status)).length} converted
+            </p>
+          </CardContent>
+        </Card>
+        <Card className="bg-gradient-to-br from-green-500/5 to-green-500/10 border-green-500/20">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-2 mb-1">
+              <TrendingUp className="h-4 w-4 text-green-500" />
+              <span className="text-xs text-muted-foreground">This Month</span>
+            </div>
+            <p className="text-2xl font-bold">
+              {leads.filter((l) => {
+                const d = new Date(l.createdAt);
+                const now = new Date();
+                return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+              }).length}
+            </p>
+            <p className="text-xs text-muted-foreground mt-1">new leads</p>
+          </CardContent>
+        </Card>
+        <Card className="bg-gradient-to-br from-purple-500/5 to-purple-500/10 border-purple-500/20">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-2 mb-1">
+              <BarChart3 className="h-4 w-4 text-purple-500" />
+              <span className="text-xs text-muted-foreground">Conversion</span>
+            </div>
+            <p className="text-2xl font-bold">
+              {leads.length > 0 ? Math.round((leads.filter((l) => l.status === "won").length / leads.length) * 100) : 0}%
+            </p>
+            <p className="text-xs text-muted-foreground mt-1">win rate</p>
+          </CardContent>
+        </Card>
+        <Card className="bg-gradient-to-br from-amber-500/5 to-amber-500/10 border-amber-500/20">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-2 mb-1">
+              <DollarSign className="h-4 w-4 text-amber-500" />
+              <span className="text-xs text-muted-foreground">Est. Revenue</span>
+            </div>
+            <p className="text-2xl font-bold">
+              ${(leads.filter((l) => l.status === "won").length * 2500).toLocaleString()}
+            </p>
+            <p className="text-xs text-muted-foreground mt-1">at ~$2,500 avg job</p>
+          </CardContent>
+        </Card>
       </div>
 
       {/* Status filter tabs */}

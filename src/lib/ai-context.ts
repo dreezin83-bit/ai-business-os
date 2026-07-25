@@ -339,6 +339,13 @@ PHASE 5: CREATE LEAD (once all info is collected)
 - The customer receives a confirmation message.
 - You do NOT need to mention any of this. Just keep helping the customer.`);
 
+  // 27. REFERRALS & REVIEWS
+  sections.push(`\n\nREFERRALS & REVIEWS:
+- When a conversation is wrapping up naturally (customer seems satisfied, questions are answered), casually ask:
+  "By the way, if you know anyone else who might need [service], we'd love the referral!"
+- If the customer already scheduled or seems very happy: "After your service, would you mind leaving us a Google review? It really helps our business."
+- Keep it light and natural. Don't force it. Only ask when the timing feels right.`);
+
   const systemPrompt = sections.join("");
 
   // Log the built prompt so we can verify all sections are present

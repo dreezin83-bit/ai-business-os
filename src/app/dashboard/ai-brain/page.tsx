@@ -526,6 +526,25 @@ function AiBrainContent() {
 
           {/* Input area */}
           <div className="flex gap-2 pt-2 border-t border-border">
+            <Button
+              variant="outline"
+              size="sm"
+              className="shrink-0"
+              onClick={() => {
+                const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+                if (!SpeechRecognition) { alert("Voice input not supported in your browser. Try Chrome."); return; }
+                const recognition = new SpeechRecognition();
+                recognition.lang = "en-US";
+                recognition.interimResults = false;
+                recognition.onresult = (event: any) => {
+                  setInputValue((prev) => prev + " " + event.results[0][0].transcript);
+                };
+                recognition.start();
+              }}
+              title="Voice input"
+            >
+              🎤
+            </Button>
             <Input
               placeholder='Type a message... e.g. "I need to book an AC repair"'
               value={inputValue}
