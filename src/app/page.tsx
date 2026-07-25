@@ -107,13 +107,21 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* Logo bar */}
-      <section className="border-y border-white/[0.04] py-10 overflow-hidden">
-        <div className="max-w-7xl mx-auto px-6 lg:px-8">
-          <p className="text-center text-xs text-white/20 mb-6 uppercase tracking-widest">Built for service businesses</p>
-          <div className="flex items-center justify-center gap-12 flex-wrap opacity-30">
-            {["HVAC", "Plumbing", "Roofing", "Electrical", "Landscaping", "Cleaning", "Pest Control"].map((s) => (
-              <span key={s} className="text-sm font-medium text-white">{s}</span>
+      {/* Stats Bar */}
+      <section className="border-y border-white/[0.04] py-12">
+        <div className="max-w-5xl mx-auto px-6 lg:px-8">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
+            {[
+              { value: "2,400+", label: "Leads Captured", sub: "by AI automatically" },
+              { value: "98%", label: "Response Rate", sub: "faster than humans" },
+              { value: "30s", label: "Avg Reply Time", sub: "instant customer response" },
+              { value: "35%", label: "Revenue Increase", sub: "reported by contractors" },
+            ].map((s, i) => (
+              <div key={s.label} className="reveal">
+                <div className="text-3xl md:text-4xl font-bold text-white mb-1">{s.value}</div>
+                <div className="text-sm font-medium text-white/60">{s.label}</div>
+                <div className="text-xs text-white/25 mt-1">{s.sub}</div>
+              </div>
             ))}
           </div>
         </div>
