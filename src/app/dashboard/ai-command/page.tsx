@@ -26,7 +26,7 @@ export default function AICommandPage() {
       const res = await fetch("/api/ai/command", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: text }),
+        body: JSON.stringify({ userMessage: text, history: messages.slice(-6) }),
       });
       const data = await res.json();
       setMessages((prev) => [...prev, {
