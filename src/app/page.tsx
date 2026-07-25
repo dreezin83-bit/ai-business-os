@@ -1,9 +1,12 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import dynamic from "next/dynamic";
 import { Button } from "@/components/ui/button";
-import { ArrowRight, Bot, Users, Calendar, Zap, BookOpen, Globe, Star, MessageCircle, Mail, Shield, Sparkles, ChevronRight, Phone } from "lucide-react";
+import { ArrowRight, Bot, Users, Calendar, Zap, BookOpen, Globe, Star, MessageCircle, Mail } from "lucide-react";
 import Link from "next/link";
+
+const Spline = dynamic(() => import("@splinetool/react-spline"), { ssr: false });
 
 const features = [
   { name: "AI that answers 24/7", desc: "Never miss a customer. Your AI qualifies leads, answers questions, and books appointments — even while you sleep.", icon: Bot },
@@ -58,59 +61,32 @@ export default function LandingPage() {
       <section className="relative pt-32 pb-20 md:pt-40 md:pb-28 overflow-hidden">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(255,255,255,0.03),transparent_70%)]" />
         <div className="max-w-7xl mx-auto px-6 lg:px-8 relative z-10">
-          <div className="max-w-4xl mx-auto text-center">
-            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/[0.04] border border-white/[0.06] text-[13px] text-white/60 mb-8 animate-fade-in">
-              <span className="h-1.5 w-1.5 rounded-full bg-green-500 animate-pulse-soft" />
-              Now accepting early access users
+          <div className="grid lg:grid-cols-2 gap-12 items-center">
+            {/* Left - Text */}
+            <div>
+              <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/[0.04] border border-white/[0.06] text-[13px] text-white/60 mb-8 animate-fade-in">
+                <span className="h-1.5 w-1.5 rounded-full bg-green-500 animate-pulse-soft" />
+                Now accepting early access users
+              </div>
+              <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold tracking-tight leading-[0.95] animate-fade-in">
+                <span className="block">Never miss</span>
+                <span className="block text-gradient animate-fade-in delay-200">another customer</span>
+                <span className="block animate-fade-in delay-400">again.</span>
+              </h1>
+              <p className="text-lg text-white/40 mt-8 leading-relaxed animate-fade-in delay-500 max-w-md">
+                Your AI answers 24/7, qualifies every lead, books appointments, and sends notifications — automatically.
+              </p>
+              <div className="flex items-center gap-4 mt-10 animate-fade-in delay-600">
+                <Link href="/sign-up"><Button size="lg" className="btn-white text-[15px] h-12 px-8 rounded-full">Get Started <ArrowRight className="h-4 w-4 ml-1.5" /></Button></Link>
+                <a href="https://wa.me/13057071059" target="_blank"><Button variant="outline" size="lg" className="btn-outline text-[15px] h-12 px-8 rounded-full">Talk to Us</Button></a>
+              </div>
             </div>
-            <h1 className="text-5xl md:text-7xl lg:text-8xl font-bold tracking-tight leading-[0.95] animate-fade-in">
-              <span className="block">Never miss</span>
-              <span className="block text-gradient animate-fade-in delay-200">another customer</span>
-              <span className="block animate-fade-in delay-400">again.</span>
-            </h1>
-            <p className="text-lg md:text-xl text-white/40 mt-8 max-w-2xl mx-auto leading-relaxed animate-fade-in delay-500">
-              Your AI receptionist answers every message, qualifies every lead, and books every appointment — so you never lose business to a missed call or late reply.
-            </p>
-            <div className="flex items-center justify-center gap-4 mt-10 animate-fade-in delay-600">
-              <Link href="/sign-up"><Button size="lg" className="btn-white text-[15px] h-12 px-8 rounded-full">Get Started <ArrowRight className="h-4 w-4 ml-1.5" /></Button></Link>
-              <a href="https://wa.me/13057071059" target="_blank"><Button variant="outline" size="lg" className="btn-outline text-[15px] h-12 px-8 rounded-full">Talk to Us</Button></a>
-            </div>
-          </div>
-
-          {/* Animated demo */}
-          <div className="mt-20 max-w-4xl mx-auto animate-fade-in delay-700">
-            <div className="glass rounded-2xl p-6 md:p-8 space-y-4">
-              <div className="flex items-center gap-2 mb-4">
-                <div className="flex gap-1.5"><span className="h-3 w-3 rounded-full bg-red-500/50" /><span className="h-3 w-3 rounded-full bg-amber-500/50" /><span className="h-3 w-3 rounded-full bg-green-500/50" /></div>
-                <span className="text-xs text-white/30 ml-2">AI Business OS — Live Demo</span>
-              </div>
-              <div className="space-y-3">
-                {[
-                  { role: "user", text: "Hi, I need my water heater fixed. It's leaking everywhere.", delay: "delay-0" },
-                  { role: "ai", text: "Oh no — we can help with that! Let me get someone to you quickly. May I have your name and phone number?", delay: "delay-200" },
-                  { role: "user", text: "Mark Davis, 555-0147", delay: "delay-400" },
-                  { role: "ai", text: "Got it, Mark. I've created a lead for emergency water heater repair. Our team will call you within 15 minutes. Is there anything else?", delay: "delay-600" },
-                ].map((msg, i) => (
-                  <div key={i} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"} animate-fade-in ${msg.delay}`}>
-                    <div className={`max-w-[75%] rounded-2xl px-4 py-3 text-sm leading-relaxed ${
-                      msg.role === "user" ? "bg-white/[0.06] text-white/80" : "bg-white text-black"
-                    }`}>
-                      {msg.text}
-                    </div>
-                  </div>
-                ))}
-              </div>
-              <div className="flex items-center gap-3 pt-3 border-t border-white/[0.06]">
-                {[
-                  { label: "Lead Created", color: "bg-green-500" },
-                  { label: "Notification Sent", color: "bg-blue-500" },
-                  { label: "Appointment Ready", color: "bg-purple-500" },
-                ].map((s) => (
-                  <span key={s.label} className="flex items-center gap-1.5 text-[11px] text-white/40">
-                    <span className={`h-1.5 w-1.5 rounded-full ${s.color} animate-pulse-soft`} /> {s.label}
-                  </span>
-                ))}
-              </div>
+            {/* Right - Spline Animation */}
+            <div className="hidden lg:block h-[500px] animate-fade-in delay-300">
+              <Spline
+                scene="https://prod.spline.design/community/file/8cfb6748-f3dd-44dd-89fb-f46c7ab4186e/scene.splinecode"
+                className="w-full h-full"
+              />
             </div>
           </div>
         </div>
