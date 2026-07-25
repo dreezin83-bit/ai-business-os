@@ -1,13 +1,9 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import dynamic from "next/dynamic";
-import Script from "next/script";
 import { Button } from "@/components/ui/button";
 import { ArrowRight, Bot, Users, Calendar, Zap, BookOpen, Globe, Star, MessageCircle, Mail } from "lucide-react";
 import Link from "next/link";
-
-const Spline = dynamic(() => import("@splinetool/react-spline/next"), { ssr: false });
 
 const features = [
   { name: "AI that answers 24/7", desc: "Never miss a customer. Your AI qualifies leads, answers questions, and books appointments — even while you sleep.", icon: Bot },
@@ -44,7 +40,6 @@ function ScrollReveal({ children, className = "", delay = 0 }: { children: React
 export default function LandingPage() {
   return (
     <div className="min-h-screen bg-black text-white overflow-x-hidden">
-      <Script src="https://unpkg.com/@splinetool/viewer@1.12.98/build/spline-viewer.js" type="module" />
       {/* Nav */}
       <header className="fixed top-0 left-0 right-0 z-50 bg-black/80 backdrop-blur-xl border-b border-white/[0.06]">
         <div className="max-w-7xl mx-auto px-6 lg:px-8 flex items-center justify-between h-16">
@@ -93,11 +88,9 @@ export default function LandingPage() {
                 <Bot className="h-3.5 w-3.5 text-blue-400" />
                 AI-Powered Receptionist
               </div>
-              {/* Robot */}
-              <div className="h-[340px] sm:h-[400px] lg:h-[460px] w-full relative spline-wrapper overflow-hidden">
-                <Spline scene="https://prod.spline.design/kDSI4axu7YzxniDc/scene.splinecode" />
-              </div>
-              {/* Business features under robot */}
+              {/* AI Hero Image */}
+              <img src="/images/ai-hero.png" alt="AI Receptionist" className="w-full max-w-[320px] sm:max-w-[380px] lg:max-w-[440px] h-auto mx-auto" />
+              {/* Business features under image */}
               <div className="flex flex-wrap justify-center gap-3 mt-4 animate-fade-in delay-600">
                 <span className="px-3 py-1.5 rounded-full bg-white/[0.03] border border-white/[0.05] text-[12px] text-white/40 flex items-center gap-1.5">
                   <Zap className="h-3 w-3 text-amber-400" /> 24/7 Customer Service
@@ -109,7 +102,7 @@ export default function LandingPage() {
                   <Calendar className="h-3 w-3 text-green-400" /> Auto Booking
                 </span>
               </div>
-              {/* Subtitle under robot */}
+              {/* Subtitle under image */}
               <p className="text-[13px] text-white/25 text-center mt-4 max-w-xs animate-fade-in delay-700">
                 Deploy in 5 minutes. Works on your website, handles conversations, captures leads — all on autopilot.
               </p>
@@ -154,11 +147,11 @@ export default function LandingPage() {
       </section>
 
       {/* Features */}
-      <section className="py-16 md:py-24">
+      <section className="py-12 md:py-20">
         <div className="max-w-7xl mx-auto px-6 lg:px-8">
           <ScrollReveal>
             <h2 className="text-3xl md:text-5xl font-bold tracking-tight text-center mb-6">Everything you need</h2>
-            <p className="text-lg text-white/30 text-center max-w-xl mx-auto mb-16">AI-powered tools built specifically for contractors. No technical skills required.</p>
+            <p className="text-lg text-white/30 text-center max-w-xl mx-auto mb-10">AI-powered tools built specifically for contractors. No technical skills required.</p>
           </ScrollReveal>
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
             {features.map((f, i) => (
@@ -182,11 +175,11 @@ export default function LandingPage() {
       </section>
 
       {/* Testimonials */}
-      <section className="py-24 md:py-32 border-t border-white/[0.04]">
+      <section className="py-16 md:py-24 border-t border-white/[0.04]">
         <div className="max-w-7xl mx-auto px-6 lg:px-8">
           <ScrollReveal>
             <h2 className="text-3xl md:text-5xl font-bold tracking-tight text-center mb-6">Trusted by contractors</h2>
-            <p className="text-lg text-white/30 text-center max-w-xl mx-auto mb-16">Join hundreds of service businesses already using AI to grow.</p>
+            <p className="text-lg text-white/30 text-center max-w-xl mx-auto mb-10">Join hundreds of service businesses already using AI to grow.</p>
           </ScrollReveal>
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 max-w-6xl mx-auto">
             {testimonials.map((t, i) => (
@@ -212,7 +205,7 @@ export default function LandingPage() {
       </section>
 
       {/* CTA */}
-      <section className="relative py-24 md:py-32 border-t border-white/[0.04] overflow-hidden">
+      <section className="relative py-16 md:py-24 border-t border-white/[0.04] overflow-hidden">
         <div className="absolute inset-0 opacity-40 pointer-events-none">
           <img src="/images/cta-bg.jpg" alt="" className="w-full h-full object-cover" />
         </div>
