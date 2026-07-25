@@ -47,12 +47,12 @@ function isValidPhone(value: string | null): boolean {
 function isValidPreferredMethod(value: string | null): boolean {
   if (!value || isPlaceholder(value)) return false;
   const v = value.trim().toLowerCase();
-  return v === "email" || v === "whatsapp";
+  return v === "email" || v === "phone";
 }
 
 /**
  * Validate that the extracted lead has all required fields with real data.
- * Returns true only if: name, contact (email or phone), preferred method, and service request are all valid.
+ * Requires: name, email AND phone, preferred method, and service request.
  */
 export function isValidLead(lead: ExtractedLead): boolean {
   // Name must be real
@@ -61,11 +61,13 @@ export function isValidLead(lead: ExtractedLead): boolean {
     return false;
   }
 
-  // Must have at least one valid contact method
-  const hasValidEmail = isValidEmail(lead.email);
-  const hasValidPhone = isValidPhone(lead.phone);
-  if (!hasValidEmail && !hasValidPhone) {
-    console.log("[lead-extractor] Validation failed: no valid contact method. email=", lead.email, "phone=", lead.phone);
+  // BOTH email AND phone required
+  if (!isValidEmail(lead.email)) {
+    console.log("[lead-extractor] Validation failed: email is invalid or missing:", lead.email);
+    return false;
+  }
+  if (!isValidPhone(lead.phone)) {
+    console.log("[lead-extractor] Validation failed: phone is invalid or missing:", lead.phone);
     return false;
   }
 
@@ -100,7 +102,7 @@ Extract the customer's information if available. Return ONLY valid JSON, no othe
   "name": "customer's full name or null",
   "phone": "phone number or null",
   "email": "email address or null",
-  "preferredMethod": "email or whatsapp — or null if not determined",
+  "preferredMethod": "email or phone — or null if not determined",
   "serviceRequest": "what service the customer needs or null"
 }
 
