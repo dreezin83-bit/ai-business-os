@@ -214,8 +214,32 @@ function AiBrainContent() {
             </Button>
           </Link>
           <TemplateSelector onApply={(data) => {
-            setConfig({ ...data, businessHours: defaultConfig.businessHours } as AIConfig);
-            toast("Industry template loaded! Review and save.", "success");
+            // Convert JSON arrays back to newline format for display
+            const safeParse = (val: any) => {
+              if (!val) return "";
+              try {
+                const parsed = JSON.parse(val);
+                return Array.isArray(parsed) ? parsed.join("\n") : val;
+              } catch {
+                return val || "";
+              }
+            };
+            setConfig({
+              systemPrompt: data.systemPrompt || "",
+              businessInfo: data.businessInfo || "",
+              services: safeParse(data.services),
+              faqs: safeParse(data.faqs),
+              pricingGuidance: data.pricingGuidance || "",
+              companyPolicies: data.companyPolicies || "",
+              serviceAreas: safeParse(data.serviceAreas),
+              businessHours: data.businessHours || defaultConfig.businessHours,
+              greetingMessage: data.greetingMessage || defaultConfig.greetingMessage,
+              leadCollectionRules: data.leadCollectionRules || "",
+              appointmentBookingRules: data.appointmentBookingRules || "",
+              responseStyle: data.responseStyle || "",
+              escalationRules: data.escalationRules || "",
+            });
+            toast("Industry template loaded! Review and click Save Configuration.", "success");
           }} />
           <Button size="sm" onClick={handleSave} disabled={saving}>
             {saving ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Save className="h-4 w-4 mr-1" />}
