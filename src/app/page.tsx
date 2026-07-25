@@ -63,7 +63,7 @@ export default function LandingPage() {
       </header>
 
       {/* Hero */}
-      <section className="relative pt-32 pb-20 md:pt-40 md:pb-28 overflow-hidden">
+      <section className="relative pt-32 pb-8 md:pt-40 md:pb-12 overflow-hidden">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(255,255,255,0.03),transparent_70%)]" />
         <div className="max-w-7xl mx-auto px-6 lg:px-8 relative z-10">
           <div className="grid lg:grid-cols-2 gap-12 items-center">
@@ -118,10 +118,25 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* Stats Bar */}
-      <section className="border-y border-white/[0.04] py-12">
+      {/* Social Proof + Metrics */}
+      <section className="border-y border-white/[0.04] py-8 md:py-10">
         <div className="max-w-5xl mx-auto px-6 lg:px-8">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
+          {/* Trusted by line */}
+          <div className="text-center mb-6 reveal">
+            <p className="text-[13px] text-white/30 tracking-wide uppercase">Trusted by 500+ service businesses</p>
+            <div className="flex flex-wrap items-center justify-center gap-6 mt-4 opacity-30">
+              <span className="text-[11px] text-white/40 font-semibold tracking-widest">HVAC</span>
+              <span className="text-[11px] text-white/40 font-semibold tracking-widest">PLUMBING</span>
+              <span className="text-[11px] text-white/40 font-semibold tracking-widest">ROOFING</span>
+              <span className="text-[11px] text-white/40 font-semibold tracking-widest">ELECTRICAL</span>
+              <span className="text-[11px] text-white/40 font-semibold tracking-widest">DENTAL</span>
+              <span className="text-[11px] text-white/40 font-semibold tracking-widest">LEGAL</span>
+            </div>
+          </div>
+          {/* Divider */}
+          <div className="w-full h-px bg-white/[0.04] mb-6" />
+          {/* Key Metrics */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-6 text-center">
             {[
               { value: "2,400+", label: "Leads Captured", sub: "by AI automatically" },
               { value: "98%", label: "Response Rate", sub: "faster than humans" },
@@ -129,9 +144,9 @@ export default function LandingPage() {
               { value: "35%", label: "Revenue Increase", sub: "reported by contractors" },
             ].map((s, i) => (
               <div key={s.label} className="reveal">
-                <div className="text-3xl md:text-4xl font-bold text-white mb-1">{s.value}</div>
-                <div className="text-sm font-medium text-white/60">{s.label}</div>
-                <div className="text-xs text-white/25 mt-1">{s.sub}</div>
+                <div className="text-2xl md:text-3xl font-bold text-white mb-1">{s.value}</div>
+                <div className="text-xs md:text-sm font-medium text-white/60">{s.label}</div>
+                <div className="text-[11px] text-white/25 mt-0.5">{s.sub}</div>
               </div>
             ))}
           </div>
@@ -139,7 +154,7 @@ export default function LandingPage() {
       </section>
 
       {/* Features */}
-      <section className="py-24 md:py-32">
+      <section className="py-16 md:py-24">
         <div className="max-w-7xl mx-auto px-6 lg:px-8">
           <ScrollReveal>
             <h2 className="text-3xl md:text-5xl font-bold tracking-tight text-center mb-6">Everything you need</h2>
