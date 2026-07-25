@@ -93,8 +93,9 @@ export default function LandingPage() {
                 <Bot className="h-3.5 w-3.5 text-blue-400" />
                 AI-Powered Receptionist
               </div>
-              {/* AI Hero Image */}
+              {/* Robot with fallback */}
               <div className="h-[340px] sm:h-[400px] lg:h-[460px] w-full relative spline-wrapper overflow-hidden">
+                <img src="/images/ai-hero.png" alt="AI Receptionist" className="absolute inset-0 w-full h-full object-contain" />
                 <Spline scene="https://prod.spline.design/kDSI4axu7YzxniDc/scene.splinecode" />
               </div>
               {/* Business features under image */}
