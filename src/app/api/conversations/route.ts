@@ -1,16 +1,48 @@
 import { NextResponse } from "next/server";
 import { db } from "@/db";
-import { conversation, message, business } from "@/db/schema";
-import { eq, desc } from "drizzle-orm";
+import { conversation, message, business, lead } from "@/db/schema";
+import { eq, desc, and } from "drizzle-orm";
 import { auth } from "@clerk/nextjs/server";
 import { ensureBusiness } from "@/lib/business";
 import { generateId } from "@/lib/utils";
 
-
-export async function GET() {
+export async function GET(request: Request) {
   try {
     const businessId = await ensureBusiness();
     if (!businessId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+    const { searchParams } = new URL(request.url);
+    const leadId = searchParams.get("leadId");
+
+    // If leadId provided, get conversations linked to that lead with messages
+    if (leadId) {
+      const conversations = await db
+        .select()
+        .from(conversation)
+        .where(
+          and(
+            eq(conversation.businessId, businessId),
+            eq(conversation.leadId, leadId)
+          )
+        )
+        .orderBy(desc(conversation.createdAt));
+
+      // Fetch messages for each conversation
+      const result = await Promise.all(
+        conversations.map(async (conv) => {
+          const messages = await db
+            .select()
+            .from(message)
+            .where(eq(message.conversationId, conv.id))
+            .orderBy(message.createdAt);
+          return { ...conv, messages };
+        })
+      );
+
+      return NextResponse.json(result);
+    }
+
+    // Otherwise return all conversations for the business
     const conversations = await db
       .select()
       .from(conversation)
