@@ -87,8 +87,10 @@ export default function LandingPage() {
               </div>
             </div>
             {/* Spline 3D Animation */}
-            <div className="h-[350px] sm:h-[450px] lg:h-[550px] relative spline-wrapper mt-16 lg:mt-24 pt-16 lg:pt-20">
-              <Spline scene="https://prod.spline.design/kDSI4axu7YzxniDc/scene.splinecode" />
+            <div className="h-[450px] sm:h-[520px] lg:h-[600px] relative spline-wrapper overflow-hidden">
+              <div style={{ transform: 'translateY(-160px)' }}>
+                <Spline scene="https://prod.spline.design/kDSI4axu7YzxniDc/scene.splinecode" />
+              </div>
             </div>
           </div>
         </div>
