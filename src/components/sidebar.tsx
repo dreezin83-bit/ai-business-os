@@ -68,23 +68,23 @@ export function Sidebar() {
       >
         <div className="flex flex-col h-full">
           {/* Logo */}
-          <div className="flex items-center gap-2 px-6 py-5 border-b border-sidebar-border">
-            <div className="h-7 w-7 rounded-md bg-sidebar-primary flex items-center justify-center text-xs font-bold text-sidebar-primary-foreground">
+          <div className="flex items-center gap-3 px-5 py-4 border-b border-sidebar-border">
+            <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-primary to-purple-500 flex items-center justify-center text-sm font-bold text-white shadow-sm">
               AI
             </div>
-            <span className="font-semibold text-sm">AI Business OS</span>
+            <span className="font-semibold text-sm tracking-tight">AI Business OS</span>
           </div>
 
           {/* Navigation */}
-          <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
+          <nav className="flex-1 px-2.5 py-3 space-y-0.5 overflow-y-auto">
             {navigation.map((item) => {
               const isActive = pathname === item.href || pathname.startsWith(item.href + "/");
               const isExternal = (item as any).external;
               const linkClass = cn(
-                "flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors",
+                "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-150",
                 isActive
-                  ? "bg-sidebar-accent text-sidebar-accent-foreground font-medium"
-                  : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                  ? "bg-sidebar-accent text-white shadow-sm"
+                  : "text-sidebar-foreground/60 hover:text-white hover:bg-sidebar-accent/50"
               );
 
               if (isExternal) {
