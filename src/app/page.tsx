@@ -82,7 +82,7 @@ export default function LandingPage() {
               </div>
             </div>
             {/* Spline 3D Animation */}
-            <div className="h-[300px] sm:h-[400px] lg:h-[550px] animate-fade-in delay-300 -mt-8 lg:-mt-16">
+            <div className="h-[300px] sm:h-[400px] lg:h-[550px] -mt-8 lg:-mt-16">
               <Spline scene="https://prod.spline.design/kDSI4axu7YzxniDc/scene.splinecode" />
             </div>
           </div>
