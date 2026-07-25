@@ -86,14 +86,30 @@ export default function LandingPage() {
                 <a href="https://wa.me/13057071059" target="_blank"><Button variant="outline" size="lg" className="btn-outline text-[15px] h-12 px-8 rounded-full">Talk to Us</Button></a>
               </div>
             </div>
-            {/* Right - Robot */}
+            {/* Right - Robot with surrounding text */}
             <div className="flex flex-col items-center lg:flex-1">
               <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/[0.04] border border-white/[0.06] text-[13px] text-white/50 mb-2 animate-fade-in delay-300">
                 <Bot className="h-3.5 w-3.5 text-blue-400" />
                 AI-Powered Receptionist
               </div>
-              <div className="aspect-[4/5] sm:aspect-[3/4] lg:aspect-square w-full max-w-[360px] lg:max-w-none mx-auto relative spline-wrapper overflow-hidden">
-                <Spline scene="https://prod.spline.design/kDSI4axu7YzxniDc/scene.splinecode" />
+              {/* Robot container with floating labels */}
+              <div className="relative w-full max-w-[360px] lg:max-w-none mx-auto">
+                {/* Left floating label */}
+                <div className="absolute left-0 top-1/3 -translate-x-2 lg:-translate-x-4 z-10 hidden sm:block animate-fade-in delay-500">
+                  <span className="px-2.5 py-1 rounded-full bg-white/[0.04] border border-white/[0.06] text-[11px] text-white/40 whitespace-nowrap">
+                    24/7 Support
+                  </span>
+                </div>
+                {/* Right floating label */}
+                <div className="absolute right-0 top-1/3 translate-x-2 lg:translate-x-4 z-10 hidden sm:block animate-fade-in delay-600">
+                  <span className="px-2.5 py-1 rounded-full bg-white/[0.04] border border-white/[0.06] text-[11px] text-white/40 whitespace-nowrap">
+                    AI Powered
+                  </span>
+                </div>
+                {/* Robot - clipped top to center */}
+                <div className="aspect-[4/5] sm:aspect-[3/4] lg:aspect-square w-full relative spline-wrapper overflow-hidden" style={{ marginTop: '-8%' }}>
+                  <Spline scene="https://prod.spline.design/kDSI4axu7YzxniDc/scene.splinecode" />
+                </div>
               </div>
               {/* Business value props under robot */}
               <div className="w-full max-w-[360px] lg:max-w-none mt-6 space-y-3 animate-fade-in delay-600">
