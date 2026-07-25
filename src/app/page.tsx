@@ -95,8 +95,10 @@ export default function LandingPage() {
               </div>
               {/* Robot with fallback */}
               <div className="h-[340px] sm:h-[400px] lg:h-[460px] w-full relative spline-wrapper overflow-hidden">
-                <img src="/images/ai-hero.png" alt="AI Receptionist" className="absolute inset-0 w-full h-full object-contain" />
-                <Spline scene="https://prod.spline.design/kDSI4axu7YzxniDc/scene.splinecode" />
+                <img src="/images/ai-hero.png" alt="AI Receptionist" className="absolute inset-0 w-full h-full object-contain z-0" />
+                <div className="relative z-10 w-full h-full">
+                  <Spline scene="https://prod.spline.design/kDSI4axu7YzxniDc/scene.splinecode" />
+                </div>
               </div>
               {/* Business features under image */}
               <div className="flex flex-wrap justify-center gap-3 mt-4 animate-fade-in delay-600">
