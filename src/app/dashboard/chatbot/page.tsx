@@ -336,19 +336,31 @@ export default function ChatbotPage() {
                           <div className="flex items-center gap-2">
                             <input
                               type="text"
+                              id="chatbot-preview-input"
                               placeholder="Type a message..."
                               className="flex-1 h-8 text-xs rounded-lg bg-muted px-3 focus:outline-none"
-                              onKeyDown={(e) => {
+                              onKeyDown={async (e) => {
                                 if (e.key === "Enter" && (e.target as HTMLInputElement).value) {
                                   const val = (e.target as HTMLInputElement).value;
                                   setChatMessages(prev => [...prev, { role: "user", content: val }]);
                                   (e.target as HTMLInputElement).value = "";
-                                  setTimeout(() => {
+                                  try {
+                                    const res = await fetch("/api/public/chatbot", {
+                                      method: "POST",
+                                      headers: { "Content-Type": "application/json" },
+                                      body: JSON.stringify({ businessId, message: val }),
+                                    });
+                                    const data = await res.json();
                                     setChatMessages(prev => [...prev, {
                                       role: "assistant",
-                                      content: "Thanks for your message! Let me check on that for you right away."
+                                      content: data.response || "Sorry, something went wrong."
                                     }]);
-                                  }, 800);
+                                  } catch {
+                                    setChatMessages(prev => [...prev, {
+                                      role: "assistant",
+                                      content: "Sorry, something went wrong."
+                                    }]);
+                                  }
                                 }
                               }}
                             />

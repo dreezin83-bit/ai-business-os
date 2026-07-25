@@ -274,12 +274,20 @@ export default function LeadDetailPage() {
               <CardTitle className="text-sm">Quick Actions</CardTitle>
             </CardHeader>
             <CardContent className="space-y-2">
-              <Button variant="outline" size="sm" className="w-full justify-start">
-                <Phone className="h-4 w-4 mr-2" /> Call Lead
-              </Button>
-              <Button variant="outline" size="sm" className="w-full justify-start">
-                <Mail className="h-4 w-4 mr-2" /> Send Email
-              </Button>
+              {lead.phone && (
+                <a href={`tel:${lead.phone}`}>
+                  <Button variant="outline" size="sm" className="w-full justify-start">
+                    <Phone className="h-4 w-4 mr-2" /> Call {lead.phone}
+                  </Button>
+                </a>
+              )}
+              {lead.email && (
+                <a href={`mailto:${lead.email}`}>
+                  <Button variant="outline" size="sm" className="w-full justify-start">
+                    <Mail className="h-4 w-4 mr-2" /> Email {lead.email}
+                  </Button>
+                </a>
+              )}
               <Button variant="outline" size="sm" className="w-full justify-start">
                 <Calendar className="h-4 w-4 mr-2" /> Book Appointment
               </Button>
