@@ -213,6 +213,10 @@ function AiBrainContent() {
               <BookOpen className="h-4 w-4 mr-1.5" /> Knowledge Base
             </Button>
           </Link>
+          <TemplateSelector onApply={(data) => {
+            setConfig({ ...data, businessHours: defaultConfig.businessHours } as AIConfig);
+            toast("Industry template loaded! Review and save.", "success");
+          }} />
           <Button size="sm" onClick={handleSave} disabled={saving}>
             {saving ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Save className="h-4 w-4 mr-1" />}
             Save Configuration
@@ -541,6 +545,53 @@ function AiBrainContent() {
           </div>
         </CardContent>
       </Card>
+    </div>
+  );
+}
+
+function TemplateSelector({ onApply }: { onApply: (data: any) => void }) {
+  const [templates, setTemplates] = useState<{ id: string; name: string; icon: string }[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    fetch("/api/ai/templates")
+      .then((r) => r.json())
+      .then(setTemplates)
+      .catch(() => {});
+  }, []);
+
+  const applyTemplate = async (templateId: string) => {
+    if (!confirm("This will replace your current AI Brain settings. Continue?")) return;
+    setLoading(true);
+    try {
+      const res = await fetch("/api/ai/brain/template", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ templateId }),
+      });
+      if (!res.ok) throw new Error("Failed");
+      const data = await res.json();
+      onApply(data);
+    } catch {
+      alert("Failed to load template");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="relative inline-block">
+      <select
+        className="h-8 rounded-md border border-input bg-background px-2.5 py-1 text-xs"
+        defaultValue=""
+        onChange={(e) => { if (e.target.value) applyTemplate(e.target.value); }}
+        disabled={loading}
+      >
+        <option value="" disabled>{loading ? "Loading..." : "Load Industry Template"}</option>
+        {templates.map((t) => (
+          <option key={t.id} value={t.id}>{t.icon} {t.name}</option>
+        ))}
+      </select>
     </div>
   );
 }
