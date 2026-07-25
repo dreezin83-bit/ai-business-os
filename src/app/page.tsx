@@ -1,12 +1,9 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import dynamic from "next/dynamic";
 import { Button } from "@/components/ui/button";
 import { ArrowRight, Bot, Users, Calendar, Zap, BookOpen, Globe, Star, MessageCircle, Mail } from "lucide-react";
 import Link from "next/link";
-
-const Spline = dynamic(() => import("@splinetool/react-spline"), { ssr: false });
 
 const features = [
   { name: "AI that answers 24/7", desc: "Never miss a customer. Your AI qualifies leads, answers questions, and books appointments — even while you sleep.", icon: Bot },
@@ -82,10 +79,11 @@ export default function LandingPage() {
               </div>
             </div>
             {/* Right - Spline Animation */}
-            <div className="hidden lg:block h-[500px] animate-fade-in delay-300">
-              <Spline
-                scene="https://prod.spline.design/community/file/8cfb6748-f3dd-44dd-89fb-f46c7ab4186e/scene.splinecode"
-                className="w-full h-full"
+            <div className="hidden lg:block h-[500px] animate-fade-in delay-300 relative">
+              <iframe
+                src="https://my.spline.design/community/file/8cfb6748-f3dd-44dd-89fb-f46c7ab4186e"
+                className="w-full h-full border-0"
+                title="AI Animation"
               />
             </div>
           </div>
