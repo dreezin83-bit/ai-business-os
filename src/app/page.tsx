@@ -86,9 +86,33 @@ export default function LandingPage() {
                 <a href="https://wa.me/13057071059" target="_blank"><Button variant="outline" size="lg" className="btn-outline text-[15px] h-12 px-8 rounded-full">Talk to Us</Button></a>
               </div>
             </div>
-            {/* Spline 3D Animation */}
-            <div className="h-[400px] sm:h-[480px] lg:h-[550px] relative spline-wrapper overflow-hidden">
-              <Spline scene="https://prod.spline.design/kDSI4axu7YzxniDc/scene.splinecode" />
+            {/* Right - Robot + Business Text */}
+            <div className="flex flex-col items-center">
+              {/* Floating label above robot */}
+              <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/[0.04] border border-white/[0.06] text-[13px] text-white/50 mb-2 animate-fade-in delay-300">
+                <Bot className="h-3.5 w-3.5 text-blue-400" />
+                AI-Powered Receptionist
+              </div>
+              {/* Robot */}
+              <div className="h-[340px] sm:h-[400px] lg:h-[460px] w-full relative spline-wrapper overflow-hidden">
+                <Spline scene="https://prod.spline.design/kDSI4axu7YzxniDc/scene.splinecode" />
+              </div>
+              {/* Business features under robot */}
+              <div className="flex flex-wrap justify-center gap-3 mt-4 animate-fade-in delay-600">
+                <span className="px-3 py-1.5 rounded-full bg-white/[0.03] border border-white/[0.05] text-[12px] text-white/40 flex items-center gap-1.5">
+                  <Zap className="h-3 w-3 text-amber-400" /> 24/7 Customer Service
+                </span>
+                <span className="px-3 py-1.5 rounded-full bg-white/[0.03] border border-white/[0.05] text-[12px] text-white/40 flex items-center gap-1.5">
+                  <Users className="h-3 w-3 text-blue-400" /> Instant Lead Capture
+                </span>
+                <span className="px-3 py-1.5 rounded-full bg-white/[0.03] border border-white/[0.05] text-[12px] text-white/40 flex items-center gap-1.5">
+                  <Calendar className="h-3 w-3 text-green-400" /> Auto Booking
+                </span>
+              </div>
+              {/* Subtitle under robot */}
+              <p className="text-[13px] text-white/25 text-center mt-4 max-w-xs animate-fade-in delay-700">
+                Deploy in 5 minutes. Works on your website, handles conversations, captures leads — all on autopilot.
+              </p>
             </div>
           </div>
         </div>
