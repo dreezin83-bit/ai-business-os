@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { db } from "@/db";
-import { business, lead, conversation, message, appointment } from "@/db/schema";
+import { business, lead, conversation, message, appointment, aiBrainConfig } from "@/db/schema";
 import { eq, desc, and } from "drizzle-orm";
 import { generateId } from "@/lib/utils";
 import { buildAiContext } from "@/lib/ai-context";
@@ -111,6 +111,14 @@ export async function POST(request: Request) {
     const [biz] = await db.select().from(business).where(eq(business.id, businessId));
     if (!biz) {
       return corsResponse({ error: "Business not found" }, 404);
+    }
+
+    // Block AI until business has configured their AI Brain
+    const [brainConfig] = await db.select().from(aiBrainConfig).where(eq(aiBrainConfig.businessId, businessId));
+    if (!brainConfig || brainConfig.services === "[]") {
+      return corsResponse({
+        response: "This business hasn't finished setting up their AI assistant yet. Please check back soon!",
+      });
     }
 
     // Build AI context using the shared engine
