@@ -92,7 +92,7 @@ export default function LandingPage() {
                 <Bot className="h-3.5 w-3.5 text-blue-400" />
                 AI-Powered Receptionist
               </div>
-              <div className="h-[280px] sm:h-[340px] lg:h-[400px] w-full relative spline-wrapper overflow-hidden">
+              <div className="aspect-[4/5] sm:aspect-[3/4] lg:aspect-square w-full max-w-[360px] lg:max-w-none mx-auto relative spline-wrapper overflow-hidden">
                 <Spline scene="https://prod.spline.design/kDSI4axu7YzxniDc/scene.splinecode" />
               </div>
               <div className="flex flex-wrap justify-center gap-3 mt-4 animate-fade-in delay-600">
