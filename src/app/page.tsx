@@ -179,8 +179,11 @@ export default function LandingPage() {
       </section>
 
       {/* CTA */}
-      <section className="py-24 md:py-32 border-t border-white/[0.04]">
-        <div className="max-w-4xl mx-auto px-6 lg:px-8 text-center">
+      <section className="relative py-24 md:py-32 border-t border-white/[0.04] overflow-hidden">
+        <div className="absolute inset-0 opacity-20 pointer-events-none">
+          <Spline scene="https://prod.spline.design/ZUumiS2nlhtz9L9d/scene.splinecode" />
+        </div>
+        <div className="max-w-4xl mx-auto px-6 lg:px-8 text-center relative z-10">
           <ScrollReveal>
             <h2 className="text-3xl md:text-5xl font-bold tracking-tight mb-6">Ready to stop missing leads?</h2>
             <p className="text-lg text-white/30 mb-10 max-w-xl mx-auto">Join contractors who never miss another customer. 14-day free trial. No credit card.</p>
