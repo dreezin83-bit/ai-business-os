@@ -43,7 +43,7 @@ function ScrollReveal({ children, className = "", delay = 0 }: { children: React
 
 export default function LandingPage() {
   return (
-    <div className="min-h-screen bg-black text-white overflow-x-hidden">
+    <div className="bg-black text-white overflow-x-hidden">
       <Script src="https://unpkg.com/@splinetool/viewer@1.12.98/build/spline-viewer.js" type="module" />
       {/* Nav */}
       <header className="fixed top-0 left-0 right-0 z-50 bg-black/80 backdrop-blur-xl border-b border-white/[0.06]">
@@ -63,12 +63,12 @@ export default function LandingPage() {
       </header>
 
       {/* Hero */}
-      <section className="relative pt-20 pb-0 md:pt-28 md:pb-8 overflow-hidden">
+      <section className="relative pt-20 pb-0 md:pt-28 md:pb-8">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(255,255,255,0.03),transparent_70%)]" />
         <div className="max-w-7xl mx-auto px-6 lg:px-8 relative z-10">
-          <div className="grid lg:grid-cols-2 gap-6 lg:gap-12 items-start">
+          <div className="flex flex-col lg:flex-row gap-6 lg:gap-12 lg:items-start">
             {/* Left - Text */}
-            <div>
+            <div className="lg:flex-1">
               <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/[0.04] border border-white/[0.06] text-[13px] text-white/60 mb-8 animate-fade-in">
                 <span className="h-1.5 w-1.5 rounded-full bg-green-500 animate-pulse-soft" />
                 Now accepting early access users
@@ -87,7 +87,7 @@ export default function LandingPage() {
               </div>
             </div>
             {/* Right - Robot */}
-            <div className="flex flex-col items-center">
+            <div className="flex flex-col items-center lg:flex-1">
               <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/[0.04] border border-white/[0.06] text-[13px] text-white/50 mb-2 animate-fade-in delay-300">
                 <Bot className="h-3.5 w-3.5 text-blue-400" />
                 AI-Powered Receptionist
