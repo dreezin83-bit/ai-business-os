@@ -63,46 +63,32 @@ export default function LandingPage() {
       </header>
 
       {/* Hero */}
-      <section className="relative pt-32 pb-20 md:pt-40 md:pb-28 overflow-hidden">
+      <section className="relative min-h-screen flex items-center overflow-hidden">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(255,255,255,0.03),transparent_70%)]" />
-        <div className="max-w-7xl mx-auto px-6 lg:px-8 relative z-10">
-          <div className="grid lg:grid-cols-2 gap-12 items-center">
+        <div className="max-w-7xl mx-auto px-6 lg:px-8 relative z-10 w-full py-24 md:py-0">
+          <div className="grid lg:grid-cols-2 gap-8 lg:gap-16 items-center">
             {/* Left - Text */}
-            <div>
-              <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/[0.04] border border-white/[0.06] text-[13px] text-white/60 mb-8 animate-fade-in">
+            <div className="pt-0 lg:pt-0">
+              <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/[0.04] border border-white/[0.06] text-[13px] text-white/60 mb-6 animate-fade-in">
                 <span className="h-1.5 w-1.5 rounded-full bg-green-500 animate-pulse-soft" />
                 Now accepting early access users
               </div>
-              <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold tracking-tight leading-[0.95] animate-fade-in">
+              <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold tracking-tight leading-[0.95] animate-fade-in">
                 <span className="block">Never miss</span>
                 <span className="block text-gradient animate-fade-in delay-200">another customer</span>
                 <span className="block animate-fade-in delay-400">again.</span>
               </h1>
-              <p className="text-lg text-white/40 mt-8 leading-relaxed animate-fade-in delay-500 max-w-md">
+              <p className="text-base sm:text-lg text-white/40 mt-6 leading-relaxed animate-fade-in delay-500 max-w-md">
                 Your AI answers 24/7, qualifies every lead, books appointments, and sends notifications — automatically.
               </p>
-              <div className="flex items-center gap-4 mt-10 animate-fade-in delay-600">
+              <div className="flex items-center gap-3 mt-8 animate-fade-in delay-600">
                 <Link href="/sign-up"><Button size="lg" className="btn-white text-[15px] h-12 px-8 rounded-full">Get Started <ArrowRight className="h-4 w-4 ml-1.5" /></Button></Link>
                 <a href="https://wa.me/13057071059" target="_blank"><Button variant="outline" size="lg" className="btn-outline text-[15px] h-12 px-8 rounded-full">Talk to Us</Button></a>
               </div>
             </div>
-            {/* Spline 3D Animation with labels */}
-            <div className="h-[350px] sm:h-[450px] lg:h-[550px] -mt-8 lg:-mt-16 relative">
-              {/* Background glow */}
-              <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.06),transparent_70%)] rounded-3xl" />
-              {/* Callout labels */}
-              <div className="absolute top-2 left-0 sm:top-6 sm:-left-4 bg-white/[0.04] backdrop-blur-sm border border-white/[0.06] rounded-xl px-3 py-1.5 text-[10px] sm:text-xs text-white/40 z-10">
-                💬 24/7 AI Chat
-              </div>
-              <div className="absolute top-12 right-0 sm:top-20 sm:-right-2 bg-white/[0.04] backdrop-blur-sm border border-white/[0.06] rounded-xl px-3 py-1.5 text-[10px] sm:text-xs text-white/40 z-10">
-                📋 Auto Lead Capture
-              </div>
-              <div className="absolute bottom-16 left-0 sm:bottom-24 sm:-left-4 bg-white/[0.04] backdrop-blur-sm border border-white/[0.06] rounded-xl px-3 py-1.5 text-[10px] sm:text-xs text-white/40 z-10">
-                📅 Smart Booking
-              </div>
-              <div className="absolute bottom-4 right-0 sm:bottom-8 sm:-right-2 bg-white/[0.04] backdrop-blur-sm border border-white/[0.06] rounded-xl px-3 py-1.5 text-[10px] sm:text-xs text-white/40 z-10">
-                ⚡ Instant Notify
-              </div>
+            {/* Spline 3D Animation */}
+            <div className="spline-wrapper h-[350px] sm:h-[450px] lg:h-[600px]">
+              <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.06),transparent_70%)] rounded-3xl pointer-events-none" />
               <Spline scene="https://prod.spline.design/kDSI4axu7YzxniDc/scene.splinecode" />
             </div>
           </div>
@@ -151,9 +137,9 @@ export default function LandingPage() {
       </section>
 
       {/* Mid-page Spline Animation */}
-      <section className="py-12 md:py-16">
+      <section className="py-12 md:py-16 overflow-hidden">
         <div className="max-w-6xl mx-auto px-6 lg:px-8">
-          <div className="h-[300px] sm:h-[400px] md:h-[500px]">
+          <div className="spline-wrapper h-[300px] sm:h-[400px] md:h-[500px]">
             <Spline scene="https://prod.spline.design/XX4MIOykaJKr3ZrK/scene.splinecode" />
           </div>
         </div>
@@ -191,10 +177,10 @@ export default function LandingPage() {
 
       {/* CTA */}
       <section className="relative py-24 md:py-32 border-t border-white/[0.04] overflow-hidden">
-        <div className="absolute inset-0 opacity-80 pointer-events-none">
+        <div className="absolute inset-0 spline-wrapper opacity-60 pointer-events-none">
           <Spline scene="https://prod.spline.design/ZUumiS2nlhtz9L9d/scene.splinecode" />
         </div>
-        <div className="absolute inset-0 bg-black/40 z-[5]" />
+        <div className="absolute inset-0 bg-black/50 z-[5]" />
         <div className="max-w-4xl mx-auto px-6 lg:px-8 text-center relative z-10">
           <ScrollReveal>
             <h2 className="text-3xl md:text-5xl font-bold tracking-tight mb-6">Ready to stop missing leads?</h2>
