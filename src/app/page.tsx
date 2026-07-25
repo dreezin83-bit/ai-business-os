@@ -98,8 +98,8 @@ export default function LandingPage() {
                 <a href="https://wa.me/13057071059" target="_blank"><Button variant="outline" size="lg" className="btn-outline text-[15px] h-12 px-8 rounded-full">Talk to Us</Button></a>
               </div>
             </div>
-            {/* Right - Spline 3D Animation */}
-            <div className="hidden lg:block h-[550px] animate-fade-in delay-300 relative">
+            {/* Spline 3D Animation */}
+            <div className="h-[300px] sm:h-[400px] lg:h-[550px] animate-fade-in delay-300 relative order-1 lg:order-2 w-full">
               <SplineViewer />
             </div>
           </div>
