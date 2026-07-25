@@ -1,221 +1,213 @@
-import Link from "next/link";
+"use client";
+
+import { useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
-import { ArrowRight, Bot, Users, Calendar, MessageSquare, Zap, BookOpen, BarChart3, Globe, Star, Shield, ChevronDown, Mail, MessageCircle, Check, Sparkles } from "lucide-react";
+import { ArrowRight, Bot, Users, Calendar, Zap, BookOpen, Globe, Star, MessageCircle, Mail, Shield, Sparkles, ChevronRight, Phone } from "lucide-react";
+import Link from "next/link";
 
 const features = [
-  { name: "AI Chat Assistant", description: "Answers customer questions 24/7, qualifies leads, and books appointments — like having a sales rep who never sleeps.", icon: Bot },
-  { name: "Smart Lead Capture", description: "Every conversation becomes a qualified lead. Name, phone, email, and service request captured automatically.", icon: Users },
-  { name: "CRM & Pipeline", description: "Visual pipeline from new lead to won deal. Drag, drop, update status — know exactly where every prospect stands.", icon: BarChart3 },
-  { name: "Appointment Booking", description: "Customers book directly through chat. AI checks availability, confirms time, and sends reminders.", icon: Calendar },
-  { name: "Instant Notifications", description: "New lead? Contractor gets an email instantly. Customer gets a confirmation. No delays.", icon: Zap },
-  { name: "Knowledge Base", description: "Upload PDFs, website URLs, FAQs. Your AI learns your business and answers like an expert.", icon: BookOpen },
-  { name: "Analytics Dashboard", description: "See revenue estimates, conversion rates, lead sources. Know exactly how your AI is performing.", icon: BarChart3 },
-  { name: "Multi-Tenant Ready", description: "One platform, unlimited contractors. Each with their own AI, their own leads, their own brand.", icon: Globe },
+  { name: "AI that answers 24/7", desc: "Never miss a customer. Your AI qualifies leads, answers questions, and books appointments — even while you sleep.", icon: Bot },
+  { name: "Smart Lead Capture", desc: "Name, phone, email, and service — captured automatically from every conversation. Zero data entry.", icon: Users },
+  { name: "Appointment Booking", desc: "Customers book directly through chat. AI checks availability and confirms instantly.", icon: Calendar },
+  { name: "Instant Notifications", desc: "New lead? You get an email. Customer gets a confirmation. Everything logged for your records.", icon: Zap },
+  { name: "Knowledge Base", desc: "Upload documents, FAQs, and website URLs. Your AI learns everything about your business.", icon: BookOpen },
+  { name: "Built for Scale", desc: "One platform, unlimited contractors. Each gets their own AI, own leads, own settings.", icon: Globe },
 ];
 
-const pricing = [
-  { name: "Starter", price: "$49", period: "/mo", description: "For small contractors getting started with AI.", features: ["1 Contractor", "AI Chatbot", "Lead Capture", "Email Notifications", "Basic Analytics"], cta: "Start Free Trial", popular: false },
-  { name: "Professional", price: "$149", period: "/mo", description: "For growing businesses that want full automation.", features: ["5 Contractors", "Everything in Starter", "Appointment Booking", "WhatsApp Integration", "Advanced Analytics", "Custom AI Training", "Priority Support"], cta: "Start Free Trial", popular: true },
-  { name: "Enterprise", price: "Custom", period: "", description: "For agencies managing 50+ contractors.", features: ["Unlimited Contractors", "Everything in Professional", "White Label", "API Access", "Dedicated Support", "Custom Integrations", "SLA Guarantee"], cta: "Contact Sales", popular: false },
+const testimonials = [
+  { quote: "This is placeholder testimonial text. Real contractor reviews coming soon. We're excited to share authentic stories from our early users.", name: "Coming Soon", role: "HVAC Business Owner" },
+  { quote: "Another placeholder testimonial. We're collecting real feedback from contractors who use the platform daily. These will be real reviews.", name: "Coming Soon", role: "Plumbing Contractor" },
+  { quote: "Placeholder testimonial. Soon this will feature authentic stories from contractors who transformed their business with AI.", name: "Coming Soon", role: "Roofing Company" },
 ];
 
-const faqs = [
-  { q: "How quickly can I set up?", a: "Under 5 minutes. Sign up, pick your industry template, paste one line of code on your website — done. Your AI starts working immediately." },
-  { q: "Do I need technical skills?", a: "Zero. No coding, no API keys, no configuration. We built this for contractors who barely use email." },
-  { q: "Can I white-label this?", a: "Yes. Your contractors see their own branding. You control the platform. They just use it." },
-  { q: "What if I need help?", a: "WhatsApp support, email support, video tutorials, documentation. We respond fast." },
-  { q: "Is there a free trial?", a: "Yes. 14 days free on any plan. No credit card required to start." },
-];
+function ScrollReveal({ children, className = "", delay = 0 }: { children: React.ReactNode; className?: string; delay?: number }) {
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const observer = new IntersectionObserver(([entry]) => {
+      if (entry.isIntersecting) { el.classList.add("visible"); observer.unobserve(el); }
+    }, { threshold: 0.1 });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+  return <div ref={ref} className={`reveal ${className}`} style={{ transitionDelay: `${delay}ms` }}>{children}</div>;
+}
 
 export default function LandingPage() {
   return (
-    <div className="min-h-screen bg-background text-foreground">
+    <div className="min-h-screen bg-black text-white overflow-x-hidden">
       {/* Nav */}
-      <header className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-lg border-b border-border">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between h-14">
+      <header className="fixed top-0 left-0 right-0 z-50 bg-black/80 backdrop-blur-xl border-b border-white/[0.06]">
+        <div className="max-w-7xl mx-auto px-6 lg:px-8 flex items-center justify-between h-16">
           <div className="flex items-center gap-2.5">
-            <div className="h-7 w-7 rounded-lg bg-gradient-to-br from-primary to-blue-400 flex items-center justify-center text-xs font-bold text-white shadow-sm shadow-primary/20">AI</div>
-            <span className="font-semibold text-sm tracking-tight">AI Business OS</span>
+            <div className="h-7 w-7 rounded-lg bg-white flex items-center justify-center text-[10px] font-bold text-black">AI</div>
+            <span className="font-semibold text-[15px] tracking-tight">Business OS</span>
           </div>
           <div className="flex items-center gap-2">
-            <a href="https://wa.me/13057071059" target="_blank" className="hidden sm:flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors px-2 py-1"><MessageCircle className="h-3 w-3" /> WhatsApp</a>
-            <Link href="/sign-in" className="text-xs text-muted-foreground hover:text-foreground transition-colors px-2 py-1">Sign In</Link>
-            <Link href="/sign-up"><Button size="sm" className="h-8 text-xs">Get Started</Button></Link>
+            <a href="https://wa.me/13057071059" target="_blank" className="hidden md:flex items-center gap-1.5 text-[13px] text-white/50 hover:text-white transition-colors px-3 py-1.5 rounded-full hover:bg-white/5">
+              <MessageCircle className="h-3.5 w-3.5" /> Support
+            </a>
+            <Link href="/sign-in" className="text-[13px] text-white/50 hover:text-white transition-colors px-3 py-1.5">Sign In</Link>
+            <Link href="/sign-up"><Button size="sm" className="btn-white text-xs h-9 px-5 rounded-full">Get Started</Button></Link>
           </div>
         </div>
       </header>
 
       {/* Hero */}
-      <section className="pt-24 pb-16 md:pt-32 md:pb-24">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid lg:grid-cols-2 gap-12 items-center">
-            <div className="animate-fade-in">
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-border bg-secondary text-xs text-muted-foreground mb-6">
-                <Sparkles className="h-3 w-3 text-primary" /> AI-Powered Contractor OS
-              </div>
-              <h1 className="h1 mb-4">
-                Never Miss Another<br />
-                <span className="text-primary">Customer Again</span>
-              </h1>
-              <p className="body mb-8 max-w-lg">
-                Your AI answers customers 24/7, qualifies every lead, books appointments, 
-                and sends notifications — so you never lose a single job to a missed call or late reply.
-              </p>
-              <div className="flex items-center gap-3">
-                <Link href="/sign-up"><Button size="lg" className="btn-primary">Get Started <ArrowRight className="h-4 w-4 ml-1" /></Button></Link>
-                <Link href="/sign-in"><Button variant="outline" size="lg">Book Demo</Button></Link>
-              </div>
-              <div className="flex items-center gap-4 mt-6 text-xs text-muted-foreground">
-                <span className="flex items-center gap-1"><Check className="h-3 w-3 text-success" /> No credit card</span>
-                <span className="flex items-center gap-1"><Check className="h-3 w-3 text-success" /> 14-day trial</span>
-                <span className="flex items-center gap-1"><Check className="h-3 w-3 text-success" /> 5-min setup</span>
-              </div>
+      <section className="relative pt-32 pb-20 md:pt-40 md:pb-28 overflow-hidden">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(255,255,255,0.03),transparent_70%)]" />
+        <div className="max-w-7xl mx-auto px-6 lg:px-8 relative z-10">
+          <div className="max-w-4xl mx-auto text-center">
+            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/[0.04] border border-white/[0.06] text-[13px] text-white/60 mb-8 animate-fade-in">
+              <span className="h-1.5 w-1.5 rounded-full bg-green-500 animate-pulse-soft" />
+              Now accepting early access users
             </div>
-            <div className="animate-slide-up hidden lg:block">
-              <div className="relative">
-                <div className="glass rounded-2xl p-6 animate-float">
-                  <div className="space-y-3">
-                    <div className="flex items-center gap-2">
-                      <div className="h-8 w-8 rounded-full bg-primary/20 flex items-center justify-center"><Bot className="h-4 w-4 text-primary" /></div>
-                      <div className="text-xs font-medium">AI Assistant</div>
+            <h1 className="text-5xl md:text-7xl lg:text-8xl font-bold tracking-tight leading-[0.95] animate-fade-in">
+              <span className="block">Never miss</span>
+              <span className="block text-gradient animate-fade-in delay-200">another customer</span>
+              <span className="block animate-fade-in delay-400">again.</span>
+            </h1>
+            <p className="text-lg md:text-xl text-white/40 mt-8 max-w-2xl mx-auto leading-relaxed animate-fade-in delay-500">
+              Your AI receptionist answers every message, qualifies every lead, and books every appointment — so you never lose business to a missed call or late reply.
+            </p>
+            <div className="flex items-center justify-center gap-4 mt-10 animate-fade-in delay-600">
+              <Link href="/sign-up"><Button size="lg" className="btn-white text-[15px] h-12 px-8 rounded-full">Get Started <ArrowRight className="h-4 w-4 ml-1.5" /></Button></Link>
+              <a href="https://wa.me/13057071059" target="_blank"><Button variant="outline" size="lg" className="btn-outline text-[15px] h-12 px-8 rounded-full">Talk to Us</Button></a>
+            </div>
+          </div>
+
+          {/* Animated demo */}
+          <div className="mt-20 max-w-4xl mx-auto animate-fade-in delay-700">
+            <div className="glass rounded-2xl p-6 md:p-8 space-y-4">
+              <div className="flex items-center gap-2 mb-4">
+                <div className="flex gap-1.5"><span className="h-3 w-3 rounded-full bg-red-500/50" /><span className="h-3 w-3 rounded-full bg-amber-500/50" /><span className="h-3 w-3 rounded-full bg-green-500/50" /></div>
+                <span className="text-xs text-white/30 ml-2">AI Business OS — Live Demo</span>
+              </div>
+              <div className="space-y-3">
+                {[
+                  { role: "user", text: "Hi, I need my water heater fixed. It's leaking everywhere.", delay: "delay-0" },
+                  { role: "ai", text: "Oh no — we can help with that! Let me get someone to you quickly. May I have your name and phone number?", delay: "delay-200" },
+                  { role: "user", text: "Mark Davis, 555-0147", delay: "delay-400" },
+                  { role: "ai", text: "Got it, Mark. I've created a lead for emergency water heater repair. Our team will call you within 15 minutes. Is there anything else?", delay: "delay-600" },
+                ].map((msg, i) => (
+                  <div key={i} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"} animate-fade-in ${msg.delay}`}>
+                    <div className={`max-w-[75%] rounded-2xl px-4 py-3 text-sm leading-relaxed ${
+                      msg.role === "user" ? "bg-white/[0.06] text-white/80" : "bg-white text-black"
+                    }`}>
+                      {msg.text}
                     </div>
-                    <div className="bg-secondary rounded-xl p-3 text-xs">Hi! I need my AC repaired. Can you help?</div>
-                    <div className="bg-primary/10 rounded-xl p-3 text-xs ml-4">Of course! I can help with that. Before we continue, may I have your name and phone number?</div>
-                    <div className="bg-secondary rounded-xl p-3 text-xs">John Smith, 555-0123</div>
-                    <div className="bg-primary/10 rounded-xl p-3 text-xs ml-4">Thanks John! I've created a lead for AC repair. Our team will reach out within the hour. Is there anything else?</div>
                   </div>
-                  <div className="mt-4 pt-4 border-t border-border flex items-center justify-between text-xs text-muted-foreground">
-                    <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-success animate-pulse" /> Lead Created</span>
-                    <span className="flex items-center gap-1"><Mail className="h-3 w-3" /> Notification Sent</span>
-                    <span className="flex items-center gap-1"><Calendar className="h-3 w-3" /> Booking Ready</span>
-                  </div>
-                </div>
-                <div className="absolute -top-4 -right-4 h-24 w-24 bg-primary/10 rounded-full blur-3xl animate-pulse-glow" />
-                <div className="absolute -bottom-4 -left-4 h-32 w-32 bg-blue-500/5 rounded-full blur-3xl" />
+                ))}
+              </div>
+              <div className="flex items-center gap-3 pt-3 border-t border-white/[0.06]">
+                {[
+                  { label: "Lead Created", color: "bg-green-500" },
+                  { label: "Notification Sent", color: "bg-blue-500" },
+                  { label: "Appointment Ready", color: "bg-purple-500" },
+                ].map((s) => (
+                  <span key={s.label} className="flex items-center gap-1.5 text-[11px] text-white/40">
+                    <span className={`h-1.5 w-1.5 rounded-full ${s.color} animate-pulse-soft`} /> {s.label}
+                  </span>
+                ))}
               </div>
             </div>
           </div>
         </div>
       </section>
 
-      {/* Features */}
-      <section className="py-20 border-t border-border">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-12">
-            <h2 className="h2 mb-3">Everything Your Business Needs</h2>
-            <p className="body max-w-xl mx-auto">AI-powered tools that work together seamlessly — from first message to closed deal.</p>
-          </div>
-          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4 stagger">
-            {features.map((f) => (
-              <div key={f.name} className="glass rounded-xl p-5 hover:border-primary/30 transition-all duration-300 card-hover">
-                <div className="h-9 w-9 rounded-lg bg-primary/10 flex items-center justify-center mb-3"><f.icon className="h-4 w-4 text-primary" /></div>
-                <h3 className="text-sm font-semibold mb-1.5">{f.name}</h3>
-                <p className="text-xs text-muted-foreground leading-relaxed">{f.description}</p>
-              </div>
+      {/* Logo bar */}
+      <section className="border-y border-white/[0.04] py-10 overflow-hidden">
+        <div className="max-w-7xl mx-auto px-6 lg:px-8">
+          <p className="text-center text-xs text-white/20 mb-6 uppercase tracking-widest">Built for service businesses</p>
+          <div className="flex items-center justify-center gap-12 flex-wrap opacity-30">
+            {["HVAC", "Plumbing", "Roofing", "Electrical", "Landscaping", "Cleaning", "Pest Control"].map((s) => (
+              <span key={s} className="text-sm font-medium text-white">{s}</span>
             ))}
           </div>
         </div>
       </section>
 
-      {/* Pricing */}
-      <section className="py-20 border-t border-border">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-12">
-            <h2 className="h2 mb-3">Simple, Transparent Pricing</h2>
-            <p className="body max-w-xl mx-auto">Start free. Upgrade when you grow. No hidden fees.</p>
-          </div>
-          <div className="grid md:grid-cols-3 gap-6 max-w-4xl mx-auto stagger">
-            {pricing.map((p) => (
-              <div key={p.name} className={`glass rounded-2xl p-6 relative card-hover ${p.popular ? 'gradient-border ring-1 ring-primary/20' : ''}`}>
-                {p.popular && <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-primary text-primary-foreground text-[10px] font-semibold px-3 py-1 rounded-full">Most Popular</div>}
-                <h3 className="text-sm font-semibold mb-1">{p.name}</h3>
-                <div className="mb-2"><span className="text-3xl font-bold">{p.price}</span><span className="text-sm text-muted-foreground">{p.period}</span></div>
-                <p className="text-xs text-muted-foreground mb-4">{p.description}</p>
-                <ul className="space-y-2 mb-5">
-                  {p.features.map((f, i) => <li key={i} className="flex items-start gap-2 text-xs"><Check className="h-3 w-3 text-success mt-0.5 shrink-0" />{f}</li>)}
-                </ul>
-                <Button variant={p.popular ? "default" : "outline"} className="w-full text-xs" size="sm">{p.cta}</Button>
-              </div>
+      {/* Features */}
+      <section className="py-24 md:py-32">
+        <div className="max-w-7xl mx-auto px-6 lg:px-8">
+          <ScrollReveal>
+            <h2 className="text-3xl md:text-5xl font-bold tracking-tight text-center mb-6">Everything you need</h2>
+            <p className="text-lg text-white/30 text-center max-w-xl mx-auto mb-16">AI-powered tools built specifically for contractors. No technical skills required.</p>
+          </ScrollReveal>
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {features.map((f, i) => (
+              <ScrollReveal key={f.name} delay={i * 75}>
+                <div className="glass rounded-2xl p-6 hover:bg-white/[0.05] transition-colors group">
+                  <div className="h-9 w-9 rounded-xl bg-white/[0.06] flex items-center justify-center mb-4 group-hover:bg-white/[0.1] transition-colors"><f.icon className="h-4 w-4 text-white/60" /></div>
+                  <h3 className="text-[15px] font-semibold mb-2">{f.name}</h3>
+                  <p className="text-sm text-white/30 leading-relaxed">{f.desc}</p>
+                </div>
+              </ScrollReveal>
             ))}
           </div>
         </div>
       </section>
 
       {/* Testimonials */}
-      <section className="py-20 border-t border-border">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-12">
-            <h2 className="h2 mb-3">Trusted by Contractors</h2>
-            <p className="body max-w-xl mx-auto">See what our early users are saying.</p>
-          </div>
-          <div className="grid md:grid-cols-3 gap-6 max-w-4xl mx-auto stagger">
-            {[1,2,3].map((i) => (
-              <div key={i} className="glass rounded-xl p-5 card-hover">
-                <div className="flex items-center gap-1 mb-3">{[...Array(5)].map((_,j) => <Star key={j} className="h-3 w-3 fill-amber-500 text-amber-500" />)}</div>
-                <p className="text-xs text-muted-foreground mb-3 italic">"This is a placeholder testimonial. Real contractor reviews coming soon. We're excited to share their stories."</p>
-                <div className="flex items-center gap-2">
-                  <div className="h-7 w-7 rounded-full bg-secondary flex items-center justify-center text-[10px] font-medium">CT</div>
-                  <div><p className="text-xs font-medium">Contractor Name</p><p className="text-[10px] text-muted-foreground">HVAC Business Owner</p></div>
+      <section className="py-24 md:py-32 border-t border-white/[0.04]">
+        <div className="max-w-7xl mx-auto px-6 lg:px-8">
+          <ScrollReveal>
+            <h2 className="text-3xl md:text-5xl font-bold tracking-tight text-center mb-6">Loved by contractors</h2>
+            <p className="text-lg text-white/30 text-center max-w-xl mx-auto mb-16">Real feedback from real customers. Coming soon.</p>
+          </ScrollReveal>
+          <div className="grid md:grid-cols-3 gap-6 max-w-5xl mx-auto">
+            {testimonials.map((t, i) => (
+              <ScrollReveal key={i} delay={i * 100}>
+                <div className="glass rounded-2xl p-6">
+                  <div className="flex gap-1 mb-4">{[...Array(5)].map((_, j) => <Star key={j} className="h-3.5 w-3.5 fill-white/10 text-white/10" />)}</div>
+                  <p className="text-sm text-white/40 leading-relaxed mb-5 italic">"{t.quote}"</p>
+                  <div className="flex items-center gap-3">
+                    <div className="h-8 w-8 rounded-full bg-white/[0.06] flex items-center justify-center text-[11px] font-medium text-white/50">CS</div>
+                    <div><p className="text-xs font-medium text-white/60">{t.name}</p><p className="text-[11px] text-white/30">{t.role}</p></div>
+                  </div>
                 </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* FAQ */}
-      <section className="py-20 border-t border-border">
-        <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-12">
-            <h2 className="h2 mb-3">Frequently Asked Questions</h2>
-          </div>
-          <div className="space-y-2 stagger">
-            {faqs.map((f, i) => (
-              <details key={i} className="glass rounded-xl group">
-                <summary className="flex items-center justify-between px-5 py-4 cursor-pointer text-sm font-medium list-none">
-                  {f.q}
-                  <ChevronDown className="h-4 w-4 text-muted-foreground group-open:rotate-180 transition-transform" />
-                </summary>
-                <p className="px-5 pb-4 text-xs text-muted-foreground leading-relaxed">{f.a}</p>
-              </details>
+              </ScrollReveal>
             ))}
           </div>
         </div>
       </section>
 
       {/* CTA */}
-      <section className="py-20 border-t border-border">
-        <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <h2 className="h2 mb-3">Ready to Stop Missing Leads?</h2>
-          <p className="body mb-8">Join contractors who never miss another customer. Start your free trial today.</p>
-          <Link href="/sign-up"><Button size="lg" className="btn-primary">Get Started Free <ArrowRight className="h-4 w-4 ml-1" /></Button></Link>
+      <section className="py-24 md:py-32 border-t border-white/[0.04]">
+        <div className="max-w-4xl mx-auto px-6 lg:px-8 text-center">
+          <ScrollReveal>
+            <h2 className="text-3xl md:text-5xl font-bold tracking-tight mb-6">Ready to stop missing leads?</h2>
+            <p className="text-lg text-white/30 mb-10 max-w-xl mx-auto">Join contractors who never miss another customer. 14-day free trial. No credit card.</p>
+            <Link href="/sign-up"><Button size="lg" className="btn-white text-[15px] h-12 px-8 rounded-full">Get Started Free <ArrowRight className="h-4 w-4 ml-1.5" /></Button></Link>
+          </ScrollReveal>
         </div>
       </section>
 
       {/* Footer */}
-      <footer className="border-t border-border py-10">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid sm:grid-cols-3 gap-8 mb-8">
+      <footer className="border-t border-white/[0.04] py-12">
+        <div className="max-w-7xl mx-auto px-6 lg:px-8">
+          <div className="grid sm:grid-cols-3 gap-10 mb-10">
             <div>
-              <div className="flex items-center gap-2 mb-3"><div className="h-6 w-6 rounded-md bg-gradient-to-br from-primary to-blue-400 flex items-center justify-center text-[10px] font-bold text-white">AI</div><span className="font-semibold text-sm">AI Business OS</span></div>
-              <p className="text-xs text-muted-foreground">AI-powered operating system for service businesses.</p>
+              <div className="flex items-center gap-2 mb-4"><div className="h-6 w-6 rounded-md bg-white flex items-center justify-center text-[10px] font-bold text-black">AI</div><span className="font-semibold text-sm">Business OS</span></div>
+              <p className="text-xs text-white/25 leading-relaxed">AI-powered operating system for service businesses.</p>
             </div>
             <div>
-              <h4 className="text-xs font-semibold mb-3">Contact</h4>
-              <div className="space-y-2 text-xs text-muted-foreground">
-                <a href="https://wa.me/13057071059" className="flex items-center gap-2 hover:text-foreground"><MessageCircle className="h-3 w-3" /> WhatsApp</a>
-                <a href="mailto:info@ai-business-os.com" className="flex items-center gap-2 hover:text-foreground"><Mail className="h-3 w-3" /> Email</a>
+              <h4 className="text-xs font-semibold text-white/50 mb-3">Contact</h4>
+              <div className="space-y-2 text-xs text-white/30">
+                <a href="https://wa.me/13057071059" className="flex items-center gap-2 hover:text-white/60 transition-colors"><MessageCircle className="h-3 w-3" /> WhatsApp</a>
+                <span className="flex items-center gap-2"><Mail className="h-3 w-3" /> Email Support</span>
               </div>
             </div>
             <div>
-              <h4 className="text-xs font-semibold mb-3">Legal</h4>
-              <div className="space-y-2 text-xs text-muted-foreground">
-                <span className="block hover:text-foreground cursor-pointer">Privacy Policy</span>
-                <span className="block hover:text-foreground cursor-pointer">Terms of Service</span>
+              <h4 className="text-xs font-semibold text-white/50 mb-3">Legal</h4>
+              <div className="space-y-2 text-xs text-white/30">
+                <span className="cursor-pointer hover:text-white/60 transition-colors">Privacy Policy</span>
+                <span className="cursor-pointer hover:text-white/60 transition-colors">Terms of Service</span>
               </div>
             </div>
           </div>
-          <div className="pt-6 border-t border-border text-center text-xs text-muted-foreground">© 2026 AI Business OS. All rights reserved.</div>
+          <div className="pt-8 border-t border-white/[0.04] text-center text-[11px] text-white/20">© 2026 AI Business OS</div>
         </div>
       </footer>
     </div>
