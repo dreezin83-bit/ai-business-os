@@ -63,39 +63,32 @@ export default function LandingPage() {
       </header>
 
       {/* Hero */}
-      <section className="relative pt-28 pb-16 md:pt-36 md:pb-24 overflow-hidden">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_30%,rgba(255,255,255,0.04),transparent_70%)]" />
-        <div className="max-w-7xl mx-auto px-6 lg:px-8 relative">
-          <div className="grid lg:grid-cols-2 gap-10 lg:gap-20 items-center">
+      <section className="relative pt-32 pb-20 md:pt-40 md:pb-28 overflow-hidden">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(255,255,255,0.03),transparent_70%)]" />
+        <div className="max-w-7xl mx-auto px-6 lg:px-8 relative z-10">
+          <div className="grid lg:grid-cols-2 gap-12 items-center">
             {/* Left - Text */}
             <div>
-              <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/[0.04] border border-white/[0.06] text-[13px] text-white/60 mb-6 animate-fade-in">
+              <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/[0.04] border border-white/[0.06] text-[13px] text-white/60 mb-8 animate-fade-in">
                 <span className="h-1.5 w-1.5 rounded-full bg-green-500 animate-pulse-soft" />
                 Now accepting early access users
               </div>
-              <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold tracking-tight leading-[0.95] animate-fade-in">
+              <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold tracking-tight leading-[0.95] animate-fade-in">
                 <span className="block">Never miss</span>
                 <span className="block text-gradient animate-fade-in delay-200">another customer</span>
                 <span className="block animate-fade-in delay-400">again.</span>
               </h1>
-              <p className="text-base sm:text-lg text-white/40 mt-6 leading-relaxed animate-fade-in delay-500 max-w-md">
+              <p className="text-lg text-white/40 mt-8 leading-relaxed animate-fade-in delay-500 max-w-md">
                 Your AI answers 24/7, qualifies every lead, books appointments, and sends notifications — automatically.
               </p>
-              <div className="flex items-center gap-3 mt-8 animate-fade-in delay-600">
+              <div className="flex items-center gap-4 mt-10 animate-fade-in delay-600">
                 <Link href="/sign-up"><Button size="lg" className="btn-white text-[15px] h-12 px-8 rounded-full">Get Started <ArrowRight className="h-4 w-4 ml-1.5" /></Button></Link>
                 <a href="https://wa.me/13057071059" target="_blank"><Button variant="outline" size="lg" className="btn-outline text-[15px] h-12 px-8 rounded-full">Talk to Us</Button></a>
               </div>
             </div>
-            {/* Spline Robot Card */}
-            <div className="glass rounded-3xl p-6 spline-wrapper h-[380px] sm:h-[480px] lg:h-[580px] relative overflow-hidden">
-              <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.06),transparent)]" />
+            {/* Spline 3D Animation */}
+            <div className="h-[350px] sm:h-[450px] lg:h-[550px] relative spline-wrapper">
               <Spline scene="https://prod.spline.design/kDSI4axu7YzxniDc/scene.splinecode" />
-              {/* Feature badges */}
-              <div className="absolute bottom-4 left-4 right-4 flex justify-center gap-2 z-20">
-                {["💬 24/7 Chat", "📋 Lead Capture", "📅 Booking", "⚡ Notify"].map((b) => (
-                  <span key={b} className="text-[10px] sm:text-xs bg-black/60 backdrop-blur-sm border border-white/[0.08] rounded-full px-2.5 py-1 text-white/50">{b}</span>
-                ))}
-              </div>
             </div>
           </div>
         </div>
