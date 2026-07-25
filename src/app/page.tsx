@@ -81,8 +81,23 @@ export default function LandingPage() {
                 <a href="https://wa.me/13057071059" target="_blank"><Button variant="outline" size="lg" className="btn-outline text-[15px] h-12 px-8 rounded-full">Talk to Us</Button></a>
               </div>
             </div>
-            {/* Spline 3D Animation */}
-            <div className="h-[300px] sm:h-[400px] lg:h-[550px] -mt-8 lg:-mt-16">
+            {/* Spline 3D Animation with labels */}
+            <div className="h-[350px] sm:h-[450px] lg:h-[550px] -mt-8 lg:-mt-16 relative">
+              {/* Background glow */}
+              <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.06),transparent_70%)] rounded-3xl" />
+              {/* Callout labels */}
+              <div className="absolute top-2 left-0 sm:top-6 sm:-left-4 bg-white/[0.04] backdrop-blur-sm border border-white/[0.06] rounded-xl px-3 py-1.5 text-[10px] sm:text-xs text-white/40 z-10">
+                💬 24/7 AI Chat
+              </div>
+              <div className="absolute top-12 right-0 sm:top-20 sm:-right-2 bg-white/[0.04] backdrop-blur-sm border border-white/[0.06] rounded-xl px-3 py-1.5 text-[10px] sm:text-xs text-white/40 z-10">
+                📋 Auto Lead Capture
+              </div>
+              <div className="absolute bottom-16 left-0 sm:bottom-24 sm:-left-4 bg-white/[0.04] backdrop-blur-sm border border-white/[0.06] rounded-xl px-3 py-1.5 text-[10px] sm:text-xs text-white/40 z-10">
+                📅 Smart Booking
+              </div>
+              <div className="absolute bottom-4 right-0 sm:bottom-8 sm:-right-2 bg-white/[0.04] backdrop-blur-sm border border-white/[0.06] rounded-xl px-3 py-1.5 text-[10px] sm:text-xs text-white/40 z-10">
+                ⚡ Instant Notify
+              </div>
               <Spline scene="https://prod.spline.design/kDSI4axu7YzxniDc/scene.splinecode" />
             </div>
           </div>
