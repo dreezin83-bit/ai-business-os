@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import dynamic from "next/dynamic";
+import Script from "next/script";
 import { Button } from "@/components/ui/button";
 import { ArrowRight, Bot, Users, Calendar, Zap, BookOpen, Globe, Star, MessageCircle, Mail } from "lucide-react";
 import Link from "next/link";
@@ -43,6 +44,7 @@ function ScrollReveal({ children, className = "", delay = 0 }: { children: React
 export default function LandingPage() {
   return (
     <div className="min-h-screen bg-black text-white overflow-x-hidden">
+      <Script src="https://unpkg.com/@splinetool/viewer@1.12.98/build/spline-viewer.js" type="module" />
       {/* Nav */}
       <header className="fixed top-0 left-0 right-0 z-50 bg-black/80 backdrop-blur-xl border-b border-white/[0.06]">
         <div className="max-w-7xl mx-auto px-6 lg:px-8 flex items-center justify-between h-16">
@@ -144,6 +146,15 @@ export default function LandingPage() {
                 </div>
               </ScrollReveal>
             ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Mid-page Spline Animation */}
+      <section className="py-12 md:py-16">
+        <div className="max-w-6xl mx-auto px-6 lg:px-8">
+          <div className="h-[300px] sm:h-[400px] md:h-[500px]">
+            <spline-viewer url="https://prod.spline.design/XX4MIOykaJKr3ZrK/scene.splinecode"></spline-viewer>
           </div>
         </div>
       </section>
