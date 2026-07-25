@@ -111,8 +111,13 @@
         <div class="ai-msg bot">Hello! How can I help you today?</div>
       </div>
       <div id="ai-chatbot-input-area">
+        <button id="ai-chatbot-mic" title="Voice input">🎤</button>
         <input id="ai-chatbot-input" placeholder="Type your message..." />
         <button id="ai-chatbot-send">Send</button>
+      </div>
+      <div id="ai-chatbot-recording" style="display:none; text-align:center; padding:8px; color:#fbbf24;">
+        🔴 Recording... <span id="ai-recording-timer">0:00</span>
+        <button id="ai-chatbot-stop-rec" style="margin-left:8px; background:#ef4444; border:none; color:white; border-radius:4px; padding:2px 8px; cursor:pointer;">Stop</button>
       </div>
     </div>
     <button id="ai-chatbot-btn">
@@ -199,4 +204,69 @@
   input.onkeydown = function (e) {
     if (e.key === 'Enter') sendBtn.click();
   };
+
+  // Voice recording
+  var micBtn = document.getElementById('ai-chatbot-mic');
+  var recordingDiv = document.getElementById('ai-chatbot-recording');
+  var timerSpan = document.getElementById('ai-recording-timer');
+  var stopRecBtn = document.getElementById('ai-chatbot-stop-rec');
+  var recognition = null;
+  var timerInterval = null;
+  var seconds = 0;
+
+  micBtn.onclick = function () {
+    var SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      addMessage("Sorry, voice input isn't supported in your browser. Please type your message.", 'bot');
+      return;
+    }
+
+    recognition = new SpeechRecognition();
+    recognition.lang = 'en-US';
+    recognition.interimResults = true;
+    recognition.continuous = true;
+
+    recordingDiv.style.display = 'block';
+    seconds = 0;
+    timerSpan.textContent = '0:00';
+    timerInterval = setInterval(function () {
+      seconds++;
+      var mins = Math.floor(seconds / 60);
+      var secs = seconds % 60;
+      timerSpan.textContent = mins + ':' + (secs < 10 ? '0' : '') + secs;
+    }, 1000);
+
+    recognition.onresult = function (event) {
+      var transcript = '';
+      for (var i = event.resultIndex; i < event.results.length; i++) {
+        transcript += event.results[i][0].transcript;
+      }
+      input.value = transcript;
+    };
+
+    recognition.onerror = function () {
+      stopRecording();
+      addMessage("I didn't quite catch that. Please type your message instead.", 'bot');
+    };
+
+    recognition.onend = function () {
+      stopRecording();
+      if (input.value.trim()) sendBtn.click();
+    };
+
+    recognition.start();
+  };
+
+  stopRecBtn.onclick = function () {
+    if (recognition) recognition.stop();
+    stopRecording();
+  };
+
+  function stopRecording() {
+    if (timerInterval) clearInterval(timerInterval);
+    recordingDiv.style.display = 'none';
+    if (recognition) {
+      try { recognition.stop(); } catch(e) {}
+    }
+  }
 })();

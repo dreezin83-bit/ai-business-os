@@ -30,7 +30,7 @@ const navigation = [
   { name: "Knowledge Base", href: "/dashboard/knowledge-base", icon: BookOpen },
   { name: "Chatbot", href: "/dashboard/chatbot", icon: MessageSquare },
   { name: "Messages", href: "/dashboard/messages", icon: Mail },
-  { name: "Phone & Message", href: "/dashboard/automation", icon: Phone },
+  { name: "Contact Support", href: "https://wa.me/13057071059", icon: Phone, external: true },
   { name: "Settings", href: "/dashboard/settings", icon: Settings },
 ];
 
@@ -77,17 +77,35 @@ export function Sidebar() {
           <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
             {navigation.map((item) => {
               const isActive = pathname === item.href || pathname.startsWith(item.href + "/");
+              const isExternal = (item as any).external;
+              const linkClass = cn(
+                "flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors",
+                isActive
+                  ? "bg-sidebar-accent text-sidebar-accent-foreground font-medium"
+                  : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+              );
+
+              if (isExternal) {
+                return (
+                  <a
+                    key={item.href}
+                    href={item.href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className={linkClass}
+                  >
+                    <item.icon className="h-4 w-4 flex-shrink-0" />
+                    {item.name}
+                  </a>
+                );
+              }
+
               return (
                 <Link
                   key={item.href}
                   href={item.href}
                   onClick={() => setMobileOpen(false)}
-                  className={cn(
-                    "flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors",
-                    isActive
-                      ? "bg-sidebar-accent text-sidebar-accent-foreground font-medium"
-                      : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-                  )}
+                  className={linkClass}
                 >
                   <item.icon className="h-4 w-4 flex-shrink-0" />
                   {item.name}
