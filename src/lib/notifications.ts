@@ -53,7 +53,7 @@ export async function logCommunication(params: {
 /**
  * Send an email. Uses Resend if configured, otherwise logs as queued for future implementation.
  */
-async function sendEmail(to: string, subject: string, body: string): Promise<{ success: boolean; messageId?: string; error?: string }> {
+export async function sendEmail(to: string, subject: string, body: string): Promise<{ success: boolean; messageId?: string; error?: string }> {
   const apiKey = process.env.RESEND_API_KEY;
   if (!apiKey) {
     return { success: false, error: "RESEND_API_KEY not configured. Email sending unavailable." };

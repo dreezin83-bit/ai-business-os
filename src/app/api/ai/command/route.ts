@@ -4,6 +4,40 @@ import { lead, business, aiBrainConfig, appointment, conversation } from "@/db/s
 import { eq, desc, and } from "drizzle-orm";
 import { ensureBusiness } from "@/lib/business";
 import { createLlmCompletion } from "@/lib/llm";
+import { sendEmail } from "@/lib/notifications";
+
+/** Search the web using DuckDuckGo HTML (no API key needed) */
+async function webSearch(query: string): Promise<string> {
+  try {
+    const url = `https://html.duckduckgo.com/html/?q=${encodeURIComponent(query)}`;
+    const res = await fetch(url, {
+      headers: { "User-Agent": "Mozilla/5.0 (compatible; AIBusinessOS/1.0)" },
+      signal: AbortSignal.timeout(8000),
+    });
+    const html = await res.text();
+    
+    // Parse snippets from results
+    const snippets: string[] = [];
+    const snippetRegex = /<a[^>]*class="result__snippet"[^>]*>([\s\S]*?)<\/a>/gi;
+    let match;
+    while ((match = snippetRegex.exec(html)) !== null && snippets.length < 5) {
+      const text = match[1].replace(/<[^>]+>/g, "").trim();
+      if (text) snippets.push(text);
+    }
+    
+    if (snippets.length === 0) return "No results found.";
+    return snippets.map((s, i) => `${i + 1}. ${s}`).join("\n");
+  } catch (e: any) {
+    return `Search unavailable: ${e.message}`;
+  }
+}
+
+/** Parse [SEND_EMAIL]::to::subject::body from AI response */
+function parseSendEmailMarker(text: string): { to: string; subject: string; body: string } | null {
+  const match = text.match(/\[SEND_EMAIL\]::([^:]+)::([^:]+)::([\s\S]+?)(?=\[\/SEND_EMAIL\]|$)/);
+  if (!match) return null;
+  return { to: match[1].trim(), subject: match[2].trim(), body: match[3].trim() };
+}
 
 export async function POST(request: Request) {
   try {
@@ -16,8 +50,8 @@ export async function POST(request: Request) {
 
     const [biz] = await db.select().from(business).where(eq(business.id, businessId));
     const [config] = await db.select().from(aiBrainConfig).where(eq(aiBrainConfig.businessId, businessId));
-
     const businessName = biz?.name || "your business";
+    const businessEmail = biz?.email || "";
 
     // Parse services for industry awareness
     let services: string[] = [];
@@ -25,20 +59,20 @@ export async function POST(request: Request) {
     try { 
       const s = JSON.parse(config?.services || "[]"); 
       if (Array.isArray(s)) services = s;
-      const serviceStr = services.join(" ").toLowerCase();
-      if (serviceStr.includes("hvac") || serviceStr.includes("heating") || serviceStr.includes("cooling") || serviceStr.includes("air condition")) industry = "HVAC";
-      else if (serviceStr.includes("plumb")) industry = "plumbing";
-      else if (serviceStr.includes("roof")) industry = "roofing";
-      else if (serviceStr.includes("electric")) industry = "electrical";
-      else if (serviceStr.includes("clean") || serviceStr.includes("maid")) industry = "cleaning";
-      else if (serviceStr.includes("landscap") || serviceStr.includes("lawn")) industry = "landscaping";
-      else if (serviceStr.includes("pest")) industry = "pest control";
-      else if (serviceStr.includes("paint")) industry = "painting";
-      else if (serviceStr.includes("dental") || serviceStr.includes("teeth")) industry = "dental";
-      else if (serviceStr.includes("law") || serviceStr.includes("legal")) industry = "legal";
+      const svc = services.join(" ").toLowerCase();
+      if (svc.includes("hvac") || svc.includes("heating") || svc.includes("cooling") || svc.includes("air condition")) industry = "HVAC";
+      else if (svc.includes("plumb")) industry = "plumbing";
+      else if (svc.includes("roof")) industry = "roofing";
+      else if (svc.includes("electric")) industry = "electrical";
+      else if (svc.includes("clean") || svc.includes("maid")) industry = "cleaning";
+      else if (svc.includes("landscap") || svc.includes("lawn")) industry = "landscaping";
+      else if (svc.includes("pest")) industry = "pest control";
+      else if (svc.includes("paint")) industry = "painting";
+      else if (svc.includes("dental") || svc.includes("teeth")) industry = "dental";
+      else if (svc.includes("law") || svc.includes("legal")) industry = "legal";
     } catch {}
 
-    // Load all data
+    // Load leads
     const allLeads = await db.select().from(lead).where(eq(lead.businessId, businessId)).orderBy(desc(lead.createdAt));
     const thisMonth = new Date(); thisMonth.setDate(1); thisMonth.setHours(0, 0, 0, 0);
     const monthlyLeads = allLeads.filter((l) => new Date(l.createdAt) >= thisMonth);
@@ -49,86 +83,77 @@ export async function POST(request: Request) {
     const avgJobValue = 2500;
     const estRevenue = wonLeads.length * avgJobValue;
     const winRate = allLeads.length > 0 ? Math.round((wonLeads.length / (wonLeads.length + lostLeads.length || 1)) * 100) : 0;
-
     const coldLeads = newLeads.filter((l) => {
       const days = (Date.now() - new Date(l.createdAt).getTime()) / 86400000;
       return days > 2;
-    }).sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    });
 
     const today = new Date().toISOString().split("T")[0];
     const todayAppts = await db.select().from(appointment)
       .where(and(eq(appointment.businessId, businessId), eq(appointment.date, today), eq(appointment.status, "scheduled")));
-
     const recentConvs = await db.select().from(conversation)
-      .where(eq(conversation.businessId, businessId))
-      .orderBy(desc(conversation.createdAt)).limit(5);
+      .where(eq(conversation.businessId, businessId)).orderBy(desc(conversation.createdAt)).limit(5);
 
-    // Lead table for the prompt
     const leadTable = allLeads.slice(0, 20).map((l, i) => {
       const daysOld = Math.round((Date.now() - new Date(l.createdAt).getTime()) / 86400000);
       const urgency = l.status === "new" && daysOld > 2 ? "⚠️ COLD" :
-                      l.status === "new" ? "NEW" :
-                      l.status === "contacted" ? "IN PROGRESS" :
+                      l.status === "new" ? "NEW" : l.status === "contacted" ? "IN PROGRESS" :
                       l.status === "won" ? "✅ WON" : "❌ LOST";
-      return `${i+1}. ${l.name} | ${l.phone || "no phone"} | ${l.email || "no email"} | "${l.serviceRequest || "no service"}" | ${urgency} | ${daysOld}d | ${l.preferredMethod || ""}`;
+      return `${i+1}. ${l.name} | ${l.phone || "no phone"} | ${l.email || "no email"} | "${l.serviceRequest || "no service"}" | ${urgency} | ${daysOld}d`;
     }).join("\n");
 
-    const systemPrompt = `You are Vertical AI — a strategic business command center for ${businessName}, a ${industry} company. You are NOT a generic chatbot. You are a specialized business operating system that saves time, closes more deals, and replaces the need for office staff.
+    // Check if user is asking for a web search or pricing research
+    const searchTriggers = /(?:search|look ?up|find|price|cost|how much|supplier|permit|regulation|market rate|going rate|current price|latest|real-time)/i;
+    let searchResults = "";
+    if (searchTriggers.test(msg) && msg.length > 10) {
+      // Extract search query from the message
+      const searchQuery = msg.replace(/^(?:can you |please |help me |i need to |i want to )/i, "").substring(0, 200);
+      searchResults = await webSearch(`${industry} ${searchQuery}`);
+    }
 
-YOUR CORE VALUE PROPOSITION:
-You handle what would normally require hiring an office assistant at $50,000/year — quotes, scheduling, lead follow-up, customer communication, and paperwork. At $1,000/month ($12,000/year), you save the business $38,000/year while winning more deals by responding instantly instead of in 3 days.
+    const systemPrompt = `You are Vertical AI — a strategic command center for ${businessName}, a ${industry} company. You have access to the internet for real-time pricing, supplier info, and market research. You can also send emails directly to leads.
+
+YOUR VALUE PROPOSITION:
+You replace a $50,000/year office assistant at $1,000/month — saving $38,000/year while responding instantly. Contractors who use you land twice as many jobs because they quote in 60 seconds instead of 3 days.
+
+HOW TO SEND EMAILS:
+When you need to send an email to a lead or customer, use this exact format:
+[SEND_EMAIL]::recipient@email.com::Subject Line Here::Email body goes here. Be professional. Include the business name, the customer's name, the service they asked about, pricing if discussed, and a clear next step. Keep it concise and warm.[/SEND_EMAIL]
+
+The email will be sent FROM ${businessEmail || "your business email"} using the Resend email service.
+Always confirm with the user before sending: "I'll draft that email for you now. It'll come from ${businessEmail || "your email"}. Ready to send?"
 
 LIVE BUSINESS DATA:
 • Total Leads: ${allLeads.length} | This Month: ${monthlyLeads.length}
-• Won/Closed: ${wonLeads.length} ($${estRevenue.toLocaleString()} est. revenue at $${avgJobValue.toLocaleString()}/job)
+• Won/Closed: ${wonLeads.length} ($${estRevenue.toLocaleString()} at $${avgJobValue.toLocaleString()}/job)
 • In Progress: ${contactedLeads.length} | New (not contacted): ${newLeads.length}
-• ⚠️ Cold (2+ days no contact): ${coldLeads.length}
-• Lost: ${lostLeads.length} | Win Rate: ${winRate}%
-• Today's Appointments: ${todayAppts.length} | Recent Conversations: ${recentConvs.length}
-• Industry: ${industry} | Services: ${services.join(", ") || "not configured"}
+• ⚠️ Cold (2+ days): ${coldLeads.length} | Lost: ${lostLeads.length}
+• Win Rate: ${winRate}% | Today's Appointments: ${todayAppts.length}
+• Services: ${services.join(", ") || "not configured"}
+• Business Email: ${businessEmail || "not set"}
 
-RECENT LEADS (top 20):
-${leadTable || "No leads yet. Start capturing leads to see data here."}
+RECENT LEADS:
+${leadTable || "No leads yet."}
+${searchResults ? `\nWEB SEARCH RESULTS:\n${searchResults}\n(Use this data to inform your response with real pricing, market rates, or supplier info.)` : ""}
 
 YOUR CAPABILITIES:
-
-1. PRIORITIZE CALLS — Tell them exactly who to contact first:
-   "Call [Name] at [Phone] right now — their [service] lead is [X] days old and they prefer [method]. Here's what to say: '[opening line]'"
-   Sort by urgency: cold leads first, then new leads.
-
-2. DRAFT ESTIMATES & QUOTES — Help them close deals faster:
-   When they ask for a quote: calculate based on industry averages, local rates, and the service requested. Be specific with numbers.
-   Example: "Based on a standard [service] job in [industry], I'd estimate $X,XXX - $X,XXX. Want me to draft a formal quote for this lead?"
-
-3. DRAFT PROFESSIONAL EMAILS — Write emails to specific leads:
-   Include: personalized greeting, reference to their service request, clear pricing if applicable, call to action, professional signature.
-   Use ${businessName} as the company name.
-
-4. FIND OPPORTUNITIES — Analyze patterns:
-   "Your best month was [month] with [X] leads. Your conversion rate on [service] is [%]. You should focus on [specific action]."
-   "You're losing leads that come in via [method] — consider adjusting your follow-up process."
-
-5. SCHEDULE FOLLOW-UPS — Keep them organized:
-   "You have [X] leads waiting for a response. I recommend calling [Name], [Name], and [Name] today. Here's their info..."
-
-6. CELEBRATE WINS:
-   "You closed [X] deals this month — that's $[amount] in revenue! At this pace, you're on track for $[projected] this quarter."
-
-7. SAVE TIME ESTIMATES:
-   "I've handled [X] conversations this month. If each one would've taken you 15 minutes, I've saved you roughly [X] hours of desk work."
+1. SEND EMAILS — Draft and send professional emails to leads using [SEND_EMAIL] marker
+2. WEB SEARCH — I automatically search the web when you ask about pricing, suppliers, regulations, or market rates
+3. PRIORITIZE — Tell them exactly who to call: name, phone, why they're urgent
+4. DRAFT QUOTES — Use real market data from web searches + ${industry} industry knowledge
+5. ANALYZE — Win rates, conversion patterns, revenue projections
+6. CELEBRATE — Revenue milestones, time saved vs hiring staff
 
 RULES:
-- Always use REAL names, phone numbers, and data from the leads above.
-- Never make up leads or stats that aren't in the data.
-- Be specific with dollar amounts. Contractors care about money.
-- When suggesting a call, include the full phone number.
-- Every response should include a clear, actionable next step.
-- Sound like a smart business partner, not a robot.
-- Use the "${industry}" context to sound like you understand their trade.
-- If they have no leads yet, encourage them to set up their chatbot so leads start flowing in.
-- Keep it concise but thorough — contractors are busy people.
+- Use REAL names, phones, emails from the live data
+- When drafting emails, use full names and reference their actual service request
+- Include dollar amounts whenever possible
+- Always confirm before sending an email
+- Every response should include a clear next step
+- Be direct and practical — contractors are busy
+- Use the web search results whenever available for accurate pricing
 
-Today's date: ${new Date().toLocaleDateString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric" })}`;
+Today: ${new Date().toLocaleDateString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric" })}`;
 
     const historyMessages = (history || []).slice(-6).map((h: any) => ({
       role: h.role as "user" | "assistant",
@@ -145,7 +170,27 @@ Today's date: ${new Date().toLocaleDateString("en-US", { weekday: "long", year: 
       return NextResponse.json({ error: "AI error", detail: error }, { status: 500 });
     }
 
-    return NextResponse.json({ response: completion.content });
+    let reply = completion.content;
+    let emailResult: any = null;
+
+    // Process [SEND_EMAIL] marker
+    const emailData = parseSendEmailMarker(reply);
+    if (emailData) {
+      const result = await sendEmail(emailData.to, emailData.subject, emailData.body);
+      emailResult = { to: emailData.to, success: result.success, messageId: result.messageId, error: result.error };
+      
+      // Clean the marker from the response
+      reply = reply.replace(/\[SEND_EMAIL\]::[\s\S]*?\[\/SEND_EMAIL\]/g, "").trim();
+      
+      // Append send result to reply
+      if (result.success) {
+        reply += `\n\n✅ Email sent to ${emailData.to}`;
+      } else {
+        reply += `\n\n❌ Email failed: ${result.error}`;
+      }
+    }
+
+    return NextResponse.json({ response: reply, emailResult });
 
   } catch (err: any) {
     return NextResponse.json({ error: err?.message }, { status: 500 });
