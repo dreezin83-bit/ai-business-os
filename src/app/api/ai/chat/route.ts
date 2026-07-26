@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { db } from "@/db";
-import { conversation, message, lead, appointment } from "@/db/schema";
+import { conversation, message, lead, appointment, aiBrainConfig } from "@/db/schema";
 import { eq, desc, and } from "drizzle-orm";
 import { generateId } from "@/lib/utils";
 import { ensureBusiness } from "@/lib/business";
@@ -89,6 +89,24 @@ export async function POST(request: Request) {
 
     if (!userMessage) {
       return NextResponse.json({ error: "Message is required" }, { status: 400 });
+    }
+
+    // Check onboarding: business must have services configured before AI can talk
+    const [config] = await db.select({ services: aiBrainConfig.services }).from(aiBrainConfig).where(eq(aiBrainConfig.businessId, businessId));
+    const hasServices = (() => {
+      if (!config?.services) return false;
+      try {
+        const s = JSON.parse(config.services);
+        return Array.isArray(s) && s.length > 0 && s[0] !== "";
+      } catch { return false; }
+    })();
+    
+    if (!hasServices) {
+      return NextResponse.json({
+        response: "Before I can start helping your customers, you'll need to complete your business setup. Please head over to the AI Brain section in your dashboard and add your services, business hours, and any other details about your company. This only takes a minute — once that's done, I'll be ready to handle conversations, capture leads, and book appointments 24/7. Would you like me to walk you through what to fill out?",
+        conversationId: conversationId || generateId(),
+        onboardingRequired: true,
+      });
     }
 
     // Build AI context using the shared engine
