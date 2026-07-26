@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import dynamic from "next/dynamic";
+import Script from "next/script";
 import { motion, useInView, useScroll, useTransform } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import {
@@ -10,16 +11,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 
-const HeroRobot = dynamic(() => import("@/components/hero-robot"), {
-  ssr: false,
-  loading: () => (
-    <div className="w-full aspect-square max-w-[420px] mx-auto flex items-center justify-center">
-      <div className="h-48 w-48 rounded-full bg-white/[0.03] border border-white/[0.06] flex items-center justify-center animate-pulse-soft">
-        <Bot className="h-16 w-16 text-white/20" />
-      </div>
-    </div>
-  ),
-});
+const Spline = dynamic(() => import("@splinetool/react-spline/next"), { ssr: false });
 
 const features = [
   { name: "AI Answers 24/7", desc: "Never miss a customer. Your AI qualifies leads, answers questions, and books appointments — even while you sleep.", icon: Bot, color: "from-blue-500/20 to-cyan-500/5" },
@@ -164,6 +156,7 @@ export default function LandingPage() {
 
   return (
     <div className="bg-black text-white overflow-x-hidden">
+      <Script src="https://unpkg.com/@splinetool/viewer@1.12.98/build/spline-viewer.js" type="module" />
       {/* Nav */}
       <header className="fixed top-0 left-0 right-0 z-50 bg-black/80 backdrop-blur-xl border-b border-white/[0.06]">
         <div className="max-w-7xl mx-auto px-6 lg:px-8 flex items-center justify-between h-16">
@@ -245,7 +238,9 @@ export default function LandingPage() {
               transition={{ duration: 1, delay: 0.3, ease: [0.16, 1, 0.3, 1] }}
               className="lg:flex-1 flex items-center justify-center"
             >
-              <HeroRobot />
+              <div className="w-full max-w-[420px] mx-auto aspect-square spline-wrapper overflow-hidden">
+                <Spline scene="https://prod.spline.design/kDSI4axu7YzxniDc/scene.splinecode" />
+              </div>
             </motion.div>
           </div>
         </div>
