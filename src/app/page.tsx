@@ -276,7 +276,7 @@ export default function LandingPage() {
                 </motion.div>
 
                 {/* Robot */}
-                <div className="aspect-square w-full spline-wrapper overflow-hidden rounded-2xl">
+                <div className="h-[350px] sm:h-[420px] lg:h-[480px] w-full spline-wrapper overflow-hidden rounded-2xl">
                   <Spline scene="https://prod.spline.design/kDSI4axu7YzxniDc/scene.splinecode" />
                 </div>
 
