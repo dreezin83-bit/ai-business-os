@@ -343,6 +343,23 @@ PHASE 5: CREATE LEAD (once all info is collected)
 - If the customer already scheduled or seems very happy: "After your service, would you mind leaving us a Google review? It really helps our business."
 - Keep it light and natural. Don't force it. Only ask when the timing feels right.`);
 
+  // 28. RESPONSE TEMPLATES — imported from template library
+  const { buildTemplateSection } = await import("@/lib/ai-templates");
+  const templateSection = buildTemplateSection({
+    businessName: name,
+    services: servicesList ? servicesList.split(", ") : [],
+    hours: (() => { try { const h = JSON.parse(config?.businessHours || "[]"); if (Array.isArray(h)) return h.map((x: any) => x.closed ? `${x.day}: Closed` : `${x.day}: ${x.open}-${x.close}`).join(", "); } catch {} return ""; })(),
+    areas: (() => { try { const a = JSON.parse(config?.serviceAreas || "[]"); return Array.isArray(a) ? a.join(", ") : ""; } catch { return ""; } })(),
+    pricing: config?.pricingGuidance || "",
+    policies: config?.companyPolicies || "",
+    faqs: (() => { try { const f = JSON.parse(config?.faqs || "[]"); return Array.isArray(f) ? f.join("\n") : ""; } catch { return ""; } })(),
+    todayDate: today.toLocaleDateString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric" }),
+    businessPhone: biz?.phone || "",
+    businessEmail: biz?.email || "",
+    appointments: upcomingAppts.length > 0 ? upcomingAppts.map(a => `${a.date}: ${a.startTime}-${a.endTime} ${a.service}`).join(", ") : "None currently booked",
+  });
+  sections.push(templateSection);
+
   const systemPrompt = sections.join("");
 
   // Log the built prompt so we can verify all sections are present
