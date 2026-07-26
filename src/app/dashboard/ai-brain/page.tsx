@@ -246,6 +246,18 @@ function AiBrainContent() {
             {saving ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Save className="h-4 w-4 mr-1" />}
             Save Configuration
           </Button>
+          <Button 
+            size="sm" 
+            variant="outline"
+            className="text-red-400 hover:text-red-300 border-red-500/20 hover:border-red-500/40"
+            onClick={() => {
+              if (!confirm("This will clear ALL your AI Brain settings, services, FAQs, pricing, policies, and business info. This cannot be undone. Continue?")) return;
+              setConfig({ ...defaultConfig });
+              toast("All settings cleared. Don't forget to save or load a template.", "error");
+            }}
+          >
+            🗑 Clear All
+          </Button>
         </div>
       </div>
 
