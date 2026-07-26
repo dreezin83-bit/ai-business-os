@@ -62,17 +62,17 @@ export function Sidebar() {
       {/* Sidebar */}
       <aside
         className={cn(
-          "fixed top-0 left-0 z-40 h-full w-64 border-r bg-sidebar text-sidebar-foreground transition-transform duration-200",
+          "fixed top-0 left-0 z-40 h-full w-64 border-r border-slate-800 bg-slate-950/90 backdrop-blur-xl text-slate-300 transition-transform duration-200",
           mobileOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"
         )}
       >
         <div className="flex flex-col h-full">
           {/* Logo */}
-          <div className="flex items-center gap-3 px-5 py-4 border-b border-sidebar-border">
-            <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-primary to-purple-500 flex items-center justify-center text-sm font-bold text-white shadow-sm">
+          <div className="flex items-center gap-3 px-5 py-4 border-b border-slate-800">
+            <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-sm font-bold text-white shadow-lg shadow-purple-500/25">
               AI
             </div>
-            <span className="font-semibold text-sm tracking-tight">AI Business OS</span>
+            <span className="font-semibold text-sm tracking-tight text-white">AI Business OS</span>
           </div>
 
           {/* Navigation */}
@@ -83,8 +83,8 @@ export function Sidebar() {
               const linkClass = cn(
                 "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-150",
                 isActive
-                  ? "bg-sidebar-accent text-white shadow-sm"
-                  : "text-sidebar-foreground/60 hover:text-white hover:bg-sidebar-accent/50"
+                  ? "bg-slate-800 text-white shadow-sm"
+                  : "text-slate-400 hover:text-white hover:bg-slate-800/50"
               );
 
               if (isExternal) {
@@ -117,11 +117,11 @@ export function Sidebar() {
           </nav>
 
           {/* Footer */}
-          <div className="p-3 border-t border-sidebar-border">
+          <div className="p-3 border-t border-slate-800">
             <Button
               variant="ghost"
               size="sm"
-              className="w-full justify-start text-sidebar-foreground/70"
+              className="w-full justify-start text-slate-400 hover:text-white"
               onClick={() => signOut({ redirectUrl: "/" })}
             >
               <LogOut className="h-4 w-4 mr-2" />
