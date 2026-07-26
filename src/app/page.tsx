@@ -231,15 +231,69 @@ export default function LandingPage() {
               </motion.div>
             </div>
 
-            {/* Right - Robot */}
+            {/* Right - Robot with surrounding content */}
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ duration: 1, delay: 0.3, ease: [0.16, 1, 0.3, 1] }}
               className="lg:flex-1 flex items-center justify-center"
             >
-              <div className="w-full max-w-[420px] mx-auto aspect-square spline-wrapper overflow-hidden">
-                <Spline scene="https://prod.spline.design/kDSI4axu7YzxniDc/scene.splinecode" />
+              <div className="relative w-full max-w-[460px] mx-auto">
+                {/* Top label */}
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.6 }}
+                  className="absolute -top-2 left-1/2 -translate-x-1/2 z-10"
+                >
+                  <span className="px-3 py-1 rounded-full bg-white/[0.04] border border-white/[0.06] text-[12px] text-white/50 whitespace-nowrap flex items-center gap-1.5">
+                    <Sparkles className="h-3 w-3 text-blue-400" /> AI-Powered Assistant
+                  </span>
+                </motion.div>
+
+                {/* Left label */}
+                <motion.div
+                  initial={{ opacity: 0, x: -10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: 0.7 }}
+                  className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-2 z-10 hidden md:block"
+                >
+                  <span className="px-3 py-1 rounded-full bg-white/[0.04] border border-white/[0.06] text-[12px] text-white/40 whitespace-nowrap flex items-center gap-1.5">
+                    <Zap className="h-3 w-3 text-amber-400" /> 24/7 Online
+                  </span>
+                </motion.div>
+
+                {/* Right label */}
+                <motion.div
+                  initial={{ opacity: 0, x: 10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: 0.8 }}
+                  className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-2 z-10 hidden md:block"
+                >
+                  <span className="px-3 py-1 rounded-full bg-white/[0.04] border border-white/[0.06] text-[12px] text-white/40 whitespace-nowrap flex items-center gap-1.5">
+                    <MessageCircle className="h-3 w-3 text-green-400" /> Instant Replies
+                  </span>
+                </motion.div>
+
+                {/* Robot */}
+                <div className="aspect-square w-full spline-wrapper overflow-hidden rounded-2xl">
+                  <Spline scene="https://prod.spline.design/kDSI4axu7YzxniDc/scene.splinecode" />
+                </div>
+
+                {/* Bottom stats */}
+                <motion.div
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.9 }}
+                  className="absolute -bottom-3 left-1/2 -translate-x-1/2 z-10 flex gap-2"
+                >
+                  <span className="px-3 py-1 rounded-full bg-white/[0.04] border border-white/[0.06] text-[11px] text-white/40 whitespace-nowrap flex items-center gap-1.5">
+                    <Users className="h-3 w-3 text-blue-400" /> Leads Captured
+                  </span>
+                  <span className="px-3 py-1 rounded-full bg-white/[0.04] border border-white/[0.06] text-[11px] text-white/40 whitespace-nowrap flex items-center gap-1.5">
+                    <Calendar className="h-3 w-3 text-purple-400" /> Auto-Booking
+                  </span>
+                </motion.div>
               </div>
             </motion.div>
           </div>
