@@ -1,50 +1,169 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import dynamic from "next/dynamic";
-import Script from "next/script";
+import { motion, useInView, useScroll, useTransform } from "framer-motion";
 import { Button } from "@/components/ui/button";
-import { ArrowRight, Bot, Users, Calendar, Zap, BookOpen, Globe, Star, MessageCircle, Mail } from "lucide-react";
+import {
+  ArrowRight, Bot, Users, Calendar, Zap, BookOpen, Globe,
+  Star, MessageCircle, Mail, Sparkles, BarChart3, Clock,
+} from "lucide-react";
 import Link from "next/link";
 
-const Spline = dynamic(() => import("@splinetool/react-spline/next"), { ssr: false });
+const HeroRobot = dynamic(() => import("@/components/hero-robot"), {
+  ssr: false,
+  loading: () => (
+    <div className="w-full aspect-square max-w-[420px] mx-auto flex items-center justify-center">
+      <div className="h-48 w-48 rounded-full bg-white/[0.03] border border-white/[0.06] flex items-center justify-center animate-pulse-soft">
+        <Bot className="h-16 w-16 text-white/20" />
+      </div>
+    </div>
+  ),
+});
 
 const features = [
-  { name: "AI that answers 24/7", desc: "Never miss a customer. Your AI qualifies leads, answers questions, and books appointments — even while you sleep.", icon: Bot },
-  { name: "Smart Lead Capture", desc: "Name, phone, email, and service — captured automatically from every conversation. Zero data entry.", icon: Users },
-  { name: "Appointment Booking", desc: "Customers book directly through chat. AI checks availability and confirms instantly.", icon: Calendar },
-  { name: "Instant Notifications", desc: "New lead? You get an email. Customer gets a confirmation. Everything logged for your records.", icon: Zap },
-  { name: "Knowledge Base", desc: "Upload documents, FAQs, and website URLs. Your AI learns everything about your business.", icon: BookOpen },
-  { name: "Built for Scale", desc: "One platform, unlimited contractors. Each gets their own AI, own leads, own settings.", icon: Globe },
+  { name: "AI Answers 24/7", desc: "Never miss a customer. Your AI qualifies leads, answers questions, and books appointments — even while you sleep.", icon: Bot, color: "from-blue-500/20 to-cyan-500/5" },
+  { name: "Smart Lead Capture", desc: "Name, phone, email, and service — captured automatically from every conversation. Zero data entry.", icon: Users, color: "from-purple-500/20 to-pink-500/5" },
+  { name: "Appointment Booking", desc: "Customers book directly through chat. AI checks availability and confirms instantly.", icon: Calendar, color: "from-amber-500/20 to-orange-500/5" },
+  { name: "Instant Notifications", desc: "New lead? You get an email. Customer gets a confirmation. Everything logged.", icon: Zap, color: "from-green-500/20 to-emerald-500/5" },
+  { name: "Knowledge Base", desc: "Upload documents, FAQs, and website URLs. Your AI learns everything about your business.", icon: BookOpen, color: "from-cyan-500/20 to-blue-500/5" },
+  { name: "Built for Scale", desc: "One platform, unlimited contractors. Each gets their own AI, own leads, own settings.", icon: Globe, color: "from-red-500/20 to-rose-500/5" },
 ];
 
-const testimonials = [
-  { quote: "Since adding the AI chatbot to our website, we've captured 40% more leads. It answers questions at 2am when we're sleeping. Best investment we made this year.", name: "Marcus Rivera", role: "Owner, Rivera HVAC", rating: 5 },
-  { quote: "I was skeptical about AI handling our customer conversations. But it books appointments, collects phone numbers, and follows up — better than my office manager.", name: "Sarah Chen", role: "Chen's Plumbing Services", rating: 5 },
-  { quote: "We were losing 10-15 leads a month from missed calls and slow replies. Now the AI handles everything instantly. Our revenue is up 35% since switching.", name: "David Okonkwo", role: "Okonkwo Roofing & Repairs", rating: 5 },
-  { quote: "The best part? My contractors never touch the dashboard. They just get a text saying 'New lead: Jane, AC repair, 555-1234'. It's that simple.", name: "Lisa Thompson", role: "Agency Owner, 20+ Contractors", rating: 5 },
-  { quote: "We tried three other chatbot platforms. This is the only one that feels like a real receptionist. It remembers context, asks the right questions, and never sounds robotic.", name: "James Park", role: "Park Electrical Solutions", rating: 5 },
-  { quote: "Onboarding took 5 minutes. I picked the HVAC template, pasted one line of code, and the AI knew more about my business than I expected. Game changer.", name: "Robert Kim", role: "Kim's Heating & Cooling", rating: 5 },
+const productSteps = [
+  {
+    step: "01",
+    title: "AI greets and qualifies",
+    desc: "Customer lands on your site. The AI chatbot pops up, asks the right questions, and captures name, phone, email, and service needed — automatically.",
+    visual: (
+      <div className="glass rounded-2xl p-4 space-y-3 max-w-xs mx-auto">
+        <div className="flex items-center gap-2 mb-1">
+          <Bot className="h-4 w-4 text-blue-400" />
+          <span className="text-xs text-white/40">AI Assistant</span>
+        </div>
+        <div className="space-y-2">
+          <div className="bg-white/[0.04] rounded-xl p-2.5 text-xs text-white/60">Hi! 👋 How can I help you today?</div>
+          <div className="flex justify-end">
+            <div className="bg-blue-500/20 rounded-xl p-2.5 text-xs text-white/80">I need AC repair</div>
+          </div>
+          <div className="bg-white/[0.04] rounded-xl p-2.5 text-xs text-white/60">Got it! To book an appointment, I just need a few details. What&apos;s your name?</div>
+        </div>
+      </div>
+    ),
+  },
+  {
+    step: "02",
+    title: "Lead captured in CRM",
+    desc: "Every conversation is logged. Lead details are auto-filled. No manual data entry, no missed information.",
+    visual: (
+      <div className="glass rounded-2xl p-4 max-w-xs mx-auto">
+        <div className="flex items-center gap-2 mb-3">
+          <Users className="h-4 w-4 text-purple-400" />
+          <span className="text-xs text-white/40">New Lead</span>
+        </div>
+        <div className="space-y-1.5">
+          {[
+            { label: "Name", value: "Jane Cooper" },
+            { label: "Phone", value: "(555) 123-4567" },
+            { label: "Service", value: "AC Repair" },
+          ].map((f) => (
+            <div key={f.label} className="flex justify-between text-xs bg-white/[0.03] rounded-lg px-2.5 py-2">
+              <span className="text-white/30">{f.label}</span>
+              <span className="text-white/70 font-medium">{f.value}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    ),
+  },
+  {
+    step: "03",
+    title: "Instant notification",
+    desc: "You get an email saying 'New lead: Jane, AC repair, 555-1234.' Customer gets a confirmation text. Done.",
+    visual: (
+      <div className="glass rounded-2xl p-4 max-w-xs mx-auto">
+        <div className="flex items-center gap-2 mb-3">
+          <Zap className="h-4 w-4 text-amber-400" />
+          <span className="text-xs text-white/40">Notifications</span>
+        </div>
+        <div className="space-y-2">
+          <div className="flex items-start gap-2 bg-white/[0.03] rounded-xl p-2.5">
+            <Mail className="h-3.5 w-3.5 text-blue-400 mt-0.5 shrink-0" />
+            <div className="text-xs">
+              <p className="text-white/70 font-medium">New Lead: Jane Cooper</p>
+              <p className="text-white/30">AC Repair · (555) 123-4567</p>
+            </div>
+          </div>
+          <div className="flex items-start gap-2 bg-white/[0.03] rounded-xl p-2.5">
+            <MessageCircle className="h-3.5 w-3.5 text-green-400 mt-0.5 shrink-0" />
+            <div className="text-xs">
+              <p className="text-white/70 font-medium">Confirmation sent</p>
+              <p className="text-white/30">Appointment booked for tomorrow</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    ),
+  },
 ];
 
-function ScrollReveal({ children, className = "", delay = 0 }: { children: React.ReactNode; className?: string; delay?: number }) {
-  const ref = useRef<HTMLDivElement>(null);
+const stats = [
+  { value: 2400, suffix: "+", label: "Leads Captured" },
+  { value: 98, suffix: "%", label: "Response Rate" },
+  { value: 30, suffix: "s", label: "Avg Reply Time" },
+  { value: 35, suffix: "%", label: "Revenue Increase" },
+];
+
+// Fade-up reveal component
+function Reveal({ children, delay = 0 }: { children: React.ReactNode; delay?: number }) {
+  const ref = useRef(null);
+  const isInView = useInView(ref, { once: true, margin: "-80px" });
+  return (
+    <motion.div
+      ref={ref}
+      initial={{ opacity: 0, y: 30 }}
+      animate={isInView ? { opacity: 1, y: 0 } : {}}
+      transition={{ duration: 0.7, delay, ease: [0.16, 1, 0.3, 1] }}
+    >
+      {children}
+    </motion.div>
+  );
+}
+
+// Animated counter
+function AnimatedCounter({ value }: { value: number }) {
+  const ref = useRef(null);
+  const isInView = useInView(ref, { once: true });
+  const [count, setCount] = useState(0);
+
   useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    const observer = new IntersectionObserver(([entry]) => {
-      if (entry.isIntersecting) { el.classList.add("visible"); observer.unobserve(el); }
-    }, { threshold: 0.1 });
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, []);
-  return <div ref={ref} className={`reveal ${className}`} style={{ transitionDelay: `${delay}ms` }}>{children}</div>;
+    if (!isInView) return;
+    const duration = 1500;
+    const steps = 30;
+    const increment = value / steps;
+    let current = 0;
+    const timer = setInterval(() => {
+      current += increment;
+      if (current >= value) { setCount(value); clearInterval(timer); }
+      else setCount(Math.floor(current));
+    }, duration / steps);
+    return () => clearInterval(timer);
+  }, [isInView, value]);
+
+  return <span ref={ref}>{count.toLocaleString()}</span>;
 }
 
 export default function LandingPage() {
+  const heroRef = useRef<HTMLDivElement>(null);
+  const { scrollYProgress } = useScroll({
+    target: heroRef,
+    offset: ["start start", "end start"],
+  });
+  const heroScale = useTransform(scrollYProgress, [0, 1], [1, 0.95]);
+  const heroOpacity = useTransform(scrollYProgress, [0, 0.5], [1, 0]);
+
   return (
     <div className="bg-black text-white overflow-x-hidden">
-      <Script src="https://unpkg.com/@splinetool/viewer@1.12.98/build/spline-viewer.js" type="module" />
       {/* Nav */}
       <header className="fixed top-0 left-0 right-0 z-50 bg-black/80 backdrop-blur-xl border-b border-white/[0.06]">
         <div className="max-w-7xl mx-auto px-6 lg:px-8 flex items-center justify-between h-16">
@@ -53,198 +172,216 @@ export default function LandingPage() {
             <span className="font-semibold text-[15px] tracking-tight">Business OS</span>
           </div>
           <div className="flex items-center gap-2">
-            <a href="https://wa.me/13057071059" target="_blank" className="hidden md:flex items-center gap-1.5 text-[13px] text-white/50 hover:text-white transition-colors px-3 py-1.5 rounded-full hover:bg-white/5">
+            <a href="https://wa.me/13057071059" target="_blank" className="hidden md:flex items-center gap-1.5 text-[13px] text-white/40 hover:text-white transition-colors px-3 py-1.5 rounded-full hover:bg-white/5">
               <MessageCircle className="h-3.5 w-3.5" /> Support
             </a>
-            <Link href="/sign-in" className="text-[13px] text-white/50 hover:text-white transition-colors px-3 py-1.5">Sign In</Link>
+            <Link href="/sign-in" className="text-[13px] text-white/40 hover:text-white transition-colors px-3 py-1.5">Sign In</Link>
             <Link href="/sign-up"><Button size="sm" className="btn-white text-xs h-9 px-5 rounded-full">Get Started</Button></Link>
           </div>
         </div>
       </header>
 
       {/* Hero */}
-      <section className="relative pt-20 pb-0 md:pt-28 md:pb-8">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(255,255,255,0.03),transparent_70%)]" />
+      <motion.section
+        ref={heroRef}
+        style={{ scale: heroScale, opacity: heroOpacity }}
+        className="relative pt-20 pb-6 md:pt-28 md:pb-10 overflow-hidden"
+      >
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(255,255,255,0.04),transparent_70%)]" />
         <div className="max-w-7xl mx-auto px-6 lg:px-8 relative z-10">
-          <div className="flex flex-col lg:flex-row gap-6 lg:gap-12 lg:items-start">
+          <div className="flex flex-col lg:flex-row gap-6 lg:gap-12 lg:items-center">
             {/* Left - Text */}
             <div className="lg:flex-1">
-              <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/[0.04] border border-white/[0.06] text-[13px] text-white/60 mb-8 animate-fade-in">
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.6 }}
+                className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/[0.04] border border-white/[0.06] text-[13px] text-white/50 mb-8"
+              >
                 <span className="h-1.5 w-1.5 rounded-full bg-green-500 animate-pulse-soft" />
                 Now accepting early access users
-              </div>
-              <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold tracking-tight leading-[0.95] animate-fade-in">
+              </motion.div>
+              <motion.h1
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.7, delay: 0.1 }}
+                className="text-5xl md:text-6xl lg:text-7xl font-bold tracking-tight leading-[0.95]"
+              >
                 <span className="block">Never miss</span>
-                <span className="block text-gradient animate-fade-in delay-200">another customer</span>
-                <span className="block animate-fade-in delay-400">again.</span>
-              </h1>
-              <p className="text-lg text-white/40 mt-8 leading-relaxed animate-fade-in delay-500 max-w-md">
+                <span className="block text-gradient">another customer</span>
+                <span className="block">again.</span>
+              </motion.h1>
+              <motion.p
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.7, delay: 0.3 }}
+                className="text-lg text-white/40 mt-8 leading-relaxed max-w-md"
+              >
                 Your AI answers 24/7, qualifies every lead, books appointments, and sends notifications — automatically.
-              </p>
-              <div className="flex items-center gap-4 mt-10 animate-fade-in delay-600">
-                <Link href="/sign-up"><Button size="lg" className="btn-white text-[15px] h-12 px-8 rounded-full">Get Started <ArrowRight className="h-4 w-4 ml-1.5" /></Button></Link>
-                <a href="https://wa.me/13057071059" target="_blank"><Button variant="outline" size="lg" className="btn-outline text-[15px] h-12 px-8 rounded-full">Talk to Us</Button></a>
-              </div>
+              </motion.p>
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.7, delay: 0.5 }}
+                className="flex items-center gap-4 mt-10"
+              >
+                <Link href="/sign-up">
+                  <Button size="lg" className="btn-white text-[15px] h-12 px-8 rounded-full">
+                    Get Started <ArrowRight className="h-4 w-4 ml-1.5" />
+                  </Button>
+                </Link>
+                <a href="https://wa.me/13057071059" target="_blank">
+                  <Button variant="outline" size="lg" className="btn-outline text-[15px] h-12 px-8 rounded-full">
+                    Talk to Us
+                  </Button>
+                </a>
+              </motion.div>
             </div>
-            {/* Right - Robot with surrounding text */}
-            <div className="flex flex-col items-center lg:flex-1">
-              <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/[0.04] border border-white/[0.06] text-[13px] text-white/50 mb-2 animate-fade-in delay-300">
-                <Bot className="h-3.5 w-3.5 text-blue-400" />
-                AI-Powered Receptionist
-              </div>
-              {/* Robot container with floating labels */}
-              <div className="relative w-full max-w-[360px] lg:max-w-none mx-auto">
-                {/* Left floating label */}
-                <div className="absolute left-0 top-1/3 -translate-x-2 lg:-translate-x-4 z-10 hidden sm:block animate-fade-in delay-500">
-                  <span className="px-2.5 py-1 rounded-full bg-white/[0.04] border border-white/[0.06] text-[11px] text-white/40 whitespace-nowrap">
-                    24/7 Support
-                  </span>
-                </div>
-                {/* Right floating label */}
-                <div className="absolute right-0 top-1/3 translate-x-2 lg:translate-x-4 z-10 hidden sm:block animate-fade-in delay-600">
-                  <span className="px-2.5 py-1 rounded-full bg-white/[0.04] border border-white/[0.06] text-[11px] text-white/40 whitespace-nowrap">
-                    AI Powered
-                  </span>
-                </div>
-                {/* Robot - clipped top to center */}
-                <div className="aspect-[4/5] sm:aspect-[3/4] lg:aspect-square w-full relative spline-wrapper overflow-hidden" style={{ marginTop: '-8%' }}>
-                  <Spline scene="https://prod.spline.design/kDSI4axu7YzxniDc/scene.splinecode" />
-                </div>
-              </div>
-              {/* Business value props under robot */}
-              <div className="w-full max-w-[360px] lg:max-w-none mt-6 space-y-3 animate-fade-in delay-600">
-                <div className="flex items-start gap-3 p-3 rounded-xl bg-white/[0.02] border border-white/[0.04]">
-                  <MessageCircle className="h-4 w-4 text-blue-400 mt-0.5 shrink-0" />
-                  <div>
-                    <p className="text-[13px] font-medium text-white/70">AI Chatbot on Your Website</p>
-                    <p className="text-[11px] text-white/30 mt-0.5">Answers customer questions 24/7, qualifies leads, and books appointments automatically.</p>
-                  </div>
-                </div>
-                <div className="flex items-start gap-3 p-3 rounded-xl bg-white/[0.02] border border-white/[0.04]">
-                  <Zap className="h-4 w-4 text-amber-400 mt-0.5 shrink-0" />
-                  <div>
-                    <p className="text-[13px] font-medium text-white/70">Instant Lead Notifications</p>
-                    <p className="text-[11px] text-white/30 mt-0.5">Get an email the moment a lead comes in. Name, phone, service needed — all captured.</p>
-                  </div>
-                </div>
-                <div className="flex items-start gap-3 p-3 rounded-xl bg-white/[0.02] border border-white/[0.04]">
-                  <Globe className="h-4 w-4 text-green-400 mt-0.5 shrink-0" />
-                  <div>
-                    <p className="text-[13px] font-medium text-white/70">Works With Your Website</p>
-                    <p className="text-[11px] text-white/30 mt-0.5">One line of code. Paste it and your AI is live. No developers needed.</p>
-                  </div>
-                </div>
-              </div>
-            </div>
+
+            {/* Right - Robot */}
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 1, delay: 0.3, ease: [0.16, 1, 0.3, 1] }}
+              className="lg:flex-1 flex items-center justify-center"
+            >
+              <HeroRobot />
+            </motion.div>
           </div>
         </div>
-      </section>
+      </motion.section>
 
       {/* Social Proof + Metrics */}
-      <section className="border-y border-white/[0.04] py-8 md:py-10">
+      <section className="border-y border-white/[0.04] py-10">
         <div className="max-w-5xl mx-auto px-6 lg:px-8">
-          {/* Trusted by line */}
-          <div className="text-center mb-6 reveal">
-            <p className="text-[13px] text-white/30 tracking-wide uppercase">Trusted by 500+ service businesses</p>
-            <div className="flex flex-wrap items-center justify-center gap-6 mt-4 opacity-30">
-              <span className="text-[11px] text-white/40 font-semibold tracking-widest">HVAC</span>
-              <span className="text-[11px] text-white/40 font-semibold tracking-widest">PLUMBING</span>
-              <span className="text-[11px] text-white/40 font-semibold tracking-widest">ROOFING</span>
-              <span className="text-[11px] text-white/40 font-semibold tracking-widest">ELECTRICAL</span>
-              <span className="text-[11px] text-white/40 font-semibold tracking-widest">DENTAL</span>
-              <span className="text-[11px] text-white/40 font-semibold tracking-widest">LEGAL</span>
-            </div>
-          </div>
-          {/* Divider */}
-          <div className="w-full h-px bg-white/[0.04] mb-6" />
-          {/* Key Metrics */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-6 text-center">
-            {[
-              { value: "2,400+", label: "Leads Captured", sub: "by AI automatically" },
-              { value: "98%", label: "Response Rate", sub: "faster than humans" },
-              { value: "30s", label: "Avg Reply Time", sub: "instant customer response" },
-              { value: "35%", label: "Revenue Increase", sub: "reported by contractors" },
-            ].map((s, i) => (
-              <div key={s.label} className="reveal">
-                <div className="text-2xl md:text-3xl font-bold text-white mb-1">{s.value}</div>
-                <div className="text-xs md:text-sm font-medium text-white/60">{s.label}</div>
-                <div className="text-[11px] text-white/25 mt-0.5">{s.sub}</div>
+          <Reveal>
+            <div className="text-center mb-8">
+              <p className="text-[13px] text-white/30 tracking-wide uppercase">Trusted by 500+ service businesses</p>
+              <div className="flex flex-wrap items-center justify-center gap-6 mt-4 opacity-30">
+                {["HVAC", "PLUMBING", "ROOFING", "ELECTRICAL", "DENTAL", "LEGAL"].map((t) => (
+                  <span key={t} className="text-[11px] text-white/40 font-semibold tracking-widest">{t}</span>
+                ))}
               </div>
+            </div>
+          </Reveal>
+          <div className="w-full h-px bg-white/[0.04] mb-8" />
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-6 text-center">
+            {stats.map((s, i) => (
+              <Reveal key={s.label} delay={i * 0.1}>
+                <div>
+                  <div className="text-2xl md:text-3xl font-bold text-white mb-1 tabular-nums">
+                    <AnimatedCounter value={s.value} />{s.suffix}
+                  </div>
+                  <div className="text-xs md:text-sm font-medium text-white/50">{s.label}</div>
+                </div>
+              </Reveal>
             ))}
           </div>
         </div>
       </section>
 
-      {/* Features */}
-      <section className="py-12 md:py-20">
+      {/* Product Demo - How it Works */}
+      <section className="py-16 md:py-24">
         <div className="max-w-7xl mx-auto px-6 lg:px-8">
-          <ScrollReveal>
-            <h2 className="text-3xl md:text-5xl font-bold tracking-tight text-center mb-6">Everything you need</h2>
-            <p className="text-lg text-white/30 text-center max-w-xl mx-auto mb-10">AI-powered tools built specifically for contractors. No technical skills required.</p>
-          </ScrollReveal>
+          <Reveal>
+            <h2 className="text-3xl md:text-5xl font-bold tracking-tight text-center mb-4">
+              How it works
+            </h2>
+            <p className="text-lg text-white/30 text-center max-w-xl mx-auto mb-14">
+              Three simple steps. Zero technical skills required.
+            </p>
+          </Reveal>
+          <div className="grid md:grid-cols-3 gap-6 max-w-5xl mx-auto">
+            {productSteps.map((s, i) => (
+              <Reveal key={s.step} delay={i * 0.15}>
+                <div className="group relative">
+                  {/* Connecting line */}
+                  {i < 2 && (
+                    <div className="hidden md:block absolute top-1/2 -right-3 w-6 h-px bg-white/[0.06] z-0" />
+                  )}
+                  <div className="glass rounded-2xl p-6 relative z-10 hover:bg-white/[0.06] hover:border-white/[0.1] transition-all duration-500">
+                    <span className="text-[11px] font-bold text-white/20 tracking-widest mb-4 block">{s.step}</span>
+                    {s.visual}
+                    <h3 className="text-[15px] font-semibold mt-5 mb-2">{s.title}</h3>
+                    <p className="text-sm text-white/30 leading-relaxed">{s.desc}</p>
+                  </div>
+                </div>
+              </Reveal>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Features Grid */}
+      <section className="py-16 md:py-24 border-t border-white/[0.04]">
+        <div className="max-w-7xl mx-auto px-6 lg:px-8">
+          <Reveal>
+            <h2 className="text-3xl md:text-5xl font-bold tracking-tight text-center mb-4">
+              Everything you need
+            </h2>
+            <p className="text-lg text-white/30 text-center max-w-xl mx-auto mb-14">
+              AI-powered tools built specifically for contractors.
+            </p>
+          </Reveal>
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
             {features.map((f, i) => (
-              <ScrollReveal key={f.name} delay={i * 75}>
-                <div className="glass rounded-2xl p-6 hover:bg-white/[0.05] transition-colors group">
-                  <div className="h-9 w-9 rounded-xl bg-white/[0.06] flex items-center justify-center mb-4 group-hover:bg-white/[0.1] transition-colors"><f.icon className="h-4 w-4 text-white/60" /></div>
+              <Reveal key={f.name} delay={i * 0.07}>
+                <div className="glass rounded-2xl p-6 group hover:bg-white/[0.06] hover:border-white/[0.1] transition-all duration-500">
+                  <div className={`h-10 w-10 rounded-xl bg-gradient-to-br ${f.color} border border-white/[0.06] flex items-center justify-center mb-4 group-hover:scale-110 group-hover:shadow-lg transition-all duration-300`}>
+                    <f.icon className="h-5 w-5 text-white/70" />
+                  </div>
                   <h3 className="text-[15px] font-semibold mb-2">{f.name}</h3>
                   <p className="text-sm text-white/30 leading-relaxed">{f.desc}</p>
                 </div>
-              </ScrollReveal>
+              </Reveal>
             ))}
           </div>
-        </div>
-      </section>
-
-      {/* Mid-page Image */}
-      <section className="py-12 md:py-16 overflow-hidden">
-        <div className="max-w-6xl mx-auto px-6 lg:px-8">
-          <img src="/images/mid-section.jpg" alt="AI automation dashboard" className="w-full rounded-2xl" />
-        </div>
-      </section>
-
-      {/* Testimonials */}
-      <section className="py-16 md:py-24 border-t border-white/[0.04]">
-        <div className="max-w-7xl mx-auto px-6 lg:px-8">
-          <ScrollReveal>
-            <h2 className="text-3xl md:text-5xl font-bold tracking-tight text-center mb-6">Trusted by contractors</h2>
-            <p className="text-lg text-white/30 text-center max-w-xl mx-auto mb-10">Join hundreds of service businesses already using AI to grow.</p>
-          </ScrollReveal>
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 max-w-6xl mx-auto">
-            {testimonials.map((t, i) => (
-              <ScrollReveal key={i} delay={i * 75}>
-                <div className="glass rounded-2xl p-5 h-full flex flex-col">
-                  <div className="flex gap-0.5 mb-3">
-                    {[...Array(t.rating)].map((_, j) => <Star key={j} className="h-3.5 w-3.5 fill-amber-400 text-amber-400" />)}
-                  </div>
-                  <p className="text-sm text-white/50 leading-relaxed mb-4 flex-1">"{t.quote}"</p>
-                  <div className="flex items-center gap-2.5 pt-3 border-t border-white/[0.04]">
-                    <div className="h-8 w-8 rounded-full bg-white/[0.06] flex items-center justify-center text-xs font-semibold text-white/40">{t.name.split(" ").map(n => n[0]).join("")}</div>
-                    <div>
-                      <p className="text-xs font-medium text-white/70">{t.name}</p>
-                      <p className="text-[11px] text-white/30">{t.role}</p>
-                    </div>
-                  </div>
-                </div>
-              </ScrollReveal>
-            ))}
-          </div>
-          <p className="text-center text-[11px] text-white/15 mt-8 italic">These are illustrative testimonials representing the experience of our target customers.</p>
         </div>
       </section>
 
       {/* CTA */}
-      <section className="relative py-16 md:py-24 border-t border-white/[0.04] overflow-hidden">
-        <div className="absolute inset-0 opacity-40 pointer-events-none">
-          <img src="/images/cta-bg.jpg" alt="" className="w-full h-full object-cover" />
+      <section className="relative py-20 md:py-28 border-t border-white/[0.04] overflow-hidden">
+        {/* Particle background */}
+        <div className="absolute inset-0 pointer-events-none">
+          {Array.from({ length: 20 }).map((_, i) => (
+            <motion.div
+              key={i}
+              className="absolute h-0.5 w-0.5 rounded-full bg-white/20"
+              style={{
+                left: `${Math.random() * 100}%`,
+                top: `${Math.random() * 100}%`,
+              }}
+              animate={{
+                opacity: [0, 0.5, 0],
+                scale: [0, 1.5, 0],
+              }}
+              transition={{
+                duration: 3 + Math.random() * 4,
+                repeat: Infinity,
+                delay: Math.random() * 3,
+              }}
+            />
+          ))}
         </div>
-        <div className="absolute inset-0 bg-black/60 z-[5]" />
-        <div className="max-w-4xl mx-auto px-6 lg:px-8 text-center relative z-10">
-          <ScrollReveal>
-            <h2 className="text-3xl md:text-5xl font-bold tracking-tight mb-6">Ready to stop missing leads?</h2>
-            <p className="text-lg text-white/30 mb-10 max-w-xl mx-auto">Join contractors who never miss another customer. 14-day free trial. No credit card.</p>
-            <Link href="/sign-up"><Button size="lg" className="btn-white text-[15px] h-12 px-8 rounded-full">Get Started Free <ArrowRight className="h-4 w-4 ml-1.5" /></Button></Link>
-          </ScrollReveal>
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(255,255,255,0.05),transparent_70%)]" />
+        <div className="max-w-3xl mx-auto px-6 lg:px-8 text-center relative z-10">
+          <Reveal>
+            <h2 className="text-3xl md:text-5xl font-bold tracking-tight mb-6">
+              Ready to stop <span className="text-gradient">missing leads</span>?
+            </h2>
+            <p className="text-lg text-white/30 mb-10 max-w-xl mx-auto">
+              Join contractors who never miss another customer. 14-day free trial. No credit card.
+            </p>
+            <Link href="/sign-up">
+              <motion.div whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.98 }}>
+                <Button size="lg" className="btn-white text-[15px] h-12 px-8 rounded-full relative overflow-hidden group">
+                  <span className="relative z-10 flex items-center">
+                    Get Started Free <ArrowRight className="h-4 w-4 ml-1.5 group-hover:translate-x-0.5 transition-transform" />
+                  </span>
+                </Button>
+              </motion.div>
+            </Link>
+          </Reveal>
         </div>
       </section>
 
@@ -253,7 +390,10 @@ export default function LandingPage() {
         <div className="max-w-7xl mx-auto px-6 lg:px-8">
           <div className="grid sm:grid-cols-3 gap-10 mb-10">
             <div>
-              <div className="flex items-center gap-2 mb-4"><div className="h-6 w-6 rounded-md bg-white flex items-center justify-center text-[10px] font-bold text-black">AI</div><span className="font-semibold text-sm">Business OS</span></div>
+              <div className="flex items-center gap-2 mb-4">
+                <div className="h-6 w-6 rounded-md bg-white flex items-center justify-center text-[10px] font-bold text-black">AI</div>
+                <span className="font-semibold text-sm">Business OS</span>
+              </div>
               <p className="text-xs text-white/25 leading-relaxed">AI-powered operating system for service businesses.</p>
             </div>
             <div>
