@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { db } from "@/db";
-import { conversation, message, lead, appointment, aiBrainConfig } from "@/db/schema";
+import { conversation, message, lead, appointment, aiBrainConfig, business } from "@/db/schema";
 import { eq, desc, and } from "drizzle-orm";
 import { generateId } from "@/lib/utils";
 import { ensureBusiness } from "@/lib/business";
@@ -9,74 +9,90 @@ import { createLlmCompletion } from "@/lib/llm";
 import { notifyContractorOfNewLead, sendCustomerConfirmation } from "@/lib/notifications";
 import { extractLeadFromConversation, isValidLead } from "@/lib/lead-extractor";
 
-/** Parse [CONFIRM_APPOINTMENT]::date::startTime::endTime::service::name::phone::email from AI response */
-function parseAppointmentMarker(text: string): {
-  date: string;
-  startTime: string;
-  endTime: string;
-  service: string;
-  customerName: string;
-  customerPhone: string;
-  customerEmail: string;
-} | null {
+/** Parse onboarding markers that the AI uses to save business info */
+function parseOnboardingMarkers(text: string): Record<string, string> {
+  const saved: Record<string, string> = {};
+  const markers = [
+    "SAVE_BUSINESS_NAME", "SAVE_SERVICES", "SAVE_BUSINESS_HOURS",
+    "SAVE_SERVICE_AREAS", "SAVE_PRICING", "SAVE_POLICIES", "SAVE_FAQS",
+    "SAVE_BUSINESS_INFO", "SAVE_RESPONSE_STYLE", "SAVE_LEAD_RULES", "SAVE_BOOKING_RULES",
+  ];
+  for (const marker of markers) {
+    const regex = new RegExp(`\\[${marker}\\]::([\\s\\S]*?)(?=\\[\\/|$)`, "i");
+    const match = text.match(regex);
+    if (match) saved[marker] = match[1].trim();
+  }
+  return saved;
+}
+
+function parseAppointmentMarker(text: string) {
   const match = text.match(/\[CONFIRM_APPOINTMENT\]::([^:]+)::([^:]+)::([^:]+)::([^:]+)::([^:]+)::([^:]+)::([^:\n]+)/);
   if (!match) return null;
-  return {
-    date: match[1].trim(),
-    startTime: match[2].trim(),
-    endTime: match[3].trim(),
-    service: match[4].trim(),
-    customerName: match[5].trim(),
-    customerPhone: match[6].trim(),
-    customerEmail: match[7].trim(),
-  };
+  return { date: match[1].trim(), startTime: match[2].trim(), endTime: match[3].trim(), service: match[4].trim(), customerName: match[5].trim(), customerPhone: match[6].trim(), customerEmail: match[7].trim() };
 }
 
-/** Parse [CREATE_LEAD]::name::phone::email::preferredMethod::notes */
-function parseLeadMarker(text: string): {
-  name: string;
-  phone: string;
-  email: string;
-  preferredMethod: string;
-  notes: string;
-} | null {
+function parseLeadMarker(text: string) {
   const match = text.match(/\[CREATE_LEAD\]::([^:]+)::([^:]+)::([^:]+)::([^:]+)::([^:\n]+)/);
   if (!match) return null;
-  return {
-    name: match[1].trim(),
-    phone: match[2].trim(),
-    email: match[3].trim(),
-    preferredMethod: match[4].trim(),
-    notes: match[5].trim(),
-  };
+  return { name: match[1].trim(), phone: match[2].trim(), email: match[3].trim(), preferredMethod: match[4].trim(), notes: match[5].trim() };
 }
 
-/** Check if a time slot conflicts with existing appointments */
-async function checkAppointmentConflict(
-  businessId: string,
-  date: string,
-  startTime: string,
-  endTime: string
-): Promise<boolean> {
-  const existing = await db
-    .select()
-    .from(appointment)
-    .where(
-      and(
-        eq(appointment.businessId, businessId),
-        eq(appointment.date, date),
-        eq(appointment.status, "scheduled")
-      )
-    );
-  return existing.some((a) => startTime < a.endTime && endTime > a.startTime);
-}
-
-/** Remove action markers from AI response for clean display */
 function cleanResponse(text: string): string {
   return text
     .replace(/\[CONFIRM_APPOINTMENT\]::[^\n]*/g, "")
     .replace(/\[CREATE_LEAD\]::[^\n]*/g, "")
+    .replace(/\[SAVE_\w+\]::[\s\S]*?\[\/]/g, "")
     .trim();
+}
+
+async function checkAppointmentConflict(businessId: string, date: string, startTime: string, endTime: string): Promise<boolean> {
+  const existing = await db.select().from(appointment).where(and(eq(appointment.businessId, businessId), eq(appointment.date, date), eq(appointment.status, "scheduled")));
+  return existing.some((a) => startTime < a.endTime && endTime > a.startTime);
+}
+
+/** Save onboarding data from AI markers into the database */
+async function saveOnboardingData(businessId: string, markers: Record<string, string>) {
+  const updates: Record<string, any> = {};
+
+  if (markers["SAVE_BUSINESS_NAME"]) {
+    await db.update(business).set({ name: markers["SAVE_BUSINESS_NAME"] }).where(eq(business.id, businessId));
+  }
+  if (markers["SAVE_SERVICES"]) {
+    updates.services = JSON.stringify(markers["SAVE_SERVICES"].split(",").map((s: string) => s.trim()).filter(Boolean));
+  }
+  if (markers["SAVE_BUSINESS_HOURS"]) {
+    try { JSON.parse(markers["SAVE_BUSINESS_HOURS"]); updates.businessHours = markers["SAVE_BUSINESS_HOURS"]; } catch {}
+  }
+  if (markers["SAVE_SERVICE_AREAS"]) {
+    updates.serviceAreas = JSON.stringify(markers["SAVE_SERVICE_AREAS"].split(",").map((s: string) => s.trim()).filter(Boolean));
+  }
+  if (markers["SAVE_PRICING"]) updates.pricingGuidance = markers["SAVE_PRICING"];
+  if (markers["SAVE_POLICIES"]) updates.companyPolicies = markers["SAVE_POLICIES"];
+  if (markers["SAVE_FAQS"]) {
+    updates.faqs = JSON.stringify(markers["SAVE_FAQS"].split("\n").map((s: string) => s.trim()).filter(Boolean));
+  }
+  if (markers["SAVE_BUSINESS_INFO"]) updates.businessInfo = markers["SAVE_BUSINESS_INFO"];
+  if (markers["SAVE_RESPONSE_STYLE"]) updates.responseStyle = markers["SAVE_RESPONSE_STYLE"];
+  if (markers["SAVE_LEAD_RULES"]) updates.leadCollectionRules = markers["SAVE_LEAD_RULES"];
+  if (markers["SAVE_BOOKING_RULES"]) updates.appointmentBookingRules = markers["SAVE_BOOKING_RULES"];
+
+  if (Object.keys(updates).length > 0) {
+    const [existing] = await db.select({ id: aiBrainConfig.id }).from(aiBrainConfig).where(eq(aiBrainConfig.businessId, businessId));
+    if (existing) {
+      await db.update(aiBrainConfig).set(updates).where(eq(aiBrainConfig.businessId, businessId));
+    } else {
+      await db.insert(aiBrainConfig).values({ id: generateId(), businessId, ...updates, greetingMessage: "Hello! How can I help you today?" });
+    }
+  }
+}
+
+/** Check if business has essential info configured */
+function isConfigured(config: any): boolean {
+  if (!config?.services) return false;
+  try {
+    const s = JSON.parse(config.services);
+    return Array.isArray(s) && s.length > 0 && s[0] !== "";
+  } catch { return false; }
 }
 
 export async function POST(request: Request) {
@@ -85,248 +101,197 @@ export async function POST(request: Request) {
     if (!businessId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const body = await request.json();
-    const { message: userMessage, conversationId } = body;
+    const { message: userMessage, conversationId, source } = body;
 
     if (!userMessage) {
       return NextResponse.json({ error: "Message is required" }, { status: 400 });
     }
 
-    // Check onboarding: business must have services configured before AI can talk
-    const [config] = await db.select({ services: aiBrainConfig.services }).from(aiBrainConfig).where(eq(aiBrainConfig.businessId, businessId));
-    const hasServices = (() => {
-      if (!config?.services) return false;
-      try {
-        const s = JSON.parse(config.services);
-        return Array.isArray(s) && s.length > 0 && s[0] !== "";
-      } catch { return false; }
-    })();
-    
-    if (!hasServices) {
-      return NextResponse.json({
-        response: "Before I can start helping your customers, you'll need to complete your business setup. Please head over to the AI Brain section in your dashboard and add your services, business hours, and any other details about your company. This only takes a minute — once that's done, I'll be ready to handle conversations, capture leads, and book appointments 24/7. Would you like me to walk you through what to fill out?",
-        conversationId: conversationId || generateId(),
-        onboardingRequired: true,
-      });
-    }
-
-    // Build AI context using the shared engine
-    const ctx = await buildAiContext(businessId);
-
-    // Get or create conversation
+    // Always create/save conversation first to avoid FK errors
     let convId = conversationId;
     if (convId) {
-      // Verify the conversation exists
-      const [existingConv] = await db
-        .select({ id: conversation.id })
-        .from(conversation)
-        .where(eq(conversation.id, convId))
-        .limit(1);
-      if (!existingConv) {
-        convId = generateId();
-      }
+      const [existingConv] = await db.select({ id: conversation.id }).from(conversation).where(eq(conversation.id, convId)).limit(1);
+      if (!existingConv) convId = generateId();
     }
     if (!convId) {
       convId = generateId();
       await db.insert(conversation).values({
-        id: convId,
-        businessId,
-        source: "dashboard",
+        id: convId, businessId,
+        source: source || "dashboard",
         status: "active",
       });
     }
 
     // Save user message
     await db.insert(message).values({
-      id: generateId(),
-      conversationId: convId,
-      role: "user",
-      content: userMessage,
+      id: generateId(), conversationId: convId, role: "user", content: userMessage,
     });
 
+    // Load config
+    const [config] = await db.select().from(aiBrainConfig).where(eq(aiBrainConfig.businessId, businessId));
+    const configured = isConfigured(config);
+
+    // Determine if this is a contractor (dashboard/ai-brain test) or customer (public widget)
+    const isContractor = source === "dashboard" || source === "ai-test" || !source;
+
+    // ─── ONBOARDING MODE: Contractor needs setup help ───
+    if (!configured && isContractor) {
+      const onboardingPrompt = `You are an AI setup assistant for a new contractor. Your ONLY job right now is to help them configure their business. You are NOT talking to a customer.
+
+CURRENT STATE:
+- Business Name: ${(await db.select().from(business).where(eq(business.id, businessId)).limit(1))[0]?.name || "not set"}
+- Services: not set
+- Other info: not set
+
+WHAT YOU NEED TO COLLECT (one at a time, in order):
+1. Business name
+2. Services offered (comma-separated list)
+3. Business hours
+4. Service areas
+5. Pricing guidance
+6. Company policies
+7. Any FAQs
+
+RULES:
+- Ask ONE question at a time. Never ask multiple questions.
+- After they answer, save it using markers and move to the next question.
+- Keep it conversational and encouraging. They're setting up their business.
+- Once ALL info is collected, tell them they're ready and say "Your AI is now fully configured! Customers can now reach you."
+
+HOW TO SAVE (use these markers):
+- Business name: [SAVE_BUSINESS_NAME]::Their Business Name[/]
+- Services: [SAVE_SERVICES]::HVAC Installation, AC Repair, Furnace Service[/]
+- Hours: [SAVE_BUSINESS_HOURS]::[{"day":"Monday","open":"8:00 AM","close":"5:00 PM","closed":false}][/]
+- Areas: [SAVE_SERVICE_AREAS]::Downtown, North Side, East County[/]
+- Pricing: [SAVE_PRICING]::Standard AC install starts at $3,500. Emergency repairs $150/hr.[/]
+- Policies: [SAVE_POLICIES]::24-hour cancellation policy. Free estimates within service area.[/]
+- FAQs: [SAVE_FAQS]::Q: Do you offer warranties? A: Yes, 1-year parts and labor.[/]
+- Business info: [SAVE_BUSINESS_INFO]::Family-owned since 2005. Licensed and insured.[/]
+
+Always use the markers to save their answers immediately. The system will update their profile automatically.
+
+Start by asking: "Great, let's get your business set up! First, what's your business name?"`;
+
+      const { completion } = await createLlmCompletion([
+        { role: "system", content: onboardingPrompt },
+        { role: "user", content: userMessage },
+      ]);
+
+      const reply = completion?.content || "I'm having trouble right now. Please try again.";
+
+      // Process any save markers
+      const onboardingMarkers = parseOnboardingMarkers(reply);
+      if (Object.keys(onboardingMarkers).length > 0) {
+        await saveOnboardingData(businessId, onboardingMarkers);
+      }
+
+      const cleanReply = cleanResponse(reply);
+
+      await db.insert(message).values({
+        id: generateId(), conversationId: convId, role: "assistant", content: cleanReply,
+      });
+
+      return NextResponse.json({ response: cleanReply, conversationId: convId, onboarding: true });
+    }
+
+    // ─── PUBLIC/CUSTOMER MODE: Business not configured ───
+    if (!configured && !isContractor) {
+      const reply = "We're currently setting up our systems. Please check back soon or call us directly for immediate assistance. Thank you for your patience!";
+      await db.insert(message).values({
+        id: generateId(), conversationId: convId, role: "assistant", content: reply,
+      });
+      return NextResponse.json({ response: reply, conversationId: convId });
+    }
+
+    // ─── NORMAL MODE: Fully configured, talking to customer (or contractor testing) ───
+    const ctx = await buildAiContext(businessId);
+
     // Get conversation history
-    const msgs = await db
-      .select()
-      .from(message)
-      .where(eq(message.conversationId, convId))
-      .orderBy(desc(message.createdAt));
+    const msgs = await db.select().from(message).where(eq(message.conversationId, convId)).orderBy(desc(message.createdAt));
+    const history = msgs.reverse().map((m) => ({ role: m.role as "user" | "assistant" | "system", content: m.content }));
 
-    const history = msgs.reverse().map((m) => ({
-      role: m.role as "user" | "assistant" | "system",
-      content: m.content,
-    }));
+    // If contractor is testing, add a note to the system prompt
+    let systemPrompt = ctx.systemPrompt;
+    if (isContractor) {
+      systemPrompt = `NOTE: You are currently in TEST MODE — the contractor is testing you from their dashboard, NOT a real customer. Respond naturally as you would to a customer so they can see how you'll perform. Treat this test conversation as if a customer is reaching out. Do NOT mention that this is a test or ask if they're a contractor.\n\n${systemPrompt}`;
+    }
 
-    // Call LLM (supports OpenAI, OpenAI-compatible, and Gemini)
     const { completion, error: llmError } = await createLlmCompletion([
-      { role: "system", content: ctx.systemPrompt },
+      { role: "system", content: systemPrompt },
       ...history,
     ]);
     if (!completion) {
-      return NextResponse.json({ error: "AI not configured", detail: llmError || "Missing API key or configuration" }, { status: 503 });
+      return NextResponse.json({ error: "AI not configured", detail: llmError || "Missing API key" }, { status: 503 });
     }
 
     let reply = completion.content;
-
-    // Process markers
     let createdAppointmentId: string | null = null;
     let createdLeadId: string | null = null;
 
-    // Handle [CONFIRM_APPOINTMENT]
+    // Process appointment marker
     const apptData = parseAppointmentMarker(reply);
-    if (apptData) {
-      const { date, startTime, endTime, service, customerName, customerPhone, customerEmail } = apptData;
-      if (date && startTime && endTime && service && date !== "not provided") {
-        // Check for conflicts
-        const hasConflict = await checkAppointmentConflict(businessId, date, startTime, endTime);
-        if (!hasConflict) {
-          const apptId = generateId();
-          await db.insert(appointment).values({
-            id: apptId,
-            businessId,
-            customerName: customerName || "Not provided",
-            customerPhone: customerPhone || "",
-            customerEmail: customerEmail || "",
-            service,
-            date,
-            startTime,
-            endTime,
-            status: "scheduled",
-          });
-          createdAppointmentId = apptId;
-        }
+    if (apptData && apptData.date !== "not provided") {
+      const hasConflict = await checkAppointmentConflict(businessId, apptData.date, apptData.startTime, apptData.endTime);
+      if (!hasConflict) {
+        const apptId = generateId();
+        await db.insert(appointment).values({
+          id: apptId, businessId, customerName: apptData.customerName || "Not provided",
+          customerPhone: apptData.customerPhone || "", customerEmail: apptData.customerEmail || "",
+          service: apptData.service, date: apptData.date, startTime: apptData.startTime,
+          endTime: apptData.endTime, status: "scheduled",
+        });
+        createdAppointmentId = apptId;
       }
     }
 
-    // Handle [CREATE_LEAD]
+    // Process lead marker
     const leadData = parseLeadMarker(reply);
-    if (leadData) {
-      const { name, phone, email, preferredMethod, notes } = leadData;
-
-      // Server-side validation: reject placeholders, empty values, "not provided"
-      const extractedLead = {
-        name: name || null,
-        phone: phone || null,
-        email: email || null,
-        preferredMethod: preferredMethod || null,
-        serviceRequest: notes || null,
-      };
-
-      if (isValidLead(extractedLead)) {
-        const existingLeads = await db
-          .select()
-          .from(lead)
-          .where(
-            and(eq(lead.businessId, businessId), eq(lead.name, name))
-          )
-          .limit(1);
-
-        if (existingLeads.length === 0) {
-          const leadId = generateId();
-          await db.insert(lead).values({
-            id: leadId,
-            businessId,
-            name,
-            phone: phone || "",
-            email: email || "",
-            preferredMethod: preferredMethod || "",
-            contactValue:
-              preferredMethod === "phone" ? phone : preferredMethod === "email" ? email : "",
-            serviceRequest: notes || "",
-            source: "ai_chat",
-            status: "new",
-          });
-          createdLeadId = leadId;
-
-          // Link to conversation
-          await db.update(conversation).set({ leadId }).where(eq(conversation.id, convId));
-
-          // Fire-and-forget: notify contractor and customer
-          const summary = history.slice(-4).map((m: any) => `${m.role}: ${m.content.substring(0, 100)}`).join(" | ");
-          Promise.all([
-            notifyContractorOfNewLead(businessId, leadId, summary),
-            sendCustomerConfirmation(businessId, leadId),
-          ]).catch((e) => console.error("[ai/chat] notifications failed:", e));
-        }
+    if (leadData && isValidLead({ name: leadData.name, phone: leadData.phone, email: leadData.email, preferredMethod: leadData.preferredMethod, serviceRequest: leadData.notes })) {
+      const [existing] = await db.select().from(lead).where(and(eq(lead.businessId, businessId), eq(lead.name, leadData.name))).limit(1);
+      if (!existing) {
+        const leadId = generateId();
+        await db.insert(lead).values({
+          id: leadId, businessId, name: leadData.name, phone: leadData.phone || "", email: leadData.email || "",
+          preferredMethod: leadData.preferredMethod || "", contactValue: leadData.preferredMethod === "phone" ? leadData.phone : leadData.email,
+          serviceRequest: leadData.notes || "", source: "ai_chat", status: "new",
+        });
+        createdLeadId = leadId;
+        await db.update(conversation).set({ leadId }).where(eq(conversation.id, convId));
+        const summary = history.slice(-4).map((m: any) => `${m.role}: ${m.content.substring(0, 100)}`).join(" | ");
+        Promise.all([notifyContractorOfNewLead(businessId, leadId, summary), sendCustomerConfirmation(businessId, leadId)]).catch(() => {});
       }
     }
 
-    // Clean markers from response
-    const cleanReply = cleanResponse(reply);
-
-    // Save AI response
-    await db.insert(message).values({
-      id: generateId(),
-      conversationId: convId,
-      role: "assistant",
-      content: cleanReply,
-    });
-
-    // If no lead was created via marker, try server-side extraction
+    // Server-side lead extraction fallback
     if (!createdLeadId) {
       try {
-        const extracted = await extractLeadFromConversation([
-          ...history,
-          { role: "assistant", content: cleanReply },
-        ]);
-        if (extracted) {
-          const [existingLead] = await db
-            .select()
-            .from(lead)
-            .where(and(eq(lead.businessId, businessId), eq(lead.name, extracted.name!)))
-            .limit(1);
-
-          if (!existingLead) {
+        const extracted = await extractLeadFromConversation([...history, { role: "assistant", content: reply }]);
+        if (extracted && isValidLead(extracted)) {
+          const [existing] = await db.select().from(lead).where(and(eq(lead.businessId, businessId), eq(lead.name, extracted.name!))).limit(1);
+          if (!existing) {
             const newLeadId = generateId();
             await db.insert(lead).values({
-              id: newLeadId,
-              businessId,
-              name: extracted.name!,
-              phone: extracted.phone || "",
-              email: extracted.email || "",
-              preferredMethod: extracted.preferredMethod || "",
-              contactValue:
-                extracted.preferredMethod === "phone"
-                  ? extracted.phone
-                  : extracted.preferredMethod === "email"
-                  ? extracted.email
-                  : "",
-              serviceRequest: extracted.serviceRequest || "",
-              source: "ai_chat",
-              status: "new",
+              id: newLeadId, businessId, name: extracted.name!, phone: extracted.phone || "", email: extracted.email || "",
+              preferredMethod: extracted.preferredMethod || "", contactValue: extracted.preferredMethod === "phone" ? extracted.phone : extracted.email,
+              serviceRequest: extracted.serviceRequest || "", source: "ai_chat", status: "new",
             });
             createdLeadId = newLeadId;
             await db.update(conversation).set({ leadId: newLeadId }).where(eq(conversation.id, convId));
-
-            // Await notifications before returning response
             const summary = history.slice(-4).map((m: any) => `${m.role}: ${m.content.substring(0, 100)}`).join(" | ");
             try {
-              await Promise.all([
-                notifyContractorOfNewLead(businessId, newLeadId, summary),
-                sendCustomerConfirmation(businessId, newLeadId),
-              ]);
-            } catch (e: any) {
-              console.error("[ai/chat] notifications error:", e?.message);
-            }
+              await Promise.all([notifyContractorOfNewLead(businessId, newLeadId, summary), sendCustomerConfirmation(businessId, newLeadId)]);
+            } catch {}
           }
         }
-      } catch (extractErr: any) {
-        console.error("[ai/chat] Lead extraction error:", extractErr?.message || String(extractErr));
-      }
+      } catch {}
     }
 
-    return NextResponse.json({
-      response: cleanReply,
-      conversationId: convId,
-      appointmentId: createdAppointmentId,
-      leadId: createdLeadId,
-    });
+    const cleanReply = cleanResponse(reply);
+    await db.insert(message).values({ id: generateId(), conversationId: convId, role: "assistant", content: cleanReply });
+
+    return NextResponse.json({ response: cleanReply, conversationId: convId, appointmentId: createdAppointmentId, leadId: createdLeadId });
   } catch (error: any) {
-    const detail = error?.message || String(error);
-    const stack = error?.stack || "";
-    const cause = error?.cause ? String(error.cause) : "";
-    console.error("AI chat error:", detail, stack.substring(0, 300));
-    return NextResponse.json(
-      { error: "Failed to process chat", detail: `${detail}${cause ? ` (cause: ${cause})` : ""}` },
-      { status: 500 }
-    );
+    console.error("AI chat error:", error?.message);
+    return NextResponse.json({ error: "Failed to process chat", detail: error?.message }, { status: 500 });
   }
 }

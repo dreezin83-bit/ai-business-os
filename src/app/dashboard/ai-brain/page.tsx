@@ -149,7 +149,8 @@ function AiBrainContent() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           message: text,
-          conversationId: conversationId, // null on first message — server creates one
+          conversationId: conversationId,
+          source: "dashboard",
         }),
       });
       const data = await res.json();
