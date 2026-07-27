@@ -16,9 +16,7 @@ export const business = pgTable("business", {
   website: text("website").default(""),
   address: text("address").default(""),
   vapiWebhookToken: text("vapi_webhook_token").unique(),
-  vapiPhoneNumberId: text("vapi_phone_number_id"),
-  vapiPhoneNumber: text("vapi_phone_number"),
-  vapiAssistantId: text("vapi_assistant_id"),
+  voiceSetupReady: boolean("voice_setup_ready").default(false),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
@@ -174,5 +172,17 @@ export const communicationLog = pgTable("communication_log", {
   errorMessage: text("error_message").default(""),
   externalId: text("external_id").default(""),
   sentAt: timestamp("sent_at").defaultNow().notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const phoneNumber = pgTable("phone_number", {
+  id: text("id").primaryKey(),
+  businessId: text("business_id")
+    .notNull()
+    .references(() => business.id, { onDelete: "cascade" }),
+  vapiPhoneNumberId: text("vapi_phone_number_id").notNull(),
+  number: text("number").notNull(),
+  serverUrl: text("server_url"),
+  provider: text("provider").default("twilio"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });

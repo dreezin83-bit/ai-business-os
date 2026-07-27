@@ -1,7 +1,7 @@
 /**
  * Vapi REST API Client
  *
- * Thin wrapper around Vapi's Phone Numbers and Assistants APIs.
+ * Typed client for the Vapi Phone Numbers, Assistants, and Calls APIs.
  * Docs: https://docs.vapi.ai/api-reference
  *
  * Required env: VAPI_API_KEY
@@ -9,16 +9,26 @@
 
 const VAPI_BASE = "https://api.vapi.ai";
 
-interface VapiPhoneNumber {
+export interface VapiPhoneNumber {
   id: string;
   name: string;
   number: string;
   provider: "twilio" | "vonage" | "vapi";
   assistantId?: string;
+  serverUrl?: string;
+  serverUrlSecret?: string;
   createdAt: string;
 }
 
-interface VapiAssistant {
+export interface VapiAvailableNumber {
+  number: string;
+  provider: string;
+  locality?: string;
+  region?: string;
+  country?: string;
+}
+
+export interface VapiAssistant {
   id: string;
   name: string;
   model: {
@@ -34,22 +44,57 @@ interface VapiAssistant {
   endCallPhrases?: string[];
 }
 
-interface BuyPhoneNumberOptions {
+export interface VapiCall {
+  id: string;
+  assistantId?: string;
+  phoneNumberId?: string;
+  type: "inbound" | "outbound";
+  status: "queued" | "ringing" | "in-progress" | "ended";
+  startedAt?: string;
+  endedAt?: string;
+  cost?: number;
+  summary?: string;
+  recordingUrl?: string;
+}
+
+export interface CreatePhoneNumberInput {
+  number?: string;
+  name?: string;
+  serverUrl?: string;
+  serverUrlSecret?: string;
+}
+
+export interface UpdatePhoneNumberInput {
+  name?: string;
+  serverUrl?: string;
+  serverUrlSecret?: string;
+  assistantId?: string;
+}
+
+export interface ListAvailableNumbersInput {
   areaCode?: string;
+  limit?: number;
+}
+
+export interface BuyPhoneNumberInput {
+  areaCode?: string;
+  number?: string;
   provider?: "twilio" | "vonage" | "vapi";
 }
 
-interface CreateAssistantOptions {
+export interface CreateAssistantInput {
   name: string;
   firstMessage: string;
   systemPrompt: string;
   voiceProvider?: string;
   voiceId?: string;
-  serverUrl: string;
+  serverUrl?: string;
   serverUrlSecret?: string;
   modelProvider?: string;
   modelName?: string;
 }
+
+// ─── Internal fetch ─────────────────────────────────────────────
 
 async function vapiFetch<T>(
   path: string,
@@ -72,91 +117,124 @@ async function vapiFetch<T>(
   if (!res.ok) {
     const body = await res.text();
     throw new Error(
-      `Vapi API error ${res.status}: ${body.substring(0, 300)}`
+      `Vapi API ${res.status} ${path}: ${body.substring(0, 300)}`
     );
   }
 
   return res.json();
 }
 
-/** Purchase a new phone number */
-export async function buyPhoneNumber(
-  options: BuyPhoneNumberOptions = {}
-): Promise<VapiPhoneNumber> {
-  const body: Record<string, unknown> = {
-    provider: options.provider || "twilio",
-  };
-  if (options.areaCode) body.areaCode = options.areaCode;
+// ─── Phone Numbers ──────────────────────────────────────────────
 
-  console.log("[Vapi] Buying phone number:", JSON.stringify(body));
-  const result = await vapiFetch<VapiPhoneNumber>("/phone-number", {
+/**
+ * Assign a phone number to your account with a specific server URL.
+ * The `number` is the full E.164 number you want to use.
+ */
+export async function createPhoneNumber(
+  input: CreatePhoneNumberInput
+): Promise<VapiPhoneNumber> {
+  console.log("[Vapi] Creating phone number:", input.number || "(auto)");
+  return vapiFetch<VapiPhoneNumber>("/phone-number", {
     method: "POST",
-    body: JSON.stringify(body),
+    body: JSON.stringify({
+      name: input.name || input.number || "AI Business OS Number",
+      number: input.number,
+      ...(input.serverUrl ? { serverUrl: input.serverUrl } : {}),
+      ...(input.serverUrlSecret
+        ? { serverUrlSecret: input.serverUrlSecret }
+        : {}),
+    }),
   });
-  console.log(`[Vapi] Purchased: ${result.number} (${result.id})`);
-  return result;
 }
 
-/** List purchased phone numbers */
+/** List all phone numbers on your account */
 export async function listPhoneNumbers(): Promise<VapiPhoneNumber[]> {
   return vapiFetch<VapiPhoneNumber[]>("/phone-number");
 }
 
-/** Delete a phone number */
+/** Update a phone number's name, serverUrl, or assistant assignment */
+export async function updatePhoneNumber(
+  id: string,
+  input: UpdatePhoneNumberInput
+): Promise<VapiPhoneNumber> {
+  console.log(`[Vapi] Updating phone number ${id}`);
+  return vapiFetch<VapiPhoneNumber>(`/phone-number/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify(input),
+  });
+}
+
+/** Release/delete a phone number */
 export async function deletePhoneNumber(id: string): Promise<void> {
   await vapiFetch(`/phone-number/${id}`, { method: "DELETE" });
   console.log(`[Vapi] Deleted phone number: ${id}`);
 }
 
-/** Assign an assistant to a phone number */
-export async function assignAssistantToNumber(
-  phoneNumberId: string,
-  assistantId: string
-): Promise<void> {
-  await vapiFetch(`/phone-number/${phoneNumberId}`, {
-    method: "PATCH",
-    body: JSON.stringify({ assistantId }),
-  });
-  console.log(
-    `[Vapi] Assigned assistant ${assistantId} to number ${phoneNumberId}`
-  );
+/** List available numbers for purchase (by areaCode) */
+export async function listAvailableNumbers(
+  input?: ListAvailableNumbersInput
+): Promise<VapiAvailableNumber[]> {
+  const params = new URLSearchParams();
+  if (input?.areaCode) params.set("areaCode", input.areaCode);
+  if (input?.limit) params.set("limit", String(input.limit));
+  const qs = params.toString();
+  return vapiFetch<VapiAvailableNumber[]>(`/available-numbers${qs ? "?" + qs : ""}`);
 }
 
-/** Create a new assistant */
+/** Purchase a phone number from Vapi's pool */
+export async function buyPhoneNumber(
+  input: BuyPhoneNumberInput = {}
+): Promise<VapiPhoneNumber> {
+  const body: Record<string, unknown> = {
+    provider: input.provider || "twilio",
+  };
+  if (input.areaCode) body.areaCode = input.areaCode;
+  if (input.number) body.number = input.number;
+
+  console.log("[Vapi] Buying phone number:", JSON.stringify(body));
+  return vapiFetch<VapiPhoneNumber>("/phone-number/buy", {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+}
+
+// ─── Assistants ─────────────────────────────────────────────────
+
+/** Create a new Vapi assistant */
 export async function createAssistant(
-  options: CreateAssistantOptions
+  input: CreateAssistantInput
 ): Promise<VapiAssistant> {
   const body = {
-    name: options.name,
-    firstMessage: options.firstMessage,
+    name: input.name,
+    firstMessage: input.firstMessage,
     model: {
-      provider: options.modelProvider || "openai",
-      model: options.modelName || "gpt-4o",
-      messages: [{ role: "system", content: options.systemPrompt }],
+      provider: input.modelProvider || "openai",
+      model: input.modelName || "gpt-4o",
+      messages: [{ role: "system", content: input.systemPrompt }],
     },
     voice: {
-      provider: options.voiceProvider || "11labs",
-      voiceId: options.voiceId || "21m00Tcm4TlvDq8ikWAM",
+      provider: input.voiceProvider || "11labs",
+      voiceId: input.voiceId || "21m00Tcm4TlvDq8ikWAM",
     },
-    serverUrl: options.serverUrl,
-    serverUrlSecret: options.serverUrlSecret || "",
+    ...(input.serverUrl ? { serverUrl: input.serverUrl } : {}),
+    ...(input.serverUrlSecret
+      ? { serverUrlSecret: input.serverUrlSecret }
+      : {}),
     recordingEnabled: true,
     endCallPhrases: ["goodbye", "bye bye", "have a great day", "take care"],
   };
 
-  console.log(`[Vapi] Creating assistant: ${options.name}`);
-  const result = await vapiFetch<VapiAssistant>("/assistant", {
+  console.log(`[Vapi] Creating assistant: ${input.name}`);
+  return vapiFetch<VapiAssistant>("/assistant", {
     method: "POST",
     body: JSON.stringify(body),
   });
-  console.log(`[Vapi] Created assistant: ${result.id}`);
-  return result;
 }
 
 /** Update an existing assistant */
 export async function updateAssistant(
   assistantId: string,
-  updates: Partial<CreateAssistantOptions>
+  updates: Partial<CreateAssistantInput>
 ): Promise<VapiAssistant> {
   const body: Record<string, unknown> = {};
   if (updates.name) body.name = updates.name;
@@ -176,7 +254,6 @@ export async function updateAssistant(
     };
   }
 
-  console.log(`[Vapi] Updating assistant: ${assistantId}`);
   return vapiFetch<VapiAssistant>(`/assistant/${assistantId}`, {
     method: "PATCH",
     body: JSON.stringify(body),
@@ -192,4 +269,12 @@ export async function deleteAssistant(id: string): Promise<void> {
 /** Get an assistant by ID */
 export async function getAssistant(id: string): Promise<VapiAssistant> {
   return vapiFetch<VapiAssistant>(`/assistant/${id}`);
+}
+
+// ─── Calls ──────────────────────────────────────────────────────
+
+/** List recent calls */
+export async function getCalls(limit = 50): Promise<VapiCall[]> {
+  const params = new URLSearchParams({ limit: String(limit) });
+  return vapiFetch<VapiCall[]>(`/call?${params.toString()}`);
 }
