@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Settings, Loader2, Save } from "lucide-react";
+import { Settings, Loader2, Save, Copy, Check, ExternalLink } from "lucide-react";
 import { useToast } from "@/components/toaster";
 
 interface BusinessSettings {
@@ -14,6 +14,7 @@ interface BusinessSettings {
   email: string;
   website: string;
   address: string;
+  vapiWebhookToken?: string;
 }
 
 export default function SettingsPage() {
@@ -23,9 +24,11 @@ export default function SettingsPage() {
     email: "",
     website: "",
     address: "",
+    vapiWebhookToken: undefined,
   });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [copied, setCopied] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -39,6 +42,7 @@ export default function SettingsPage() {
             email: data.email || "",
             website: data.website || "",
             address: data.address || "",
+            vapiWebhookToken: data.vapiWebhookToken || undefined,
           });
         }
         setLoading(false);
@@ -62,6 +66,19 @@ export default function SettingsPage() {
       setSaving(false);
     }
   };
+
+  const handleCopyWebhook = () => {
+    const url = `https://ai-business-os-six.vercel.app/api/voice/vapi/${settings.vapiWebhookToken}`;
+    navigator.clipboard.writeText(url).then(() => {
+      setCopied(true);
+      toast("Webhook URL copied to clipboard", "success");
+      setTimeout(() => setCopied(false), 2000);
+    });
+  };
+
+  const webhookUrl = settings.vapiWebhookToken
+    ? `https://ai-business-os-six.vercel.app/api/voice/vapi/${settings.vapiWebhookToken}`
+    : null;
 
   if (loading) {
     return (
@@ -149,6 +166,39 @@ export default function SettingsPage() {
           </div>
         </CardContent>
       </Card>
+
+      {webhookUrl && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base flex items-center gap-2">
+              <ExternalLink className="h-4 w-4" /> Vapi Voice Webhook
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-xs text-muted-foreground mb-3">
+              Use this URL in your Vapi dashboard to connect AI voice agents to your business.
+              This URL is unique to your account — keep it private.
+            </p>
+            <div className="flex items-center gap-2">
+              <code className="flex-1 bg-muted px-3 py-2 rounded-md text-xs font-mono break-all">
+                {webhookUrl}
+              </code>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleCopyWebhook}
+                className="shrink-0"
+              >
+                {copied ? (
+                  <Check className="h-4 w-4 text-green-500" />
+                ) : (
+                  <Copy className="h-4 w-4" />
+                )}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }

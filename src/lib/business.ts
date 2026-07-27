@@ -22,6 +22,7 @@ export async function ensureBusiness() {
     email: "",
     website: "",
     address: "",
+    vapiWebhookToken: crypto.randomUUID(),
   });
 
   // Also create default AI brain config

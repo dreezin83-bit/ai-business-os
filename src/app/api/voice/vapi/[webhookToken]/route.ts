@@ -47,7 +47,7 @@ interface VapiErrorResponse {
 
 // ─── Auth ───────────────────────────────────────────────────
 
-async function validateAuth(request: Request, tenantId: string): Promise<boolean> {
+async function validateAuth(request: Request, webhookToken: string): Promise<boolean> {
   const authHeader = request.headers.get("authorization") || "";
   const token = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : authHeader;
   const expected = process.env.VAPI_WEBHOOK_SECRET;
@@ -58,7 +58,7 @@ async function validateAuth(request: Request, tenantId: string): Promise<boolean
   }
 
   if (token !== expected) {
-    console.error(`[Vapi] Invalid token for tenant ${tenantId}`);
+    console.error(`[Vapi] Invalid token for webhook ${webhookToken}`);
     return false;
   }
 
@@ -184,27 +184,32 @@ async function handleEndOfCall(businessId: string, msg: VapiMessageEnvelope): Pr
 
 // ─── Logging helpers ────────────────────────────────────────
 
-function logEvent(tenantId: string, type: string, extra?: string) {
-  console.log(`[Vapi] tenant=${tenantId} event=${type}${extra ? " " + extra : ""}`);
+function logEvent(token: string, type: string, extra?: string) {
+  console.log(`[Vapi] token=${token.substring(0, 8)}... event=${type}${extra ? " " + extra : ""}`);
 }
 
 // ─── Handler ───────────────────────────────────────────────
 
 export async function POST(
   request: Request,
-  { params }: { params: Promise<{ tenantId: string }> }
+  { params }: { params: Promise<{ webhookToken: string }> }
 ) {
-  const { tenantId } = await params;
+  const { webhookToken } = await params;
 
   try {
     // ── Auth ──
-    const authed = await validateAuth(request, tenantId);
+    const authed = await validateAuth(request, webhookToken);
     if (!authed) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
     }
 
-    // Verify business exists
-    const [biz] = await db.select({ id: business.id }).from(business).where(eq(business.id, tenantId)).limit(1);
+    // ── Resolve business by webhook token ──
+    const [biz] = await db
+      .select({ id: business.id })
+      .from(business)
+      .where(eq(business.vapiWebhookToken, webhookToken))
+      .limit(1);
+
     if (!biz) {
       return NextResponse.json({ error: "Tenant not found" }, { status: 404 });
     }
@@ -224,7 +229,7 @@ export async function POST(
     }
 
     const eventType = msg.type;
-    logEvent(tenantId, eventType);
+    logEvent(webhookToken, eventType);
 
     // ── Route by event type ──
 
@@ -238,7 +243,7 @@ export async function POST(
     if (eventType === "status-update") {
       const callId = msg.call?.id || "?";
       const status = msg.status || msg.call?.status || "?";
-      logEvent(tenantId, eventType, `call=${callId} status=${status}`);
+      logEvent(webhookToken, eventType, `call=${callId} status=${status}`);
       return NextResponse.json({});
     }
 
@@ -252,37 +257,37 @@ export async function POST(
 
     // 4. hang — log hangup
     if (eventType === "hang") {
-      logEvent(tenantId, eventType, `call=${msg.call?.id || "?"}`);
+      logEvent(webhookToken, eventType, `call=${msg.call?.id || "?"}`);
       return NextResponse.json({});
     }
 
     // 5. conversation-update — log message history (for lead capture)
     if (eventType === "conversation-update") {
       const count = msg.messages?.length || 0;
-      logEvent(tenantId, eventType, `messages=${count}`);
+      logEvent(webhookToken, eventType, `messages=${count}`);
       return NextResponse.json({});
     }
 
     // 6. transcript — log partial/final transcripts
     if (eventType === "transcript") {
-      logEvent(tenantId, eventType, `"${(msg.transcript || "").substring(0, 120)}"`);
+      logEvent(webhookToken, eventType, `"${(msg.transcript || "").substring(0, 120)}"`);
       return NextResponse.json({});
     }
 
     // 7. speech-update — log speech start/stop
     if (eventType === "speech-update") {
-      logEvent(tenantId, eventType, `status=${msg.status || "?"}`);
+      logEvent(webhookToken, eventType, `status=${msg.status || "?"}`);
       return NextResponse.json({});
     }
 
     // 8. tool-calls — handle tool calls, return empty result for now
     if (eventType === "tool-calls") {
-      logEvent(tenantId, eventType, `artifact=${JSON.stringify(msg.artifact || {}).substring(0, 200)}`);
+      logEvent(webhookToken, eventType, `artifact=${JSON.stringify(msg.artifact || {}).substring(0, 200)}`);
       return NextResponse.json({ results: [] });
     }
 
     // Unknown event — log and acknowledge
-    logEvent(tenantId, eventType, "(unhandled — acknowledging)");
+    logEvent(webhookToken, eventType, "(unhandled — acknowledging)");
     return NextResponse.json({});
 
   } catch (error: any) {
