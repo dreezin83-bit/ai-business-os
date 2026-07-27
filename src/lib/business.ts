@@ -14,6 +14,7 @@ export async function ensureBusiness() {
 
   // Auto-create business profile
   const id = generateId();
+  const webhookToken = crypto.randomUUID();
   await db.insert(business).values({
     id,
     name: "My Business",
@@ -22,6 +23,7 @@ export async function ensureBusiness() {
     email: "",
     website: "",
     address: "",
+    vapiWebhookToken: webhookToken,
   });
 
   // Also create default AI brain config

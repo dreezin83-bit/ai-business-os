@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { db } from "@/db";
 import { business, aiBrainConfig, conversation, message, lead } from "@/db/schema";
-import { eq, and } from "drizzle-orm";
+import { eq, and, or } from "drizzle-orm";
 import { generateId } from "@/lib/utils";
 import { buildAiContext } from "@/lib/ai-context";
 import { extractLeadFromConversation, isValidLead } from "@/lib/lead-extractor";
@@ -203,8 +203,19 @@ export async function POST(
       return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
     }
 
-    // Verify business exists
-    const [biz] = await db.select({ id: business.id }).from(business).where(eq(business.id, tenantId)).limit(1);
+    // ── Resolve tenant by webhook token (with fallback to business ID) ──
+    // Try vapi_webhook_token first, then business id for backward compatibility
+    const [biz] = await db
+      .select({ id: business.id, vapiWebhookToken: business.vapiWebhookToken })
+      .from(business)
+      .where(
+        or(
+          eq(business.vapiWebhookToken, tenantId),
+          eq(business.id, tenantId)
+        )
+      )
+      .limit(1);
+
     if (!biz) {
       return NextResponse.json({ error: "Tenant not found" }, { status: 404 });
     }
