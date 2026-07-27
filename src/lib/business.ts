@@ -14,6 +14,7 @@ export async function ensureBusiness() {
 
   // Auto-create business profile
   const id = generateId();
+  const vapiWebhookToken = crypto.randomUUID();
   await db.insert(business).values({
     id,
     name: "My Business",
@@ -22,7 +23,8 @@ export async function ensureBusiness() {
     email: "",
     website: "",
     address: "",
-    vapiWebhookToken: crypto.randomUUID(),
+    vapiWebhookToken,
+    voiceSetupReady: false,  // Ready for phone provisioning once they upgrade
   });
 
   // Also create default AI brain config
