@@ -16,6 +16,9 @@ export const business = pgTable("business", {
   website: text("website").default(""),
   address: text("address").default(""),
   vapiWebhookToken: text("vapi_webhook_token").unique(),
+  vapiPhoneNumberId: text("vapi_phone_number_id"),
+  vapiPhoneNumber: text("vapi_phone_number"),
+  vapiAssistantId: text("vapi_assistant_id"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
