@@ -13,8 +13,7 @@ export interface LlmResult {
 }
 
 /**
- * Create an LLM completion using the configured provider.
- * Supports OpenAI, OpenAI-compatible providers (Groq, Together, OpenRouter, etc.).
+ * Create an LLM completion using OpenAI.
  *
  * Returns { completion: null, error: "reason" } if the API key is missing or any error occurs.
  */
@@ -23,24 +22,18 @@ export async function createLlmCompletion(
 ): Promise<LlmResult> {
   const provider = process.env.AI_PROVIDER || "openai";
   const model = process.env.AI_MODEL || "gpt-4o-mini";
-  const baseURL = process.env.OPENAI_BASE_URL || "(default)";
   const hasKey = !!process.env.OPENAI_API_KEY;
 
-  // Runtime diagnostics — log provider config without exposing the API key
-  console.log(`[LLM] Provider: ${provider} | Model: ${model} | Base URL: ${baseURL} | API Key set: ${hasKey}`);
+  console.log(`[LLM] Provider: ${provider} | Model: ${model} | API Key set: ${hasKey}`);
 
   try {
-    switch (provider) {
-      case "openai":
-        console.log("[LLM] Routing to OpenAI");
-        return await callOpenAI(messages);
-      case "openai-compatible":
-        console.log("[LLM] Routing to OpenAI-compatible provider");
-        return await callOpenAICompatible(messages);
-      default:
-        console.error("[LLM] Unknown provider:", provider);
-        return { completion: null, error: `Unknown AI provider: "${provider}". Use "openai" or "openai-compatible".` };
+    if (provider !== "openai") {
+      console.error("[LLM] Unknown provider:", provider);
+      return { completion: null, error: `Unknown AI provider: "${provider}". Only "openai" is supported.` };
     }
+
+    console.log("[LLM] Routing to OpenAI");
+    return await callOpenAI(messages);
   } catch (error: any) {
     const status = error?.status || error?.statusCode;
     const message = error?.message || error?.toString() || "Unknown LLM error";
@@ -61,41 +54,6 @@ async function callOpenAI(messages: LlmMessage[]): Promise<LlmResult> {
 
   const { default: OpenAI } = await import("openai");
   const openai = new OpenAI({ apiKey });
-
-  const completion = await openai.chat.completions.create({
-    model: process.env.AI_MODEL || "gpt-4o-mini",
-    messages,
-    max_tokens: 500,
-    temperature: 0.7,
-  });
-
-  const content = completion.choices[0]?.message?.content;
-  if (!content) {
-    return { completion: null, error: "AI returned an empty response." };
-  }
-
-  return { completion: { content }, error: null };
-}
-
-/**
- * Call an OpenAI-compatible provider using the OpenAI SDK with a custom base URL.
- * Works with Groq, Together, OpenRouter, and any provider that implements the OpenAI chat completions API.
- */
-async function callOpenAICompatible(
-  messages: LlmMessage[]
-): Promise<LlmResult> {
-  const apiKey = process.env.OPENAI_API_KEY;
-  const baseURL = process.env.OPENAI_BASE_URL;
-
-  if (!apiKey) {
-    return { completion: null, error: "OPENAI_API_KEY is not configured. Required for OpenAI-compatible providers (Groq, etc.)." };
-  }
-  if (!baseURL) {
-    return { completion: null, error: "OPENAI_BASE_URL is not configured. Required for OpenAI-compatible providers (Groq, etc.). Set it to the provider's API endpoint (e.g. https://api.groq.com/openai/v1)." };
-  }
-
-  const { default: OpenAI } = await import("openai");
-  const openai = new OpenAI({ apiKey, baseURL });
 
   const completion = await openai.chat.completions.create({
     model: process.env.AI_MODEL || "gpt-4o-mini",
