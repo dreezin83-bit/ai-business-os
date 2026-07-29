@@ -8,6 +8,7 @@ import { business, aiBrainConfig, knowledgeDocument } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { generateId } from "@/lib/utils";
 import { getTemplate } from "@/lib/ai-templates/index";
+import { invalidateAiContextCache } from "@/lib/ai-context-cache";
 
 export async function POST(request: Request) {
   const { userId } = await auth();
@@ -109,6 +110,9 @@ export async function POST(request: Request) {
     .update(business)
     .set({ category, updatedAt: new Date() })
     .where(eq(business.id, biz.id));
+
+  // Invalidate cached AI context — template changed all the settings
+  invalidateAiContextCache(biz.id);
 
   return NextResponse.json({
     success: true,

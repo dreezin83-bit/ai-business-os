@@ -5,6 +5,7 @@ import { eq } from "drizzle-orm";
 import { auth } from "@clerk/nextjs/server";
 import { ensureBusiness } from "@/lib/business";
 import { generateId } from "@/lib/utils";
+import { invalidateAiContextCache } from "@/lib/ai-context-cache";
 
 
 export async function GET() {
@@ -84,6 +85,9 @@ export async function PUT(request: Request) {
     } else {
       await db.insert(aiBrainConfig).values({ id: generateId(), businessId, ...data });
     }
+
+    // Invalidate cached AI context so next request gets fresh config
+    invalidateAiContextCache(businessId);
 
     const [config] = await db.select().from(aiBrainConfig).where(eq(aiBrainConfig.businessId, businessId));
     return NextResponse.json(config);
