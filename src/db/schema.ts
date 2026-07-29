@@ -19,6 +19,8 @@ export const business = pgTable("business", {
   voiceSetupReady: boolean("voice_setup_ready").default(false),
   category: text("category").default(""),
   onboardingComplete: boolean("onboarding_complete").default(false),
+  status: text("status").default("active"), // active | suspended
+  suspendedAt: timestamp("suspended_at"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
@@ -186,5 +188,37 @@ export const phoneNumber = pgTable("phone_number", {
   number: text("number").notNull(),
   serverUrl: text("server_url"),
   provider: text("provider").default("twilio"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+// ── Subscription ────────────────────────────────────────
+export const subscription = pgTable("subscription", {
+  id: text("id").primaryKey(),
+  businessId: text("business_id")
+    .notNull()
+    .references(() => business.id, { onDelete: "cascade" }),
+  plan: text("plan").default("starter"),
+  status: text("status").default("active"),
+  amount: integer("amount").default(0),
+  currency: text("currency").default("usd"),
+  interval: text("interval").default("month"),
+  flutterwaveSubId: text("flutterwave_sub_id"),
+  currentPeriodStart: timestamp("current_period_start"),
+  currentPeriodEnd: timestamp("current_period_end"),
+  canceledAt: timestamp("canceled_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+// ── Usage tracking ──────────────────────────────────────
+export const usageAiCall = pgTable("usage_ai_call", {
+  id: text("id").primaryKey(),
+  businessId: text("business_id")
+    .notNull()
+    .references(() => business.id, { onDelete: "cascade" }),
+  tokensIn: integer("tokens_in").default(0),
+  tokensOut: integer("tokens_out").default(0),
+  model: text("model").default("gpt-4o-mini"),
+  source: text("source").default("chat"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
