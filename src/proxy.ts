@@ -54,8 +54,8 @@ export default clerkMiddleware(
         console.warn(`[proxy] slow onboarding check: ${elapsed}ms for user ${userId}`);
       }
 
-      if (rows.length === 0 || rows[0].onboarding_complete) {
-        // Onboarding done — cache in cookie for 5 minutes
+      if (rows.length > 0 && rows[0].onboarding_complete) {
+        // Business exists and onboarding is complete — cache in cookie
         const res = NextResponse.next();
         res.cookies.set(ONBOARDING_COOKIE, `1:${userId}`, {
           httpOnly: true,
@@ -67,7 +67,7 @@ export default clerkMiddleware(
         return res;
       }
 
-      // Not onboarded — redirect
+      // No business yet OR onboarding not complete — redirect to /onboarding
       return NextResponse.redirect(new URL("/onboarding", req.url));
     } catch (err) {
       console.error("[proxy] onboarding check failed:", (err as Error).message);
