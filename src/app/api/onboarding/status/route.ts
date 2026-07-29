@@ -21,7 +21,12 @@ export async function GET() {
     .where(eq(business.ownerId, userId))
     .limit(1);
 
-  return NextResponse.json({
-    onboardingComplete: biz?.onboardingComplete ?? false,
-  });
+  return NextResponse.json(
+    { onboardingComplete: biz?.onboardingComplete ?? false },
+    {
+      headers: {
+        "Cache-Control": "private, max-age=30",
+      },
+    }
+  );
 }
