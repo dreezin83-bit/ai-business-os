@@ -24,6 +24,7 @@ const ONBOARDING_COOKIE = "ob_status";
 
 export default clerkMiddleware(
   async (auth, req) => {
+    // Protect non-public routes
     if (!isPublicRoute(req)) {
       auth.protect();
     }
@@ -32,11 +33,10 @@ export default clerkMiddleware(
     // Skip entirely for API routes, static assets, and public routes
     if (isApiOrStaticRoute(req) || isPublicRoute(req)) return;
 
-    const session = await auth;
-    const userId = session.userId;
+    const { userId } = await auth;
     if (!userId) return;
 
-    // Check cookie cache first — skip DB if already confirmed
+    // Check cookie cache first — skip DB if already confirmed for this user
     const cookie = req.cookies.get(ONBOARDING_COOKIE);
     if (cookie?.value === `1:${userId}`) return;
 
@@ -54,8 +54,8 @@ export default clerkMiddleware(
         console.warn(`[proxy] slow onboarding check: ${elapsed}ms for user ${userId}`);
       }
 
+      // Business exists AND onboarding is complete → cache + allow
       if (rows.length > 0 && rows[0].onboarding_complete) {
-        // Business exists and onboarding is complete — cache in cookie
         const res = NextResponse.next();
         res.cookies.set(ONBOARDING_COOKIE, `1:${userId}`, {
           httpOnly: true,
@@ -67,11 +67,15 @@ export default clerkMiddleware(
         return res;
       }
 
-      // No business yet OR onboarding not complete — redirect to /onboarding
-      return NextResponse.redirect(new URL("/onboarding", req.url));
+      // No business yet, or onboarding NOT complete → redirect
+      console.log(`[proxy] redirecting user ${userId} to /onboarding — business=${rows.length > 0}, complete=${rows[0]?.onboarding_complete}`);
+      const redirectUrl = new URL("/onboarding", req.url);
+      // Ensure we're not already on onboarding to avoid redirect loops
+      if (req.nextUrl.pathname === "/onboarding") return;
+      return NextResponse.redirect(redirectUrl);
     } catch (err) {
       console.error("[proxy] onboarding check failed:", (err as Error).message);
-      // Don't block navigation on DB errors
+      // Don't block navigation on DB errors — let them through
     }
   },
   { publishableKey: process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }

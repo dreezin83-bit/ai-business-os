@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,11 +11,7 @@ import {
   Save,
   Copy,
   Check,
-  ExternalLink,
   Phone,
-  Plus,
-  Trash2,
-  BadgeCheck,
 } from "lucide-react";
 import { useToast } from "@/components/toaster";
 
@@ -25,18 +21,11 @@ interface BusinessSettings {
   email: string;
   website: string;
   address: string;
-  vapiWebhookToken?: string;
-  voiceSetupReady?: boolean;
 }
 
-interface PhoneNumber {
-  id: string;
-  businessId: string;
-  vapiPhoneNumberId: string;
-  number: string;
-  serverUrl?: string;
-  provider: string;
-  createdAt: string;
+interface SubscriptionInfo {
+  active: boolean;
+  plan?: string;
 }
 
 export default function SettingsPage() {
@@ -46,54 +35,68 @@ export default function SettingsPage() {
     email: "",
     website: "",
     address: "",
-    vapiWebhookToken: undefined,
-    voiceSetupReady: false,
   });
-  const [phoneNumbers, setPhoneNumbers] = useState<PhoneNumber[]>([]);
+  const [aiNumber, setAiNumber] = useState<string | null>(null);
+  const [hasSubscription, setHasSubscription] = useState(false);
+  const [subscriptionChecked, setSubscriptionChecked] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [buying, setBuying] = useState(false);
-  const [releasing, setReleasing] = useState<string | null>(null);
-  const [copied, setCopied] = useState(false);
+  const [copiedNumber, setCopiedNumber] = useState(false);
   const [businessId, setBusinessId] = useState<string | null>(null);
   const { toast } = useToast();
 
-  const fetchPhoneNumbers = useCallback(
-    async (bizId: string) => {
+  useEffect(() => {
+    async function load() {
       try {
-        const res = await fetch(`/api/business/${bizId}/phone`);
-        if (res.ok) {
-          const data = await res.json();
-          setPhoneNumbers(Array.isArray(data) ? data : []);
+        const settingsRes = await fetch("/api/settings");
+        if (settingsRes.ok) {
+          const data = await settingsRes.json();
+          if (data && data.id) {
+            setBusinessId(data.id);
+            setSettings({
+              name: data.name || "",
+              phone: data.phone || "",
+              email: data.email || "",
+              website: data.website || "",
+              address: data.address || "",
+            });
+          }
+        }
+
+        try {
+          const subRes = await fetch("/api/subscription");
+          if (subRes.ok) {
+            const subData: SubscriptionInfo = await subRes.json();
+            setHasSubscription(subData.active === true);
+          }
+        } catch {
+          // silently fail
+        }
+        setSubscriptionChecked(true);
+
+        try {
+          const settingsData = await (await fetch("/api/settings")).json();
+          if (settingsData?.id) {
+            const phoneRes = await fetch(`/api/business/${settingsData.id}/phone`);
+            if (phoneRes.ok) {
+              const phoneData = await phoneRes.json();
+              const numbers = Array.isArray(phoneData) ? phoneData : [];
+              if (numbers.length > 0) {
+                setAiNumber(numbers[0].number);
+              }
+            }
+          }
+        } catch {
+          // no numbers yet
         }
       } catch {
-        // silently fail — phone numbers are optional
-      }
-    },
-    []
-  );
-
-  useEffect(() => {
-    fetch("/api/settings")
-      .then((r) => (r.ok ? r.json() : Promise.reject("No settings")))
-      .then((data) => {
-        if (data && data.id) {
-          setBusinessId(data.id);
-          setSettings({
-            name: data.name || "",
-            phone: data.phone || "",
-            email: data.email || "",
-            website: data.website || "",
-            address: data.address || "",
-            vapiWebhookToken: data.vapiWebhookToken || undefined,
-            voiceSetupReady: data.voiceSetupReady || false,
-          });
-          fetchPhoneNumbers(data.id);
-        }
+        // silently fail
+      } finally {
         setLoading(false);
-      })
-      .catch(() => setLoading(false));
-  }, [fetchPhoneNumbers]);
+      }
+    }
+    load();
+  }, []);
 
   const handleSave = async () => {
     setSaving(true);
@@ -112,70 +115,14 @@ export default function SettingsPage() {
     }
   };
 
-  const handleCopyWebhook = () => {
-    const url = `https://ai-business-os-six.vercel.app/api/voice/vapi/${settings.vapiWebhookToken}`;
-    navigator.clipboard.writeText(url).then(() => {
-      setCopied(true);
-      toast("Webhook URL copied to clipboard", "success");
-      setTimeout(() => setCopied(false), 2000);
-    });
-  };
-
-  const handleBuyNumber = async () => {
-    if (!businessId) return;
-    setBuying(true);
-    try {
-      const res = await fetch(`/api/business/${businessId}/phone`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-      });
-      if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.error || "Failed to buy number");
-      }
-      const newNumber = await res.json();
-      setPhoneNumbers((prev) => [...prev, newNumber]);
-      setSettings((s) => ({ ...s, voiceSetupReady: true }));
-      toast(`Phone number ${newNumber.number} purchased!`, "success");
-    } catch (err: any) {
-      toast(err.message || "Failed to buy phone number", "error");
-    } finally {
-      setBuying(false);
-    }
-  };
-
-  const handleReleaseNumber = async (phoneId: string) => {
-    if (!businessId) return;
-    if (!confirm("Release this phone number? This cannot be undone from this dashboard.")) return;
-    setReleasing(phoneId);
-    try {
-      const res = await fetch(`/api/business/${businessId}/phone`, {
-        method: "DELETE",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ phoneNumberId: phoneId }),
-      });
-      if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.error || "Failed to release number");
-      }
-      setPhoneNumbers((prev) => prev.filter((p) => p.id !== phoneId));
-      toast("Phone number released", "success");
-    } catch (err: any) {
-      toast(err.message || "Failed to release phone number", "error");
-    } finally {
-      setReleasing(null);
-    }
-  };
-
-  const handleCopyNumber = (number: string) => {
-    navigator.clipboard.writeText(number).then(() => {
+  const handleCopyNumber = () => {
+    if (!aiNumber) return;
+    navigator.clipboard.writeText(aiNumber).then(() => {
+      setCopiedNumber(true);
       toast("Number copied", "success");
+      setTimeout(() => setCopiedNumber(false), 2000);
     });
   };
-
-  const webhookUrl = settings.vapiWebhookToken
-    ? `https://ai-business-os-six.vercel.app/api/voice/vapi/${settings.vapiWebhookToken}`
-    : null;
 
   if (loading) {
     return (
@@ -193,7 +140,7 @@ export default function SettingsPage() {
             <Settings className="h-6 w-6" /> Settings
           </h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Manage your business settings and voice numbers
+            Manage your business settings
           </p>
         </div>
         <Button size="sm" onClick={handleSave} disabled={saving}>
@@ -279,120 +226,63 @@ export default function SettingsPage() {
         </CardContent>
       </Card>
 
-      {/* Voice Phone Numbers */}
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle className="text-base flex items-center gap-2">
-            <Phone className="h-4 w-4" /> Voice Phone Numbers
-            {settings.voiceSetupReady && (
-              <span className="inline-flex items-center gap-1 text-xs text-green-600 dark:text-green-400">
-                <BadgeCheck className="h-3 w-3" /> Voice ready
-              </span>
-            )}
-          </CardTitle>
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={handleBuyNumber}
-            disabled={buying}
-          >
-            {buying ? (
-              <Loader2 className="h-4 w-4 animate-spin mr-1" />
-            ) : (
-              <Plus className="h-4 w-4 mr-1" />
-            )}
-            Buy Number
-          </Button>
-        </CardHeader>
-        <CardContent>
-          {phoneNumbers.length === 0 ? (
-            <div className="text-center py-6 text-sm text-muted-foreground">
-              <Phone className="h-8 w-8 mx-auto mb-2 opacity-30" />
-              <p>No voice numbers yet.</p>
-              <p className="text-xs mt-1">
-                Buy a number to receive AI-powered voice calls.
-              </p>
-            </div>
-          ) : (
-            <div className="space-y-2">
-              {phoneNumbers.map((pn) => (
-                <div
-                  key={pn.id}
-                  className="flex items-center justify-between bg-muted/50 rounded-lg px-4 py-3"
-                >
-                  <div className="flex items-center gap-3">
-                    <Phone className="h-4 w-4 text-muted-foreground" />
-                    <div>
-                      <p className="text-sm font-medium font-mono">{pn.number}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {pn.provider} · Added{" "}
-                        {new Date(pn.createdAt).toLocaleDateString()}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8"
-                      onClick={() => handleCopyNumber(pn.number)}
-                      title="Copy number"
-                    >
-                      <Copy className="h-3.5 w-3.5" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8 text-red-500 hover:text-red-600"
-                      onClick={() => handleReleaseNumber(pn.id)}
-                      disabled={releasing === pn.id}
-                      title="Release number"
-                    >
-                      {releasing === pn.id ? (
-                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                      ) : (
-                        <Trash2 className="h-3.5 w-3.5" />
-                      )}
-                    </Button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Webhook URL */}
-      {webhookUrl && (
+      {/* AI Phone Number — read-only display */}
+      {subscriptionChecked && (
         <Card>
           <CardHeader>
             <CardTitle className="text-base flex items-center gap-2">
-              <ExternalLink className="h-4 w-4" /> Vapi Voice Webhook
+              <Phone className="h-4 w-4" /> AI Phone Number
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-xs text-muted-foreground mb-3">
-              Use this URL in your Vapi dashboard to connect AI voice agents to
-              your business. This URL is unique to your account — keep it
-              private.
-            </p>
-            <div className="flex items-center gap-2">
-              <code className="flex-1 bg-muted px-3 py-2 rounded-md text-xs font-mono break-all">
-                {webhookUrl}
-              </code>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleCopyWebhook}
-                className="shrink-0"
-              >
-                {copied ? (
-                  <Check className="h-4 w-4 text-green-500" />
-                ) : (
-                  <Copy className="h-4 w-4" />
-                )}
-              </Button>
-            </div>
+            {!hasSubscription ? (
+              <div className="text-center py-6">
+                <div className="h-12 w-12 rounded-full bg-white/[0.03] border border-white/[0.06] flex items-center justify-center mx-auto mb-3">
+                  <Phone className="h-5 w-5 text-white/15" />
+                </div>
+                <p className="text-sm text-white/30">
+                  Available with a paid plan
+                </p>
+              </div>
+            ) : aiNumber ? (
+              <div className="flex items-center gap-4 bg-white/[0.03] border border-white/[0.06] rounded-xl px-5 py-4">
+                <div className="h-10 w-10 rounded-full bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center shrink-0">
+                  <Phone className="h-4 w-4 text-emerald-400" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-lg font-bold font-mono text-white tracking-wide">
+                    {aiNumber}
+                  </p>
+                  <p className="text-[11px] text-white/30">
+                    Your AI receptionist number — active and ready
+                  </p>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleCopyNumber}
+                  className="shrink-0"
+                >
+                  {copiedNumber ? (
+                    <Check className="h-4 w-4 text-emerald-400" />
+                  ) : (
+                    <Copy className="h-4 w-4" />
+                  )}
+                </Button>
+              </div>
+            ) : (
+              <div className="text-center py-6">
+                <div className="h-12 w-12 rounded-full bg-white/[0.03] border border-white/[0.06] flex items-center justify-center mx-auto mb-3">
+                  <Loader2 className="h-5 w-5 text-white/15 animate-spin" />
+                </div>
+                <p className="text-sm text-white/30">
+                  Your AI number is being provisioned
+                </p>
+                <p className="text-xs text-white/20 mt-1">
+                  This usually takes a few moments after subscribing
+                </p>
+              </div>
+            )}
           </CardContent>
         </Card>
       )}
