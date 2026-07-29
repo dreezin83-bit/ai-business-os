@@ -17,8 +17,21 @@ import {
   Bot,
   Terminal,
   Wand2,
+  AlertTriangle,
+  X,
+  CheckCircle2,
+  Building2,
 } from "lucide-react";
 import { useToast } from "@/components/toaster";
+
+const WARNING_DISMISS_KEY = "ai-commander-warning-dismissed";
+
+interface BusinessInfo {
+  name: string;
+  phone: string;
+  email: string;
+  website: string;
+}
 
 interface Template {
   category: string;
@@ -75,6 +88,14 @@ export default function AiCommanderPage() {
   const [templates, setTemplates] = useState<Template[]>([]);
   const [selectedCategory, setSelectedCategory] = useState("");
   const [applyingTemplate, setApplyingTemplate] = useState(false);
+  const [businessInfo, setBusinessInfo] = useState<BusinessInfo>({ name: "", phone: "", email: "", website: "" });
+  const [warningDismissed, setWarningDismissed] = useState(false);
+
+  // Section refs for scrolling
+  const pricingRef = useRef<HTMLDivElement>(null);
+  const servicesRef = useRef<HTMLDivElement>(null);
+  const greetingRef = useRef<HTMLDivElement>(null);
+  const policiesRef = useRef<HTMLDivElement>(null);
 
   // Personality sliders
   const [formality, setFormality] = useState(50);
@@ -93,10 +114,18 @@ export default function AiCommanderPage() {
 
   // ── Load config & templates ──────────────────────────
   useEffect(() => {
+    // Check localStorage for dismissed warning
+    try {
+      if (typeof window !== "undefined" && localStorage.getItem(WARNING_DISMISS_KEY) === "1") {
+        setWarningDismissed(true);
+      }
+    } catch {}
+
     Promise.all([
       fetch("/api/ai/brain").then((r) => (r.ok ? r.json() : null)),
       fetch("/api/ai-templates").then((r) => (r.ok ? r.json() : null)),
-    ]).then(([brainData, templateData]) => {
+      fetch("/api/business/current").then((r) => (r.ok ? r.json() : null)),
+    ]).then(([brainData, templateData, bizData]) => {
       if (brainData) {
         const parse = (v: string | null) => {
           if (!v) return "";
@@ -125,9 +154,38 @@ export default function AiCommanderPage() {
         }
       }
       if (templateData?.templates) setTemplates(templateData.templates);
+      if (bizData) {
+        setBusinessInfo({
+          name: bizData.name || "",
+          phone: bizData.phone || "",
+          email: bizData.email || "",
+          website: bizData.website || "",
+        });
+      }
       setLoading(false);
     }).catch(() => setLoading(false));
   }, []);
+
+  // ── Warning & scroll helpers ──────────────────────────
+  const dismissWarning = () => {
+    setWarningDismissed(true);
+    try { localStorage.setItem(WARNING_DISMISS_KEY, "1"); } catch {}
+  };
+
+  const scrollTo = (ref: React.RefObject<HTMLDivElement | null>) => {
+    ref.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+  };
+
+  const showWarning = !warningDismissed && (!config.pricingGuidance?.trim() || !config.serviceAreas?.trim());
+  const hasPricing = !!config.pricingGuidance?.trim();
+  const hasServiceAreas = !!config.serviceAreas?.trim();
+  const hasBusinessHours = (() => {
+    try {
+      const h = JSON.parse(config.businessHours || "[]");
+      if (Array.isArray(h)) return h.some((d: any) => !d.closed);
+      return false;
+    } catch { return false; }
+  })();
 
   // scroll messages
   useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages]);
@@ -274,6 +332,116 @@ export default function AiCommanderPage() {
         </Button>
       </div>
 
+      {/* ── Warning Banner ────────────────────────────────── */}
+      {showWarning && (
+        <div className="flex items-start gap-3 bg-amber-500/5 border border-amber-500/20 rounded-xl p-4 animate-scale-in">
+          <AlertTriangle className="h-5 w-5 text-amber-400 shrink-0 mt-0.5" />
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-medium text-amber-200/90 mb-2">
+              To get the best performance from your AI, make sure to:
+            </p>
+            <ul className="space-y-1.5 text-sm text-amber-200/60">
+              {!hasPricing && (
+                <li className="flex items-center gap-2">
+                  <span className="h-1.5 w-1.5 rounded-full bg-amber-400 shrink-0" />
+                  Set your{" "}
+                  <button onClick={() => scrollTo(pricingRef)} className="underline underline-offset-2 hover:text-amber-200 font-medium">
+                    pricing
+                  </button>{" "}
+                  (the AI needs price ranges to give quotes)
+                </li>
+              )}
+              {!hasServiceAreas && (
+                <li className="flex items-center gap-2">
+                  <span className="h-1.5 w-1.5 rounded-full bg-amber-400 shrink-0" />
+                  Add your{" "}
+                  <button onClick={() => scrollTo(servicesRef)} className="underline underline-offset-2 hover:text-amber-200 font-medium">
+                    service locations/areas
+                  </button>{" "}
+                  (the AI needs to know where you operate)
+                </li>
+              )}
+              {!hasBusinessHours && (
+                <li className="flex items-center gap-2">
+                  <span className="h-1.5 w-1.5 rounded-full bg-amber-400 shrink-0" />
+                  Configure your{" "}
+                  <button onClick={() => scrollTo(policiesRef)} className="underline underline-offset-2 hover:text-amber-200 font-medium">
+                    business hours
+                  </button>{" "}
+                  (so the AI can schedule appointments correctly)
+                </li>
+              )}
+            </ul>
+          </div>
+          <button
+            onClick={dismissWarning}
+            className="shrink-0 text-amber-400/60 hover:text-amber-400 transition-colors p-1"
+            aria-label="Dismiss"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+      )}
+
+      {/* ── Business Profile Card ─────────────────────────── */}
+      <Card className="border-white/[0.06] bg-white/[0.02]">
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center gap-2 text-base">
+            <Building2 className="h-4 w-4 text-blue-400" />
+            What Your AI Knows
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2.5">
+            {[
+              { label: "Business Name", filled: !!businessInfo.name, value: businessInfo.name || "Not set" },
+              { label: "Phone Number", filled: !!businessInfo.phone, value: businessInfo.phone || "Not set" },
+              { label: "Email", filled: !!businessInfo.email, value: businessInfo.email || "Not set" },
+              { label: "Website", filled: !!businessInfo.website, value: businessInfo.website || "Not set" },
+              {
+                label: "Service Areas",
+                filled: hasServiceAreas,
+                value: hasServiceAreas ? config.serviceAreas : "Not set",
+                action: hasServiceAreas ? undefined : () => scrollTo(servicesRef),
+              },
+              {
+                label: "Business Hours",
+                filled: hasBusinessHours,
+                value: hasBusinessHours ? "Configured" : "Not set",
+                action: hasBusinessHours ? undefined : () => scrollTo(policiesRef),
+              },
+              {
+                label: "Pricing",
+                filled: hasPricing,
+                value: hasPricing ? "Configured" : "Not set",
+                action: hasPricing ? undefined : () => scrollTo(pricingRef),
+              },
+            ].map((field) => (
+              <div key={field.label} className="flex items-center gap-2.5 py-1.5">
+                {field.filled ? (
+                  <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400 shrink-0" />
+                ) : (
+                  <AlertTriangle className="h-3.5 w-3.5 text-amber-400 shrink-0" />
+                )}
+                <span className="text-xs text-white/35 w-28 shrink-0">{field.label}</span>
+                {field.action ? (
+                  <button
+                    onClick={field.action}
+                    className="text-xs text-amber-400/80 hover:text-amber-300 underline underline-offset-2 truncate text-left"
+                  >
+                    {field.value}
+                  </button>
+                ) : (
+                  <span className={`text-xs truncate ${field.filled ? "text-white/60" : "text-white/25"}`}>
+                    {field.value}
+                  </span>
+                )}
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Template Selector */}
       <Card className="border-slate-800 bg-slate-950/60">
         <CardHeader className="pb-3">
@@ -353,7 +521,7 @@ export default function AiCommanderPage() {
       </Card>
 
       {/* Services & Pricing */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div ref={servicesRef} className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card className="border-slate-800 bg-slate-950/60">
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
@@ -380,7 +548,7 @@ export default function AiCommanderPage() {
           </CardContent>
         </Card>
 
-        <Card className="border-slate-800 bg-slate-950/60">
+        <Card ref={pricingRef} className="border-slate-800 bg-slate-950/60">
           <CardHeader className="pb-3">
             <CardTitle className="text-base">Pricing Guidance</CardTitle>
           </CardHeader>
@@ -441,7 +609,7 @@ export default function AiCommanderPage() {
       </Card>
 
       {/* Policies */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div ref={policiesRef} className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <Card className="border-slate-800 bg-slate-950/60">
           <CardHeader className="pb-3"><CardTitle className="text-base">Lead Collection Rules</CardTitle></CardHeader>
           <CardContent>
