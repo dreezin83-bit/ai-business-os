@@ -19,6 +19,7 @@ import {
   Mail,
   Send,
   Sparkles,
+  Terminal,
 } from "lucide-react";
 import { useState } from "react";
 import { useClerk } from "@clerk/nextjs";
@@ -26,7 +27,7 @@ import { Button } from "@/components/ui/button";
 
 const navigation = [
   { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
-  { name: "AI Command", href: "/dashboard/ai-command", icon: Sparkles },
+  { name: "AI Commander", href: "/dashboard/ai-commander", icon: Terminal },
   { name: "Leads", href: "/dashboard/leads", icon: Users },
   { name: "Appointments", href: "/dashboard/appointments", icon: Calendar },
   { name: "AI Brain", href: "/dashboard/ai-brain", icon: Bot },
