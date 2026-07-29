@@ -1,8 +1,8 @@
 /**
- * POST /api/onboarding — save onboarding data for the current user's business
+ * POST /api/onboarding — save onboarding data for the current user's business.
  *
- * Saves all fields and marks business.onboardingComplete = true.
- * Expects the user to have exactly one business (created at sign-up).
+ * Creates a business record if one doesn't exist yet (first-time signup flow).
+ * Applies AI Brain template defaults based on the selected category.
  */
 import { NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
@@ -10,25 +10,12 @@ import { db } from "@/db";
 import { business, aiBrainConfig, knowledgeDocument } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { generateId } from "@/lib/utils";
+import { getTemplate } from "@/lib/ai-templates/index";
 
 export async function POST(request: Request) {
   const { userId } = await auth();
   if (!userId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
-  // Find the user's business (assumes one-to-one for now)
-  const [biz] = await db
-    .select()
-    .from(business)
-    .where(eq(business.ownerId, userId))
-    .limit(1);
-
-  if (!biz) {
-    return NextResponse.json(
-      { error: "No business found for this user" },
-      { status: 404 }
-    );
   }
 
   let body: Record<string, any>;
@@ -52,83 +39,146 @@ export async function POST(request: Request) {
     knowledgeItems,
   } = body;
 
-  // ── Update business table ──────────────────────────────────
-  const updateData: Record<string, any> = {
-    updatedAt: new Date(),
-    onboardingComplete: true,
-  };
-  if (businessName !== undefined) updateData.name = businessName;
-  if (category !== undefined) updateData.category = category;
-  if (phone !== undefined) updateData.phone = phone;
-  if (website !== undefined) updateData.website = website;
-  if (email !== undefined) updateData.email = email;
-  if (serviceArea !== undefined) updateData.address = serviceArea;
+  // Load template if category is provided
+  const template = category ? getTemplate(category) : undefined;
 
-  await db.update(business).set(updateData).where(eq(business.id, biz.id));
+  // ── Find or create the business ─────────────────────────────
+  let [biz] = await db
+    .select()
+    .from(business)
+    .where(eq(business.ownerId, userId))
+    .limit(1);
 
-  // ── Upsert aiBrainConfig ───────────────────────────────────
+  if (!biz) {
+    // First-time signup — create business record
+    const bizId = generateId();
+    await db.insert(business).values({
+      id: bizId,
+      ownerId: userId,
+      name: businessName || template?.label || "",
+      category: category || "other",
+      phone: phone || "",
+      email: email || "",
+      website: website || "",
+      address: serviceArea || "",
+      onboardingComplete: true,
+      updatedAt: new Date(),
+    });
+    biz = { id: bizId } as typeof business.$inferSelect;
+  } else {
+    // Update existing business
+    const updateData: Record<string, any> = {
+      updatedAt: new Date(),
+      onboardingComplete: true,
+    };
+    if (businessName !== undefined) updateData.name = businessName;
+    if (category !== undefined) updateData.category = category;
+    if (phone !== undefined) updateData.phone = phone;
+    if (website !== undefined) updateData.website = website;
+    if (email !== undefined) updateData.email = email;
+    if (serviceArea !== undefined) updateData.address = serviceArea;
+
+    await db.update(business).set(updateData).where(eq(business.id, biz.id));
+  }
+
+  // ── Upsert aiBrainConfig with template defaults ─────────────
   const [existingConfig] = await db
     .select()
     .from(aiBrainConfig)
     .where(eq(aiBrainConfig.businessId, biz.id))
     .limit(1);
 
-  const configData: Record<string, any> = {
-    businessId: biz.id,
-    updatedAt: new Date(),
-  };
-  if (services !== undefined) {
-    configData.services = Array.isArray(services)
-      ? JSON.stringify(services)
-      : services;
-  }
-  if (businessHours !== undefined) {
-    configData.businessHours =
-      typeof businessHours === "object"
-        ? JSON.stringify(businessHours)
-        : businessHours;
-  }
-  if (greetingMessage !== undefined) configData.greetingMessage = greetingMessage;
-  if (serviceArea !== undefined) {
-    configData.serviceAreas =
-      typeof serviceArea === "string" ? serviceArea : JSON.stringify(serviceArea);
-  }
-  if (emergencyService !== undefined) {
-    configData.companyPolicies = `Emergency service: ${emergencyService}`;
-  }
+  // Start with template defaults, then override with user-provided values
+  const servicesValue = services !== undefined
+    ? (Array.isArray(services) ? JSON.stringify(services) : services)
+    : template ? JSON.stringify(template.services) : "[]";
+
+  const businessHoursValue = businessHours !== undefined
+    ? (typeof businessHours === "object" ? JSON.stringify(businessHours) : businessHours)
+    : template ? JSON.stringify(template.businessHours) : "{}";
+
+  const greetingValue = greetingMessage !== undefined
+    ? greetingMessage
+    : template?.greetingMessage ?? "Hello! How can I help you today?";
+
+  const serviceAreaValue = serviceArea !== undefined
+    ? (typeof serviceArea === "string" ? serviceArea : JSON.stringify(serviceArea))
+    : existingConfig?.serviceAreas ?? "[]";
 
   if (existingConfig) {
     await db
       .update(aiBrainConfig)
-      .set(configData)
+      .set({
+        businessId: biz.id,
+        services: servicesValue,
+        businessHours: businessHoursValue,
+        greetingMessage: greetingValue,
+        serviceAreas: serviceAreaValue,
+        systemPrompt: template?.systemPrompt ?? existingConfig.systemPrompt ?? "",
+        leadCollectionRules: template?.leadCollectionRules ?? existingConfig.leadCollectionRules ?? "",
+        appointmentBookingRules: template?.appointmentBookingRules ?? existingConfig.appointmentBookingRules ?? "",
+        responseStyle: template?.responseStyle ?? existingConfig.responseStyle ?? "",
+        companyPolicies: template?.pricingGuidance ?? existingConfig.companyPolicies ?? "",
+        escalationRules: existingConfig?.escalationRules ?? "",
+        updatedAt: new Date(),
+      })
       .where(eq(aiBrainConfig.id, existingConfig.id));
   } else {
     await db.insert(aiBrainConfig).values({
       id: generateId(),
       businessId: biz.id,
-      services: configData.services ?? "[]",
-      businessHours: configData.businessHours ?? "{}",
-      greetingMessage: configData.greetingMessage ?? "Hello! How can I help you today?",
-      serviceAreas: configData.serviceAreas ?? "[]",
-      companyPolicies: configData.companyPolicies ?? "",
+      systemPrompt: template?.systemPrompt ?? "",
+      services: servicesValue,
+      businessHours: businessHoursValue,
+      greetingMessage: greetingValue,
+      serviceAreas: serviceAreaValue,
+      leadCollectionRules: template?.leadCollectionRules ?? "",
+      appointmentBookingRules: template?.appointmentBookingRules ?? "",
+      responseStyle: template?.responseStyle ?? "",
+      companyPolicies: template?.pricingGuidance ?? "",
+      escalationRules: "",
     });
   }
 
-  // ── Save knowledge base items ──────────────────────────────
+  // ── Save knowledge base items (user-provided or template FAQs) ──
+  const itemsToSave: { title: string; content: string; type: string }[] = [];
+
   if (Array.isArray(knowledgeItems) && knowledgeItems.length > 0) {
     for (const item of knowledgeItems) {
       if (item.title && item.content) {
-        await db.insert(knowledgeDocument).values({
-          id: generateId(),
-          businessId: biz.id,
+        itemsToSave.push({
           title: item.title,
-          type: item.type || "txt",
           content: item.content,
-          fileUrl: item.fileUrl || "",
+          type: item.type || "txt",
         });
       }
     }
+  } else if (template && template.faqs.length > 0 && (!existingConfig || knowledgeItems === undefined)) {
+    // On first onboarding, auto-create knowledge docs from template FAQs
+    for (const faq of template.faqs) {
+      itemsToSave.push({
+        title: faq.question,
+        content: faq.answer,
+        type: "faq",
+      });
+    }
   }
 
-  return NextResponse.json({ success: true, onboardingComplete: true });
+  for (const item of itemsToSave) {
+    await db.insert(knowledgeDocument).values({
+      id: generateId(),
+      businessId: biz.id,
+      title: item.title,
+      type: item.type,
+      content: item.content,
+      fileUrl: "",
+    });
+  }
+
+  return NextResponse.json({
+    success: true,
+    onboardingComplete: true,
+    category: category || "other",
+    templateApplied: !!template,
+  });
 }
