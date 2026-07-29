@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
-  Users, Calendar, Bot, ArrowRight, Zap, DollarSign,
+  Users, Calendar, Bot, ArrowRight, Zap,
   BarChart3, MessageSquare, Sparkles, PlusCircle, Loader2,
 } from "lucide-react";
 import Link from "next/link";
@@ -68,9 +68,9 @@ export default function DashboardPage() {
       iconBg: "bg-purple-500/10", iconColor: "text-purple-400", accent: "bg-purple-500",
     },
     {
-      label: "Est. Revenue", value: `$${(stats.totalLeads * 1800).toLocaleString()}`, icon: DollarSign,
-      gradient: "from-amber-600/20 to-orange-800/10", border: "border-amber-500/20",
-      iconBg: "bg-amber-500/10", iconColor: "text-amber-400", accent: "bg-amber-500",
+      label: "Missed Calls", value: stats.missedCalls, icon: Zap,
+      gradient: "from-red-600/20 to-red-800/10", border: "border-red-500/20",
+      iconBg: "bg-red-500/10", iconColor: "text-red-400", accent: "bg-red-500",
     },
     {
       label: "Conversations", value: stats.recentConversations, icon: Bot,
@@ -110,7 +110,7 @@ export default function DashboardPage() {
             <p className="text-[11px] text-slate-500 mt-1">
               {s.label === "Total Leads" ? "+12% this month" :
                s.label === "Today's Appts" ? `${stats.upcomingAppointments} upcoming` :
-               s.label === "Est. Revenue" ? "based on avg job" :
+               s.label === "Missed Calls" ? `${stats.pendingFollowUps} need follow-up` :
                "AI chats this week"}
             </p>
           </div>
