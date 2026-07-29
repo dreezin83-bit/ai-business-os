@@ -17,6 +17,8 @@ export const business = pgTable("business", {
   address: text("address").default(""),
   vapiWebhookToken: text("vapi_webhook_token").unique(),
   voiceSetupReady: boolean("voice_setup_ready").default(false),
+  category: text("category").default(""),
+  onboardingComplete: boolean("onboarding_complete").default(false),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });

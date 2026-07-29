@@ -19,5 +19,12 @@ async function main() {
   // Add voice_setup_ready to business table
   await sql`ALTER TABLE business ADD COLUMN IF NOT EXISTS voice_setup_ready BOOLEAN DEFAULT FALSE`;
   console.log("voice_setup_ready column ready.");
+
+  // Add onboarding columns to business table
+  await sql`ALTER TABLE business ADD COLUMN IF NOT EXISTS category TEXT DEFAULT ''`;
+  console.log("category column ready.");
+
+  await sql`ALTER TABLE business ADD COLUMN IF NOT EXISTS onboarding_complete BOOLEAN DEFAULT FALSE`;
+  console.log("onboarding_complete column ready.");
 }
 main().catch(console.error);
