@@ -5,18 +5,18 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
-  Mail, MessageSquare, Loader2, Search,
+  Mail, Loader2, Search,
   Send, ArrowUpRight, Clock, Filter,
 } from "lucide-react";
 import Link from "next/link";
 import { formatDateTime } from "@/lib/utils";
 
-type Channel = "all" | "email" | "whatsapp";
+type Channel = "all" | "email";
 type MessageStatus = "sent" | "delivered" | "failed" | "bounced";
 
 interface MessageItem {
   id: string;
-  type: "email" | "whatsapp";
+  type: "email";
   to: string;
   subject?: string;
   body: string;
@@ -29,7 +29,6 @@ interface MessageItem {
 const CHANNELS: { key: Channel; label: string; icon: React.ElementType }[] = [
   { key: "all", label: "All", icon: Send },
   { key: "email", label: "Email", icon: Mail },
-  { key: "whatsapp", label: "WhatsApp", icon: MessageSquare },
 ];
 
 const statusConfig: Record<MessageStatus, { label: string; className: string }> = {
@@ -41,7 +40,6 @@ const statusConfig: Record<MessageStatus, { label: string; className: string }> 
 
 const channelIcon: Record<string, React.ElementType> = {
   email: Mail,
-  whatsapp: MessageSquare,
 };
 
 export default function MessagesPage() {
@@ -184,10 +182,7 @@ export default function MessagesPage() {
               <Card key={msg.id} className="hover:bg-accent/30 transition-colors">
                 <CardContent className="p-4">
                   <div className="flex items-start gap-3">
-                    <div className={`h-9 w-9 rounded-lg flex items-center justify-center shrink-0 ${
-                      msg.type === "email" ? "bg-blue-500/10 text-blue-500" :
-                      "bg-purple-500/10 text-purple-500"
-                    }`}>
+                    <div className="h-9 w-9 rounded-lg flex items-center justify-center shrink-0 bg-blue-500/10 text-blue-500">
                       <Icon className="h-4 w-4" />
                     </div>
                     <div className="flex-1 min-w-0">
