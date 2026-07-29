@@ -5,6 +5,7 @@ import { eq, desc, and } from "drizzle-orm";
 import { auth } from "@clerk/nextjs/server";
 import { ensureBusiness } from "@/lib/business";
 import { generateId } from "@/lib/utils";
+import { notifyContractorOfNewAppointment, sendCustomerAppointmentConfirmation } from "@/lib/notifications";
 
 
 export async function GET() {
@@ -35,7 +36,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
     }
 
-    // Double booking check
+    // Double booking check — checks for ANY overlapping appointments, not just exact startTime matches
     const existing = await db
       .select()
       .from(appointment)
@@ -43,14 +44,17 @@ export async function POST(request: Request) {
         and(
           eq(appointment.businessId, businessId),
           eq(appointment.date, date),
-          eq(appointment.startTime, startTime),
           eq(appointment.status, "scheduled")
         )
       );
 
-    if (existing.length > 0) {
+    const conflict = existing.some(
+      (a) => startTime < a.endTime && (endTime || "") > a.startTime
+    );
+
+    if (conflict) {
       return NextResponse.json(
-        { error: "This time slot is already booked. Please choose a different time." },
+        { error: "This time slot overlaps with an existing booking. Please choose a different time." },
         { status: 409 }
       );
     }
@@ -72,6 +76,13 @@ export async function POST(request: Request) {
     };
 
     await db.insert(appointment).values(newAppointment);
+
+    // Fire-and-forget notifications
+    Promise.all([
+      notifyContractorOfNewAppointment(businessId, newAppointment.id),
+      sendCustomerAppointmentConfirmation(businessId, newAppointment.id),
+    ]).catch((err) => console.error("[appointments] Notification error:", err));
+
     return NextResponse.json(newAppointment, { status: 201 });
   } catch (error) {
     console.error("Failed to create appointment:", error);

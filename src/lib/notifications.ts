@@ -1,5 +1,5 @@
 import { db } from "@/db";
-import { communicationLog, business, communicationSettings, lead } from "@/db/schema";
+import { communicationLog, business, communicationSettings, lead, appointment } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { generateId } from "@/lib/utils";
 
@@ -323,4 +323,181 @@ export async function sendCustomerConfirmation(businessId: string, leadId: strin
   } else {
     console.log(`[notifications] No contact method available for customer ${leadId} — skipping confirmation`);
   }
+}
+
+// ─── APPOINTMENT NOTIFICATIONS ──────────────────────────────────────────
+
+interface AppointmentData {
+  id: string;
+  customerName: string;
+  customerPhone: string;
+  customerEmail: string;
+  service: string;
+  date: string;
+  startTime: string;
+  endTime: string;
+}
+
+interface AppointmentContext {
+  businessId: string;
+  businessName: string;
+  businessPhone: string;
+  businessEmail: string;
+  appointment: AppointmentData;
+}
+
+async function buildAppointmentContext(businessId: string, appointmentId: string): Promise<AppointmentContext | null> {
+  const [biz] = await db.select().from(business).where(eq(business.id, businessId));
+  if (!biz) return null;
+
+  const [appt] = await db.select().from(appointment).where(eq(appointment.id, appointmentId));
+  if (!appt) return null;
+
+  return {
+    businessId,
+    businessName: biz.name || "Your Business",
+    businessPhone: biz.phone || "",
+    businessEmail: biz.email || "",
+    appointment: {
+      id: appt.id,
+      customerName: appt.customerName,
+      customerPhone: appt.customerPhone || "",
+      customerEmail: appt.customerEmail || "",
+      service: appt.service,
+      date: appt.date,
+      startTime: appt.startTime,
+      endTime: appt.endTime,
+    },
+  };
+}
+
+/**
+ * Notify the contractor about a new appointment booking.
+ * Mirrors notifyContractorOfNewLead but for appointments.
+ */
+export async function notifyContractorOfNewAppointment(
+  businessId: string,
+  appointmentId: string
+): Promise<void> {
+  const ctx = await buildAppointmentContext(businessId, appointmentId);
+
+  // Load communication settings (use defaults if not configured)
+  const [settings] = await db
+    .select()
+    .from(communicationSettings)
+    .where(eq(communicationSettings.businessId, businessId));
+
+  const emailEnabled = settings ? settings.emailEnabled : true;
+
+  if (!ctx) {
+    await logCommunication({
+      businessId,
+      leadId: null,
+      type: "email",
+      toAddress: "(unknown)",
+      subject: "Appointment Notification Failed",
+      body: "Could not build appointment notification context.",
+      status: "failed",
+      errorMessage: "buildAppointmentContext returned null",
+    });
+    console.error("[notifications] buildAppointmentContext failed for appointment notification");
+    return;
+  }
+
+  const { appointment: appt } = ctx;
+
+  const subject = `New Appointment: ${appt.customerName} — ${appt.service}`;
+  const body = [
+    `NEW APPOINTMENT`,
+    `━━━━━━━━━━━━━━━━━━━━━`,
+    `Customer: ${appt.customerName}`,
+    `Phone: ${appt.customerPhone || "Not provided"}`,
+    `Email: ${appt.customerEmail || "Not provided"}`,
+    `Service: ${appt.service}`,
+    `Date: ${appt.date}`,
+    `Time: ${appt.startTime}${appt.endTime ? ` - ${appt.endTime}` : ""}`,
+    `━━━━━━━━━━━━━━━━━━━━━`,
+    `View all appointments: https://ai-business-os-six.vercel.app/dashboard/appointments`,
+  ].join("\n");
+
+  console.log(`[notifications] Notifying contractor about appointment ${appointmentId} for business ${businessId}`);
+
+  if (emailEnabled && ctx.businessEmail) {
+    console.log(`[notifications] Sending appointment email to contractor at ${ctx.businessEmail}`);
+    const result = await sendEmail(ctx.businessEmail, subject, body);
+    await logCommunication({
+      businessId,
+      leadId: null,
+      type: "email",
+      toAddress: ctx.businessEmail,
+      subject,
+      body,
+      status: result.success ? "sent" : "failed",
+      errorMessage: result.error,
+      externalId: result.messageId,
+    });
+  } else if (emailEnabled && !ctx.businessEmail) {
+    await logCommunication({
+      businessId,
+      leadId: null,
+      type: "email",
+      toAddress: "(no business email configured)",
+      subject,
+      body,
+      status: "failed",
+      errorMessage: "Business email not set. Contractor needs to add their email address.",
+    });
+  }
+}
+
+/**
+ * Send a confirmation message to the customer after their appointment is booked.
+ */
+export async function sendCustomerAppointmentConfirmation(
+  businessId: string,
+  appointmentId: string
+): Promise<void> {
+  const ctx = await buildAppointmentContext(businessId, appointmentId);
+  if (!ctx) {
+    console.error("[notifications] Could not build appointment context for customer confirmation");
+    return;
+  }
+
+  const { appointment: appt, businessName } = ctx;
+
+  if (!appt.customerEmail) {
+    console.log(`[notifications] No email available for customer in appointment ${appointmentId} — skipping confirmation`);
+    return;
+  }
+
+  const subject = `Your appointment with ${businessName} is confirmed`;
+  const body = [
+    `Hi ${appt.customerName},`,
+    ``,
+    `Your appointment with ${businessName} has been booked:`,
+    ``,
+    `Service: ${appt.service}`,
+    `Date: ${appt.date}`,
+    `Time: ${appt.startTime}${appt.endTime ? ` - ${appt.endTime}` : ""}`,
+    ``,
+    `If you need to reschedule or have any questions, feel free to reach out.`,
+    ``,
+    `Best regards,`,
+    `The ${businessName} Team`,
+  ].join("\n");
+
+  console.log(`[notifications] Sending appointment confirmation to customer ${appt.customerEmail}`);
+
+  const result = await sendEmail(appt.customerEmail, subject, body);
+  await logCommunication({
+    businessId,
+    leadId: null,
+    type: "email",
+    toAddress: appt.customerEmail,
+    subject,
+    body,
+    status: result.success ? "sent" : "failed",
+    errorMessage: result.error,
+    externalId: result.messageId,
+  });
 }

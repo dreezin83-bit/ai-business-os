@@ -6,7 +6,7 @@ import { generateId } from "@/lib/utils";
 import { ensureBusiness } from "@/lib/business";
 import { buildAiContext } from "@/lib/ai-context";
 import { createLlmCompletion } from "@/lib/llm";
-import { notifyContractorOfNewLead, sendCustomerConfirmation } from "@/lib/notifications";
+import { notifyContractorOfNewLead, sendCustomerConfirmation, notifyContractorOfNewAppointment, sendCustomerAppointmentConfirmation } from "@/lib/notifications";
 import { extractLeadFromConversation, isValidLead } from "@/lib/lead-extractor";
 
 /** Parse onboarding markers that the AI uses to save business info */
@@ -45,9 +45,22 @@ function cleanResponse(text: string): string {
     .trim();
 }
 
-async function checkAppointmentConflict(businessId: string, date: string, startTime: string, endTime: string): Promise<boolean> {
-  const existing = await db.select().from(appointment).where(and(eq(appointment.businessId, businessId), eq(appointment.date, date), eq(appointment.status, "scheduled")));
-  return existing.some((a) => startTime < a.endTime && endTime > a.startTime);
+async function checkAppointmentConflict(businessId: string, date: string, startTime: string, endTime: string): Promise<string[]> {
+  // Query directly for overlapping appointments — database-level filtering
+  const overlapping = await db
+    .select({ startTime: appointment.startTime, endTime: appointment.endTime, customerName: appointment.customerName, service: appointment.service })
+    .from(appointment)
+    .where(
+      and(
+        eq(appointment.businessId, businessId),
+        eq(appointment.date, date),
+        eq(appointment.status, "scheduled"),
+      )
+    );
+  // Return list of conflicting time slots (stringified)
+  return overlapping
+    .filter((a) => startTime < a.endTime && endTime > a.startTime)
+    .map((a) => `${a.startTime}-${a.endTime} (${a.service})`);
 }
 
 /** Save onboarding data from AI markers into the database */
@@ -231,8 +244,9 @@ Start by asking: "Great, let's get your business set up! First, what's your busi
     // Process appointment marker
     const apptData = parseAppointmentMarker(reply);
     if (apptData && apptData.date !== "not provided") {
-      const hasConflict = await checkAppointmentConflict(businessId, apptData.date, apptData.startTime, apptData.endTime);
-      if (!hasConflict) {
+      const conflicts = await checkAppointmentConflict(businessId, apptData.date, apptData.startTime, apptData.endTime);
+      if (conflicts.length === 0) {
+        // ─── NO CONFLICT: Save the appointment ───
         const apptId = generateId();
         await db.insert(appointment).values({
           id: apptId, businessId, customerName: apptData.customerName || "Not provided",
@@ -241,6 +255,17 @@ Start by asking: "Great, let's get your business set up! First, what's your busi
           endTime: apptData.endTime, status: "scheduled",
         });
         createdAppointmentId = apptId;
+
+        // ─── NOTIFY CONTRACTOR + SEND CUSTOMER CONFIRMATION ───
+        Promise.all([
+          notifyContractorOfNewAppointment(businessId, apptId),
+          sendCustomerAppointmentConfirmation(businessId, apptId),
+        ]).catch((err) => console.error("[chat] Appointment notification error:", err));
+      } else {
+        // ─── CONFLICT DETECTED: Override AI reply with polite decline + alternatives ───
+        const conflictSlots = conflicts.join(", ");
+        reply = `I'm sorry, but ${apptData.startTime}${apptData.endTime ? ` - ${apptData.endTime}` : ""} on ${apptData.date} is no longer available (conflicting with: ${conflictSlots}). Would another time work for you? I can help you find the next available slot. What day works best?`;
+        createdAppointmentId = null; // Ensure caller knows no appointment was created
       }
     }
 
