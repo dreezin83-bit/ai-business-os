@@ -85,6 +85,7 @@ export async function POST(
       number: vapiNumber.number,
       name: `${biz.name || "Business"} Voice Line`,
       serverUrl,
+      serverUrlSecret: process.env.VAPI_WEBHOOK_SECRET || "",
     });
 
     // Save to our database
