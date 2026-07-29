@@ -148,11 +148,11 @@ export default function OnboardingPage() {
         website: form.website || undefined,
         serviceArea: form.serviceArea,
         businessHours: form.hours,
-        emergencyAvailable: form.emergencyAvailable,
+        emergencyService: form.emergencyAvailable,
         emergencyNote: form.emergencyNote || undefined,
-        servicesOffered: form.services,
-        greeting: form.greeting || defaultGreeting,
-        knowledgeContent: skipped ? undefined : form.knowledgeText || undefined,
+        services: form.services,
+        greetingMessage: form.greeting || defaultGreeting,
+        knowledgeItems: skipped ? undefined : form.knowledgeText ? [{ title: "Business Knowledge", content: form.knowledgeText, type: "txt" }] : undefined,
       };
 
       const res = await fetch("/api/onboarding", {
