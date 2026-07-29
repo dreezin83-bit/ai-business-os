@@ -4,11 +4,11 @@ import { useState, useRef, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Bot, Loader2, Send, Sparkles, TrendingUp, Users, DollarSign } from "lucide-react";
+import { Bot, Loader2, Send, Sparkles, TrendingUp, Users } from "lucide-react";
 
 export default function AICommandPage() {
   const [messages, setMessages] = useState<{ role: "user" | "assistant"; content: string }[]>([
-    { role: "assistant", content: "Hi! I'm your AI business assistant. Ask me anything about your leads, revenue, or what you should focus on today.\n\nTry:\n• \"How many leads this month?\"\n• \"Who should I call first today?\"\n• \"What's my win rate?\"\n• \"Draft an email to my newest lead\"" },
+    { role: "assistant", content: "Hi! I'm your AI business assistant. Ask me anything about your leads, appointments, or what you should focus on today.\n\nTry:\n• \"How many leads this month?\"\n• \"Who should I call first today?\"\n• \"What's my win rate?\"\n• \"Draft an email to my newest lead\"" },
   ]);
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);

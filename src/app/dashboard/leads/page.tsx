@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/select";
 import {
   Users, Plus, Search, Filter, Loader2, Phone, Mail,
-  Calendar, ArrowUpRight, MoreHorizontal, X, TrendingUp, DollarSign, BarChart3,
+  Calendar, ArrowUpRight, MoreHorizontal, X, TrendingUp, CheckCircle, BarChart3,
 } from "lucide-react";
 import Link from "next/link";
 import { useToast } from "@/components/toaster";
@@ -215,16 +215,16 @@ export default function LeadsPage() {
             <p className="text-xs text-muted-foreground mt-1">win rate</p>
           </CardContent>
         </Card>
-        <Card className="bg-gradient-to-br from-amber-500/5 to-amber-500/10 border-amber-500/20">
+        <Card className="bg-gradient-to-br from-green-500/5 to-green-500/10 border-green-500/20">
           <CardContent className="p-4">
             <div className="flex items-center gap-2 mb-1">
-              <DollarSign className="h-4 w-4 text-amber-500" />
-              <span className="text-xs text-muted-foreground">Est. Revenue</span>
+              <CheckCircle className="h-4 w-4 text-green-500" />
+              <span className="text-xs text-muted-foreground">Won Deals</span>
             </div>
             <p className="text-2xl font-bold">
-              ${(leads.filter((l) => l.status === "won").length * 2500).toLocaleString()}
+              {leads.filter((l) => l.status === "won").length}
             </p>
-            <p className="text-xs text-muted-foreground mt-1">at ~$2,500 avg job</p>
+            <p className="text-xs text-muted-foreground mt-1">deals closed</p>
           </CardContent>
         </Card>
       </div>

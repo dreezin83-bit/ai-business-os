@@ -80,8 +80,6 @@ export async function POST(request: Request) {
     const newLeads = allLeads.filter((l) => l.status === "new");
     const contactedLeads = allLeads.filter((l) => l.status === "contacted");
     const lostLeads = allLeads.filter((l) => l.status === "lost");
-    const avgJobValue = 2500;
-    const estRevenue = wonLeads.length * avgJobValue;
     const winRate = allLeads.length > 0 ? Math.round((wonLeads.length / (wonLeads.length + lostLeads.length || 1)) * 100) : 0;
     const coldLeads = newLeads.filter((l) => {
       const days = (Date.now() - new Date(l.createdAt).getTime()) / 86400000;
@@ -125,7 +123,7 @@ Always confirm with the user before sending: "I'll draft that email for you now.
 
 LIVE BUSINESS DATA:
 • Total Leads: ${allLeads.length} | This Month: ${monthlyLeads.length}
-• Won/Closed: ${wonLeads.length} ($${estRevenue.toLocaleString()} at $${avgJobValue.toLocaleString()}/job)
+• Won/Closed: ${wonLeads.length}
 • In Progress: ${contactedLeads.length} | New (not contacted): ${newLeads.length}
 • ⚠️ Cold (2+ days): ${coldLeads.length} | Lost: ${lostLeads.length}
 • Win Rate: ${winRate}% | Today's Appointments: ${todayAppts.length}
@@ -141,8 +139,8 @@ YOUR CAPABILITIES:
 2. WEB SEARCH — I automatically search the web when you ask about pricing, suppliers, regulations, or market rates
 3. PRIORITIZE — Tell them exactly who to call: name, phone, why they're urgent
 4. DRAFT QUOTES — Use real market data from web searches + ${industry} industry knowledge
-5. ANALYZE — Win rates, conversion patterns, revenue projections
-6. CELEBRATE — Revenue milestones, time saved vs hiring staff
+5. ANALYZE — Win rates, conversion patterns, performance trends
+6. CELEBRATE — Milestones, time saved vs manual work, lead response speed
 
 RULES:
 - Use REAL names, phones, emails from the live data
