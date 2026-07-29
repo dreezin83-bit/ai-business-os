@@ -34,11 +34,22 @@ export async function POST(request: Request) {
     businessHours,
     website,
     email,
-    services,
-    emergencyService,
-    greetingMessage,
+    // Page sends these field names (not servicesOffered/greeting/knowledgeContent):
+    services: servicesRaw,
+    servicesOffered,
+    greeting: greetingRaw,
+    greetingMessage: greetingMessageRaw,
+    knowledgeContent,
     knowledgeItems,
+    emergencyAvailable: _emergencyAvailable,
+    emergencyNote: _emergencyNote,
+    emergencyService,
   } = body;
+
+  // Resolve aliased fields — page may send either name
+  const services = servicesOffered ?? servicesRaw ?? emergencyService;
+  const greetingMessage = greetingRaw ?? greetingMessageRaw;
+  const knowledgeItemsResolved = knowledgeContent ?? knowledgeItems;
 
   // Load template if category is provided
   const template = category ? getTemplate(category) : undefined;
@@ -144,17 +155,26 @@ export async function POST(request: Request) {
   // ── Save knowledge base items (user-provided or template FAQs) ──
   const itemsToSave: { title: string; content: string; type: string }[] = [];
 
-  if (Array.isArray(knowledgeItems) && knowledgeItems.length > 0) {
-    for (const item of knowledgeItems) {
-      if (item.title && item.content) {
-        itemsToSave.push({
-          title: item.title,
-          content: item.content,
-          type: item.type || "txt",
-        });
+  if (knowledgeItemsResolved) {
+    if (Array.isArray(knowledgeItemsResolved) && knowledgeItemsResolved.length > 0) {
+      for (const item of knowledgeItemsResolved) {
+        if (item.title && item.content) {
+          itemsToSave.push({
+            title: item.title,
+            content: item.content,
+            type: item.type || "txt",
+          });
+        }
       }
+    } else if (typeof knowledgeItemsResolved === "string" && knowledgeItemsResolved.trim()) {
+      // Page sends knowledgeContent as a plain text string — create a single doc
+      itemsToSave.push({
+        title: "Knowledge Base Content",
+        content: knowledgeItemsResolved.trim(),
+        type: "txt",
+      });
     }
-  } else if (template && template.faqs.length > 0 && (!existingConfig || knowledgeItems === undefined)) {
+  } else if (template && template.faqs.length > 0 && !existingConfig) {
     // On first onboarding, auto-create knowledge docs from template FAQs
     for (const faq of template.faqs) {
       itemsToSave.push({
