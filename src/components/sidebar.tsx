@@ -20,6 +20,7 @@ import {
   Send,
   Sparkles,
   Terminal,
+  TrendingUp,
 } from "lucide-react";
 import { useState } from "react";
 import { useClerk } from "@clerk/nextjs";
@@ -27,6 +28,7 @@ import { Button } from "@/components/ui/button";
 
 const navigation = [
   { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
+  { name: "Overview", href: "/dashboard/overview", icon: TrendingUp },
   { name: "AI Commander", href: "/dashboard/ai-commander", icon: Terminal },
   { name: "Leads", href: "/dashboard/leads", icon: Users },
   { name: "Appointments", href: "/dashboard/appointments", icon: Calendar },
