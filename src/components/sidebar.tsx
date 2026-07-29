@@ -12,6 +12,7 @@ import {
   MessageSquare,
   Settings,
   Phone,
+  PhoneMissed,
   Menu,
   X,
   LogOut,
@@ -32,6 +33,7 @@ const navigation = [
   { name: "Knowledge Base", href: "/dashboard/knowledge-base", icon: BookOpen },
   { name: "Chatbot", href: "/dashboard/chatbot", icon: MessageSquare },
   { name: "Messages", href: "/dashboard/messages", icon: Mail },
+  { name: "Missed Calls", href: "/dashboard/missed-calls", icon: PhoneMissed },
   { name: "Contact Support", href: "https://wa.me/13057071059", icon: Phone, external: true },
   { name: "Settings", href: "/dashboard/settings", icon: Settings },
 ];
