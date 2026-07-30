@@ -33,7 +33,7 @@ export default clerkMiddleware(
     // Skip entirely for API routes, static assets, and public routes
     if (isApiOrStaticRoute(req) || isPublicRoute(req)) return;
 
-    const { userId } = await auth;
+    const { userId } = auth;
     if (!userId) return;
 
     // Check cookie cache first — skip DB if already confirmed for this user
