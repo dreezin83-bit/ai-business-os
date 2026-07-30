@@ -1,758 +1,176 @@
 "use client";
 
-import { useEffect, useState, useRef, useCallback } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Slider } from "@/components/ui/slider";
 import {
-  Sparkles,
-  Loader2,
-  Save,
-  Send,
-  Plus,
-  Trash2,
-  MessageSquare,
-  Bot,
-  Terminal,
-  Wand2,
-  AlertTriangle,
-  X,
-  CheckCircle2,
-  Building2,
+  Terminal, Sparkles, ArrowUp, Loader2,
+  Users, Calendar, Phone, TrendingUp, Mail, MessageSquare,
 } from "lucide-react";
-import { useToast } from "@/components/toaster";
 
-const WARNING_DISMISS_KEY = "ai-commander-warning-dismissed";
-
-interface BusinessInfo {
-  name: string;
-  phone: string;
-  email: string;
-  website: string;
-}
-
-interface Template {
-  category: string;
-  label: string;
-  services: string[];
-  emergencyService: boolean;
-  greetingMessage: string;
-  serviceCount: number;
-  faqCount: number;
-}
-
-interface AIConfig {
-  systemPrompt: string;
-  services: string;
-  faqs: string;
-  pricingGuidance: string;
-  companyPolicies: string;
-  serviceAreas: string;
-  businessHours: string;
-  greetingMessage: string;
-  leadCollectionRules: string;
-  appointmentBookingRules: string;
-  responseStyle: string;
-  escalationRules: string;
-}
-
-const DEFAULTS: AIConfig = {
-  systemPrompt: "",
-  services: "",
-  faqs: "",
-  pricingGuidance: "",
-  companyPolicies: "",
-  serviceAreas: "",
-  businessHours: JSON.stringify(
-    Array.from({ length: 7 }, (_, i) => ({
-      day: ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"][i],
-      open: i < 5 ? "09:00" : i === 5 ? "10:00" : "",
-      close: i < 5 ? "17:00" : i === 5 ? "15:00" : "",
-      closed: i === 6,
-    }))
-  ),
-  greetingMessage: "Hello! How can I help you today?",
-  leadCollectionRules: "",
-  appointmentBookingRules: "",
-  responseStyle: "",
-  escalationRules: "",
-};
+const SUGGESTIONS = [
+  { icon: Users, label: "How many leads this month?", prompt: "How many leads did we get this month?" },
+  { icon: TrendingUp, label: "What's my conversion rate?", prompt: "What is our lead-to-customer conversion rate?" },
+  { icon: Calendar, label: "Today's appointments", prompt: "What appointments do we have today?" },
+  { icon: Phone, label: "Who should I call first?", prompt: "Which lead should I call first today and why?" },
+  { icon: Mail, label: "Draft follow-up email", prompt: "Draft a follow-up email for my newest lead" },
+  { icon: MessageSquare, label: "Missed calls summary", prompt: "Give me a summary of recent missed calls" },
+];
 
 export default function AiCommanderPage() {
-  const { toast } = useToast();
-  const [config, setConfig] = useState<AIConfig>(DEFAULTS);
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [templates, setTemplates] = useState<Template[]>([]);
-  const [selectedCategory, setSelectedCategory] = useState("");
-  const [applyingTemplate, setApplyingTemplate] = useState(false);
-  const [businessInfo, setBusinessInfo] = useState<BusinessInfo>({ name: "", phone: "", email: "", website: "" });
-  const [warningDismissed, setWarningDismissed] = useState(false);
-
-  // Section refs for scrolling
-  const pricingRef = useRef<HTMLDivElement>(null);
-  const servicesRef = useRef<HTMLDivElement>(null);
-  const greetingRef = useRef<HTMLDivElement>(null);
-  const policiesRef = useRef<HTMLDivElement>(null);
-
-  // Personality sliders
-  const [formality, setFormality] = useState(50);
-  const [warmth, setWarmth] = useState(60);
-  const [conciseness, setConciseness] = useState(50);
-
-  // Editable lists
-  const [servicesList, setServicesList] = useState<string[]>([""]);
-  const [faqList, setFaqList] = useState<{ q: string; a: string }[]>([{ q: "", a: "" }]);
-
-  // Test console
-  const [messages, setMessages] = useState<{ role: "user" | "assistant"; content: string }[]>([]);
-  const [inputValue, setInputValue] = useState("");
+  const [messages, setMessages] = useState<{ role: "user" | "assistant"; content: string }[]>([
+    {
+      role: "assistant",
+      content: "👋 Hey! I'm your AI business assistant. I know everything about your leads, appointments, and communications. Ask me anything — I'm here to help you run your business.",
+    },
+  ]);
+  const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const chatEndRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
 
-  // ── Load config & templates ──────────────────────────
-  useEffect(() => {
-    // Check localStorage for dismissed warning
-    try {
-      if (typeof window !== "undefined" && localStorage.getItem(WARNING_DISMISS_KEY) === "1") {
-        setWarningDismissed(true);
-      }
-    } catch {}
+  useEffect(() => { chatEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages]);
 
-    Promise.all([
-      fetch("/api/ai/brain").then((r) => (r.ok ? r.json() : null)),
-      fetch("/api/ai-templates").then((r) => (r.ok ? r.json() : null)),
-      fetch("/api/business/current").then((r) => (r.ok ? r.json() : null)),
-    ]).then(([brainData, templateData, bizData]) => {
-      if (brainData) {
-        const parse = (v: string | null) => {
-          if (!v) return "";
-          try { const p = JSON.parse(v); return Array.isArray(p) ? p.join("\n") : ""; } catch { return ""; }
-        };
-        setConfig({
-          systemPrompt: brainData.systemPrompt || "",
-          services: brainData.services || "",
-          faqs: brainData.faqs || "",
-          pricingGuidance: brainData.pricingGuidance || brainData.companyPolicies || "",
-          companyPolicies: brainData.companyPolicies || "",
-          serviceAreas: brainData.serviceAreas || "",
-          businessHours: brainData.businessHours || DEFAULTS.businessHours,
-          greetingMessage: brainData.greetingMessage || DEFAULTS.greetingMessage,
-          leadCollectionRules: brainData.leadCollectionRules || "",
-          appointmentBookingRules: brainData.appointmentBookingRules || "",
-          responseStyle: brainData.responseStyle || "",
-          escalationRules: brainData.escalationRules || "",
-        });
-        // Parse services
-        try {
-          const svc = JSON.parse(brainData.services || "[]");
-          setServicesList(Array.isArray(svc) && svc.length ? svc : [""]);
-        } catch {
-          setServicesList(brainData.services ? brainData.services.split("\n").filter(Boolean) : [""]);
-        }
-      }
-      if (templateData?.templates) setTemplates(templateData.templates);
-      if (bizData) {
-        setBusinessInfo({
-          name: bizData.name || "",
-          phone: bizData.phone || "",
-          email: bizData.email || "",
-          website: bizData.website || "",
-        });
-      }
-      setLoading(false);
-    }).catch(() => setLoading(false));
-  }, []);
-
-  // ── Warning & scroll helpers ──────────────────────────
-  const dismissWarning = () => {
-    setWarningDismissed(true);
-    try { localStorage.setItem(WARNING_DISMISS_KEY, "1"); } catch {}
-  };
-
-  const scrollTo = (ref: React.RefObject<HTMLDivElement | null>) => {
-    ref.current?.scrollIntoView({ behavior: "smooth", block: "center" });
-  };
-
-  const showWarning = !warningDismissed && (!config.pricingGuidance?.trim() || !config.serviceAreas?.trim());
-  const hasPricing = !!config.pricingGuidance?.trim();
-  const hasServiceAreas = !!config.serviceAreas?.trim();
-  const hasBusinessHours = (() => {
-    try {
-      const h = JSON.parse(config.businessHours || "[]");
-      if (Array.isArray(h)) return h.some((d: any) => !d.closed);
-      return false;
-    } catch { return false; }
-  })();
-
-  // scroll messages
-  useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages]);
-
-  // ── Save config ──────────────────────────────────────
-  const saveConfig = useCallback(async () => {
-    setSaving(true);
-    try {
-      const res = await fetch("/api/ai/brain", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          ...config,
-          services: JSON.stringify(servicesList.filter(Boolean)),
-          faqs: JSON.stringify(faqList.filter((f) => f.q && f.a)),
-        }),
-      });
-      if (res.ok) {
-        toast({ title: "Saved!", description: "AI configuration updated." });
-      } else {
-        toast({ title: "Error", description: "Failed to save.", variant: "destructive" });
-      }
-    } catch {
-      toast({ title: "Error", description: "Failed to save.", variant: "destructive" });
-    } finally {
-      setSaving(false);
-    }
-  }, [config, servicesList, faqList, toast]);
-
-  // ── Apply template ───────────────────────────────────
-  const applyTemplate = async (category: string) => {
-    setApplyingTemplate(true);
-    try {
-      const res = await fetch("/api/ai-brain/apply-template", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ category }),
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setSelectedCategory(category);
-        // Reload config
-        const brainRes = await fetch("/api/ai/brain");
-        if (brainRes.ok) {
-          const brainData = await brainRes.json();
-          setConfig({
-            systemPrompt: brainData.systemPrompt || "",
-            services: brainData.services || "",
-            faqs: brainData.faqs || "",
-            pricingGuidance: brainData.pricingGuidance || brainData.companyPolicies || "",
-            companyPolicies: brainData.companyPolicies || "",
-            serviceAreas: brainData.serviceAreas || "",
-            businessHours: brainData.businessHours || DEFAULTS.businessHours,
-            greetingMessage: brainData.greetingMessage || DEFAULTS.greetingMessage,
-            leadCollectionRules: brainData.leadCollectionRules || "",
-            appointmentBookingRules: brainData.appointmentBookingRules || "",
-            responseStyle: brainData.responseStyle || "",
-            escalationRules: brainData.escalationRules || "",
-          });
-          try {
-            const svc = JSON.parse(brainData.services || "[]");
-            setServicesList(Array.isArray(svc) && svc.length ? svc : [""]);
-          } catch {
-            setServicesList([""]);
-          }
-        }
-        toast({ title: "Template Applied!", description: `AI configured for ${data.template}.` });
-      } else {
-        toast({ title: "Error", description: "Failed to apply template.", variant: "destructive" });
-      }
-    } catch {
-      toast({ title: "Error", description: "Failed to apply template.", variant: "destructive" });
-    } finally {
-      setApplyingTemplate(false);
-    }
-  };
-
-  // ── Test chat ────────────────────────────────────────
-  const sendTestMessage = async () => {
-    if (!inputValue.trim() || sending) return;
-    const userMsg = inputValue.trim();
-    setInputValue("");
+  const sendMessage = async (text: string) => {
+    if (!text.trim() || sending) return;
+    const userMsg = text.trim();
     setMessages((prev) => [...prev, { role: "user", content: userMsg }]);
+    setInput("");
     setSending(true);
     try {
-      const res = await fetch("/api/ai/chat", {
+      const res = await fetch("/api/ai/command", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: userMsg, source: "ai-test" }),
+        body: JSON.stringify({ userMessage: userMsg, history: messages.slice(-10) }),
       });
-      if (res.ok) {
-        const data = await res.json();
-        setMessages((prev) => [...prev, { role: "assistant", content: data.response || "(no response)" }]);
-      } else {
-        setMessages((prev) => [...prev, { role: "assistant", content: "⚠️ Failed to get a response. Check your AI configuration." }]);
-      }
+      const data = await res.json();
+      setMessages((prev) => [...prev, {
+        role: "assistant",
+        content: data.response || "Sorry, I couldn't process that. Please try again.",
+      }]);
     } catch {
-      setMessages((prev) => [...prev, { role: "assistant", content: "⚠️ Connection error." }]);
+      setMessages((prev) => [...prev, {
+        role: "assistant",
+        content: "Sorry, I ran into a connection error. Please try again.",
+      }]);
     } finally {
       setSending(false);
+      setTimeout(() => inputRef.current?.focus(), 100);
     }
   };
 
-  // ── Service list helpers ─────────────────────────────
-  const addService = () => setServicesList((prev) => [...prev, ""]);
-  const removeService = (i: number) => setServicesList((prev) => prev.filter((_, idx) => idx !== i));
-  const updateService = (i: number, v: string) => {
-    setServicesList((prev) => prev.map((s, idx) => (idx === i ? v : s)));
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      sendMessage(input);
+    }
   };
 
-  // ── FAQ helpers ──────────────────────────────────────
-  const addFaq = () => setFaqList((prev) => [...prev, { q: "", a: "" }]);
-  const removeFaq = (i: number) => setFaqList((prev) => prev.filter((_, idx) => idx !== i));
-
-  // ── Loading ──────────────────────────────────────────
-  if (loading) {
-    return (
-      <div className="p-6 space-y-6 animate-pulse">
-        <div className="h-8 w-48 bg-slate-800 rounded" />
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-          {[1,2,3].map((i) => <div key={i} className="h-32 bg-slate-800 rounded-xl" />)}
-        </div>
-        <div className="h-96 bg-slate-800 rounded-xl" />
-      </div>
-    );
-  }
+  const isWelcome = messages.length <= 1;
 
   return (
-    <div className="p-4 md:p-6 space-y-6 max-w-6xl">
+    <div className="flex flex-col h-[calc(100vh-4rem)] max-w-4xl mx-auto">
       {/* Header */}
-      <div className="flex items-center justify-between flex-wrap gap-3">
-        <div className="flex items-center gap-3">
-          <div className="h-9 w-9 rounded-lg bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center shadow-lg shadow-orange-500/25">
-            <Terminal className="h-5 w-5 text-white" />
-          </div>
-          <div>
-            <h1 className="text-xl font-bold text-white">AI Commander</h1>
-            <p className="text-sm text-slate-400">Instruct your AI — it&apos;s your front-line agent</p>
-          </div>
+      <div className="flex items-center gap-3 px-4 py-3 border-b border-white/[0.06] shrink-0">
+        <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center shadow-lg shadow-orange-500/20">
+          <Terminal className="h-4 w-4 text-white" />
         </div>
-        <Button onClick={saveConfig} disabled={saving} className="gap-2">
-          {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-          Save Configuration
-        </Button>
+        <div>
+          <h1 className="text-sm font-semibold text-white">AI Commander</h1>
+          <p className="text-[11px] text-white/35">{sending ? "Thinking..." : "Online — ready to help"}</p>
+        </div>
       </div>
 
-      {/* ── Warning Banner ────────────────────────────────── */}
-      {showWarning && (
-        <div className="flex items-start gap-3 bg-amber-500/5 border border-amber-500/20 rounded-xl p-4 animate-scale-in">
-          <AlertTriangle className="h-5 w-5 text-amber-400 shrink-0 mt-0.5" />
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium text-amber-200/90 mb-2">
-              To get the best performance from your AI, make sure to:
-            </p>
-            <ul className="space-y-1.5 text-sm text-amber-200/60">
-              {!hasPricing && (
-                <li className="flex items-center gap-2">
-                  <span className="h-1.5 w-1.5 rounded-full bg-amber-400 shrink-0" />
-                  Set your{" "}
-                  <button onClick={() => scrollTo(pricingRef)} className="underline underline-offset-2 hover:text-amber-200 font-medium">
-                    pricing
-                  </button>{" "}
-                  (the AI needs price ranges to give quotes)
-                </li>
-              )}
-              {!hasServiceAreas && (
-                <li className="flex items-center gap-2">
-                  <span className="h-1.5 w-1.5 rounded-full bg-amber-400 shrink-0" />
-                  Add your{" "}
-                  <button onClick={() => scrollTo(servicesRef)} className="underline underline-offset-2 hover:text-amber-200 font-medium">
-                    service locations/areas
-                  </button>{" "}
-                  (the AI needs to know where you operate)
-                </li>
-              )}
-              {!hasBusinessHours && (
-                <li className="flex items-center gap-2">
-                  <span className="h-1.5 w-1.5 rounded-full bg-amber-400 shrink-0" />
-                  Configure your{" "}
-                  <button onClick={() => scrollTo(policiesRef)} className="underline underline-offset-2 hover:text-amber-200 font-medium">
-                    business hours
-                  </button>{" "}
-                  (so the AI can schedule appointments correctly)
-                </li>
-              )}
-            </ul>
-          </div>
-          <button
-            onClick={dismissWarning}
-            className="shrink-0 text-amber-400/60 hover:text-amber-400 transition-colors p-1"
-            aria-label="Dismiss"
-          >
-            <X className="h-4 w-4" />
-          </button>
-        </div>
-      )}
-
-      {/* ── Business Profile Card ─────────────────────────── */}
-      <Card className="border-white/[0.06] bg-white/[0.02]">
-        <CardHeader className="pb-3">
-          <CardTitle className="flex items-center gap-2 text-base">
-            <Building2 className="h-4 w-4 text-blue-400" />
-            What Your AI Knows
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2.5">
-            {[
-              { label: "Business Name", filled: !!businessInfo.name, value: businessInfo.name || "Not set" },
-              { label: "Phone Number", filled: !!businessInfo.phone, value: businessInfo.phone || "Not set" },
-              { label: "Email", filled: !!businessInfo.email, value: businessInfo.email || "Not set" },
-              { label: "Website", filled: !!businessInfo.website, value: businessInfo.website || "Not set" },
-              {
-                label: "Service Areas",
-                filled: hasServiceAreas,
-                value: hasServiceAreas ? config.serviceAreas : "Not set",
-                action: hasServiceAreas ? undefined : () => scrollTo(servicesRef),
-              },
-              {
-                label: "Business Hours",
-                filled: hasBusinessHours,
-                value: hasBusinessHours ? "Configured" : "Not set",
-                action: hasBusinessHours ? undefined : () => scrollTo(policiesRef),
-              },
-              {
-                label: "Pricing",
-                filled: hasPricing,
-                value: hasPricing ? "Configured" : "Not set",
-                action: hasPricing ? undefined : () => scrollTo(pricingRef),
-              },
-            ].map((field) => (
-              <div key={field.label} className="flex items-center gap-2.5 py-1.5">
-                {field.filled ? (
-                  <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400 shrink-0" />
-                ) : (
-                  <AlertTriangle className="h-3.5 w-3.5 text-amber-400 shrink-0" />
-                )}
-                <span className="text-xs text-white/35 w-28 shrink-0">{field.label}</span>
-                {field.action ? (
-                  <button
-                    onClick={field.action}
-                    className="text-xs text-amber-400/80 hover:text-amber-300 underline underline-offset-2 truncate text-left"
-                  >
-                    {field.value}
-                  </button>
-                ) : (
-                  <span className={`text-xs truncate ${field.filled ? "text-white/60" : "text-white/25"}`}>
-                    {field.value}
-                  </span>
-                )}
+      {/* Messages */}
+      <div className="flex-1 overflow-y-auto px-4 py-6 space-y-6">
+        {messages.map((msg, i) => (
+          <div key={i} className={`flex gap-3 ${msg.role === "user" ? "flex-row-reverse" : ""}`}>
+            <div className={`h-8 w-8 rounded-xl flex items-center justify-center shrink-0 mt-0.5 ${
+              msg.role === "assistant" ? "bg-amber-500/10 border border-amber-500/20" : "bg-blue-500/10 border border-blue-500/20"
+            }`}>
+              {msg.role === "assistant"
+                ? <Sparkles className="h-4 w-4 text-amber-400" />
+                : <span className="text-[10px] font-bold text-blue-400">You</span>
+              }
+            </div>
+            <div className={`max-w-[75%] rounded-2xl px-4 py-3 text-sm leading-relaxed whitespace-pre-wrap ${
+              msg.role === "user"
+                ? "bg-blue-500/15 text-blue-50 rounded-tr-md"
+                : "bg-white/[0.03] border border-white/[0.06] text-slate-200 rounded-tl-md"
+            }`}>
+              {msg.content}
+              <div className="text-[10px] text-white/20 mt-1.5 text-right">
+                {new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
               </div>
-            ))}
+            </div>
           </div>
-        </CardContent>
-      </Card>
+        ))}
 
-      {/* Template Selector */}
-      <Card className="border-slate-800 bg-slate-950/60">
-        <CardHeader className="pb-3">
-          <CardTitle className="flex items-center gap-2 text-base">
-            <Wand2 className="h-4 w-4 text-amber-400" />
-            Choose Your AI Template
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
-            {templates.map((t) => (
+        {/* Typing */}
+        {sending && (
+          <div className="flex gap-3">
+            <div className="h-8 w-8 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center shrink-0">
+              <Sparkles className="h-4 w-4 text-amber-400" />
+            </div>
+            <div className="bg-white/[0.03] border border-white/[0.06] rounded-2xl rounded-tl-md px-4 py-3">
+              <div className="flex gap-1.5">
+                <span className="h-2 w-2 rounded-full bg-amber-400/60 animate-bounce" style={{ animationDelay: "0ms" }} />
+                <span className="h-2 w-2 rounded-full bg-amber-400/60 animate-bounce" style={{ animationDelay: "150ms" }} />
+                <span className="h-2 w-2 rounded-full bg-amber-400/60 animate-bounce" style={{ animationDelay: "300ms" }} />
+              </div>
+            </div>
+          </div>
+        )}
+        <div ref={chatEndRef} />
+      </div>
+
+      {/* Suggested prompts */}
+      {isWelcome && !sending && (
+        <div className="px-4 pb-3 shrink-0">
+          <p className="text-[11px] text-white/25 uppercase tracking-wider mb-2.5">Try asking</p>
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+            {SUGGESTIONS.map((s) => (
               <button
-                key={t.category}
-                onClick={() => applyTemplate(t.category)}
-                disabled={applyingTemplate}
-                className={`relative flex flex-col items-center gap-2 p-3 rounded-xl border text-sm transition-all duration-200 text-left ${
-                  selectedCategory === t.category
-                    ? "border-amber-500 bg-amber-500/10 text-white shadow-lg shadow-amber-500/10"
-                    : "border-slate-700/50 bg-slate-900/50 text-slate-300 hover:border-slate-600 hover:bg-slate-800/50"
-                }`}
+                key={s.label}
+                onClick={() => sendMessage(s.prompt)}
+                className="flex items-center gap-2 p-2.5 rounded-xl border border-white/[0.06] bg-white/[0.02] text-left hover:bg-white/[0.04] hover:border-white/[0.1] transition-all duration-150"
               >
-                <div className={`h-8 w-8 rounded-lg flex items-center justify-center text-xs font-bold ${
-                  selectedCategory === t.category ? "bg-amber-500 text-white" : "bg-slate-800 text-slate-400"
-                }`}>
-                  {t.label.slice(0, 2).toUpperCase()}
+                <div className="h-7 w-7 rounded-lg bg-white/[0.04] flex items-center justify-center shrink-0">
+                  <s.icon className="h-3.5 w-3.5 text-white/40" />
                 </div>
-                <span className="font-medium leading-tight text-center">{t.label}</span>
-                <span className="text-[10px] text-slate-500">{t.serviceCount} services · {t.faqCount} FAQs</span>
-                {applyingTemplate && selectedCategory === t.category && (
-                  <Loader2 className="h-4 w-4 animate-spin absolute top-1 right-1 text-amber-400" />
-                )}
+                <span className="text-xs text-white/60 leading-tight">{s.label}</span>
               </button>
             ))}
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      )}
 
-      {/* Personality & Tone */}
-      <Card className="border-slate-800 bg-slate-950/60">
-        <CardHeader className="pb-3">
-          <CardTitle className="flex items-center gap-2 text-base">
-            <Sparkles className="h-4 w-4 text-purple-400" />
-            Personality &amp; Tone
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-5">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {[
-              { label: "Formality", value: formality, set: setFormality, left: "Casual", right: "Formal" },
-              { label: "Warmth", value: warmth, set: setWarmth, left: "Neutral", right: "Empathetic" },
-              { label: "Conciseness", value: conciseness, set: setConciseness, left: "Detailed", right: "Brief" },
-            ].map((s) => (
-              <div key={s.label} className="space-y-2">
-                <div className="flex justify-between text-sm">
-                  <span className="text-slate-400">{s.label}</span>
-                  <span className="text-white font-mono">{s.value}%</span>
-                </div>
-                <Slider value={[s.value]} onValueChange={([v]) => s.set(v)} min={0} max={100} step={1} className="py-1" />
-                <div className="flex justify-between text-[11px] text-slate-500">
-                  <span>{s.left}</span>
-                  <span>{s.right}</span>
-                </div>
-              </div>
-            ))}
-          </div>
-          <div>
-            <label className="text-sm font-medium text-slate-300 mb-1.5 block">System Prompt</label>
-            <Textarea
-              value={config.systemPrompt}
-              onChange={(e) => setConfig((c) => ({ ...c, systemPrompt: e.target.value }))}
-              placeholder="You are a friendly, knowledgeable assistant for..."
-              rows={6}
-              className="font-mono text-sm bg-slate-900/70 border-slate-700 resize-none"
-            />
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Services & Pricing */}
-        <div ref={servicesRef} className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Card className="border-slate-800 bg-slate-950/60">
-          <CardHeader className="pb-3">
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-base">Services</CardTitle>
-              <Button variant="ghost" size="sm" onClick={addService} className="h-7 gap-1 text-xs">
-                <Plus className="h-3 w-3" /> Add
-              </Button>
-            </div>
-          </CardHeader>
-          <CardContent className="space-y-2 max-h-72 overflow-y-auto">
-            {servicesList.map((svc, i) => (
-              <div key={i} className="flex gap-2">
-                <Input
-                  value={svc}
-                  onChange={(e) => updateService(i, e.target.value)}
-                  placeholder={`Service #${i + 1}`}
-                  className="bg-slate-900/70 border-slate-700 h-9 text-sm"
-                />
-                <Button variant="ghost" size="icon" onClick={() => removeService(i)} className="h-9 w-9 shrink-0 text-slate-500 hover:text-red-400">
-                  <Trash2 className="h-3.5 w-3.5" />
-                </Button>
-              </div>
-            ))}
-          </CardContent>
-        </Card>
-
-        <Card ref={pricingRef} className="border-slate-800 bg-slate-950/60">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base">Pricing Guidance</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <Textarea
-              value={config.pricingGuidance}
-              onChange={(e) => setConfig((c) => ({ ...c, pricingGuidance: e.target.value }))}
-              placeholder="Furnace repair: $150-$600. AC replacement: $3,500-$7,500..."
-              rows={8}
-              className="bg-slate-900/70 border-slate-700 text-sm resize-none"
-            />
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* FAQs */}
-      <Card className="border-slate-800 bg-slate-950/60">
-        <CardHeader className="pb-3">
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-base">Frequently Asked Questions</CardTitle>
-            <Button variant="ghost" size="sm" onClick={addFaq} className="h-7 gap-1 text-xs">
-              <Plus className="h-3 w-3" /> Add FAQ
-            </Button>
-          </div>
-        </CardHeader>
-        <CardContent className="space-y-3 max-h-96 overflow-y-auto">
-          {faqList.map((faq, i) => (
-            <div key={i} className="grid grid-cols-1 md:grid-cols-2 gap-2 p-3 rounded-lg bg-slate-900/50 border border-slate-800/50">
-              <div>
-                <label className="text-[11px] text-slate-500 mb-1 block">Question</label>
-                <Input
-                  value={faq.q}
-                  onChange={(e) => setFaqList((prev) => prev.map((f, idx) => (idx === i ? { ...f, q: e.target.value } : f)))}
-                  placeholder="How much does it cost?"
-                  className="bg-slate-900/70 border-slate-700 h-8 text-sm"
-                />
-              </div>
-              <div className="relative">
-                <label className="text-[11px] text-slate-500 mb-1 block">Answer</label>
-                <div className="flex gap-2">
-                  <Input
-                    value={faq.a}
-                    onChange={(e) => setFaqList((prev) => prev.map((f, idx) => (idx === i ? { ...f, a: e.target.value } : f)))}
-                    placeholder="Pricing varies..."
-                    className="bg-slate-900/70 border-slate-700 h-8 text-sm flex-1"
-                  />
-                  <Button variant="ghost" size="icon" onClick={() => removeFaq(i)} className="h-8 w-8 shrink-0 text-slate-500 hover:text-red-400">
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </Button>
-                </div>
-              </div>
-            </div>
-          ))}
-          {faqList.length === 0 && (
-            <p className="text-sm text-slate-500 text-center py-6">No FAQs yet. Add one to train your AI.</p>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Policies */}
-      <div ref={policiesRef} className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <Card className="border-slate-800 bg-slate-950/60">
-          <CardHeader className="pb-3"><CardTitle className="text-base">Lead Collection Rules</CardTitle></CardHeader>
-          <CardContent>
-            <Textarea
-              value={config.leadCollectionRules}
-              onChange={(e) => setConfig((c) => ({ ...c, leadCollectionRules: e.target.value }))}
-              placeholder="Collect: name, phone, email, service needed..."
-              rows={5}
-              className="bg-slate-900/70 border-slate-700 text-sm resize-none"
-            />
-          </CardContent>
-        </Card>
-        <Card className="border-slate-800 bg-slate-950/60">
-          <CardHeader className="pb-3"><CardTitle className="text-base">Appointment Booking Rules</CardTitle></CardHeader>
-          <CardContent>
-            <Textarea
-              value={config.appointmentBookingRules}
-              onChange={(e) => setConfig((c) => ({ ...c, appointmentBookingRules: e.target.value }))}
-              placeholder="Offer 2-hour windows. Confirm someone 18+ will be home..."
-              rows={5}
-              className="bg-slate-900/70 border-slate-700 text-sm resize-none"
-            />
-          </CardContent>
-        </Card>
-        <Card className="border-slate-800 bg-slate-950/60">
-          <CardHeader className="pb-3"><CardTitle className="text-base">Escalation Rules</CardTitle></CardHeader>
-          <CardContent>
-            <Textarea
-              value={config.escalationRules}
-              onChange={(e) => setConfig((c) => ({ ...c, escalationRules: e.target.value }))}
-              placeholder="Escalate to human when: price > $5,000, customer requests manager..."
-              rows={5}
-              className="bg-slate-900/70 border-slate-700 text-sm resize-none"
-            />
-          </CardContent>
-        </Card>
-        <Card className="border-slate-800 bg-slate-950/60">
-          <CardHeader className="pb-3"><CardTitle className="text-base">Company Policies</CardTitle></CardHeader>
-          <CardContent>
-            <Textarea
-              value={config.companyPolicies}
-              onChange={(e) => setConfig((c) => ({ ...c, companyPolicies: e.target.value }))}
-              placeholder="24-hour cancellation policy. Licensed and insured..."
-              rows={5}
-              className="bg-slate-900/70 border-slate-700 text-sm resize-none"
-            />
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Greeting */}
-      <Card className="border-slate-800 bg-slate-950/60">
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base">Greeting Message</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex gap-3">
-            <Textarea
-              value={config.greetingMessage}
-              onChange={(e) => setConfig((c) => ({ ...c, greetingMessage: e.target.value }))}
-              rows={2}
-              className="bg-slate-900/70 border-slate-700 text-sm resize-none flex-1"
-            />
-          </div>
-          {config.greetingMessage && (
-            <div className="p-4 rounded-xl bg-gradient-to-r from-blue-500/10 to-purple-500/10 border border-blue-500/20">
-              <p className="text-xs text-slate-500 mb-1">Live Preview</p>
-              <div className="flex gap-3 items-start">
-                <div className="h-8 w-8 rounded-full bg-blue-500/20 flex items-center justify-center shrink-0">
-                  <Bot className="h-4 w-4 text-blue-400" />
-                </div>
-                <div className="bg-slate-800/80 rounded-2xl rounded-tl-sm px-4 py-2.5 text-sm text-slate-200">
-                  {config.greetingMessage}
-                </div>
-              </div>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Test Console */}
-      <Card className="border-slate-800 bg-slate-950/60">
-        <CardHeader className="pb-3">
-          <CardTitle className="flex items-center gap-2 text-base">
-            <MessageSquare className="h-4 w-4 text-green-400" />
-            Talk to Your AI
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="h-64 overflow-y-auto mb-3 space-y-3 p-3 rounded-lg bg-slate-900/50 border border-slate-800/50">
-            {messages.length === 0 && (
-              <div className="flex items-center justify-center h-full text-sm text-slate-500">
-                Test your AI by sending a message below. Try: &ldquo;I need a price quote&rdquo;
-              </div>
-            )}
-            {messages.map((m, i) => (
-              <div key={i} className={`flex gap-2 ${m.role === "user" ? "justify-end" : ""}`}>
-                {m.role === "assistant" && (
-                  <div className="h-7 w-7 rounded-full bg-green-500/20 flex items-center justify-center shrink-0 mt-0.5">
-                    <Bot className="h-3.5 w-3.5 text-green-400" />
-                  </div>
-                )}
-                <div
-                  className={`max-w-[80%] rounded-2xl px-3.5 py-2 text-sm ${
-                    m.role === "user"
-                      ? "bg-blue-500/20 text-blue-100 rounded-tr-sm"
-                      : "bg-slate-800 text-slate-200 rounded-tl-sm"
-                  }`}
-                >
-                  {m.content}
-                </div>
-              </div>
-            ))}
-            {sending && (
-              <div className="flex gap-2">
-                <div className="h-7 w-7 rounded-full bg-green-500/20 flex items-center justify-center shrink-0">
-                  <Bot className="h-3.5 w-3.5 text-green-400" />
-                </div>
-                <div className="bg-slate-800 rounded-2xl rounded-tl-sm px-4 py-2 text-sm text-slate-400">
-                  <Loader2 className="h-3.5 w-3.5 animate-spin inline mr-1" />
-                  Thinking...
-                </div>
-              </div>
-            )}
-            <div ref={messagesEndRef} />
-          </div>
-          <form
-            onSubmit={(e) => { e.preventDefault(); sendTestMessage(); }}
-            className="flex gap-2"
+      {/* Input */}
+      <div className="px-4 pb-4 pt-2 shrink-0">
+        <div className="flex gap-2 p-2 rounded-2xl border border-white/[0.08] bg-white/[0.02] focus-within:border-white/[0.15] transition-colors">
+          <Textarea
+            ref={inputRef}
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={handleKeyDown}
+            placeholder="Ask anything about your business..."
+            rows={1}
+            disabled={sending}
+            className="flex-1 bg-transparent border-0 shadow-none resize-none min-h-0 py-1.5 text-sm placeholder:text-white/20 focus-visible:ring-0 focus-visible:ring-offset-0"
+          />
+          <Button
+            size="icon"
+            onClick={() => sendMessage(input)}
+            disabled={sending || !input.trim()}
+            className="h-9 w-9 rounded-xl shrink-0 bg-amber-500 hover:bg-amber-400 text-black disabled:opacity-30"
           >
-            <Input
-              value={inputValue}
-              onChange={(e) => setInputValue(e.target.value)}
-              placeholder="Type a test message..."
-              className="bg-slate-900/70 border-slate-700 text-sm flex-1"
-              disabled={sending}
-            />
-            <Button type="submit" size="icon" disabled={sending || !inputValue.trim()} className="shrink-0">
-              {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-            </Button>
-          </form>
-        </CardContent>
-      </Card>
+            {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <ArrowUp className="h-4 w-4" />}
+          </Button>
+        </div>
+        <p className="text-[10px] text-white/15 text-center mt-2">
+          AI Commander knows your leads, appointments, and business data
+        </p>
+      </div>
     </div>
   );
 }
