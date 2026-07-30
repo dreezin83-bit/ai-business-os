@@ -93,8 +93,8 @@ export async function GET() {
     },
     subscriptions: {
       active: totalSubscriptions[0]?.total || 0,
-      mrrCents: mrrResult[0]?.total || 0,
-      mrrDollars: ((mrrResult[0]?.total || 0) / 100).toFixed(2),
+      mrrCents: Number(mrrResult[0]?.total || 0),
+      mrrDollars: (Number(mrrResult[0]?.total || 0) / 100).toFixed(2),
     },
     activity: {
       aiCallsToday: aiToday[0]?.total || 0,

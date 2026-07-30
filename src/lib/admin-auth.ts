@@ -12,7 +12,8 @@ export async function requireAdmin(): Promise<{ userId: string } | null> {
   // Owner sets this manually in Clerk Dashboard: public_metadata: { role: "admin" }
   try {
     const { clerkClient } = await import("@clerk/nextjs/server");
-    const user = await clerkClient.users.getUser(session.userId);
+    const client = await clerkClient();
+    const user = await client.users.getUser(session.userId);
     const metadata = user.publicMetadata as Record<string, unknown>;
     if (metadata.role === "admin") {
       return { userId: session.userId };
