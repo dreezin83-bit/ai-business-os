@@ -157,7 +157,7 @@ export async function POST(request: Request) {
       db.select({ name: business.name }).from(business).where(eq(business.id, businessId)).limit(1),
     ]);
     const configured = isConfigured(config);
-    const bizName = bizRow?.name || "not set";
+    const bizName = bizRow?.[0]?.name || "not set";
 
     // Determine if this is a contractor (dashboard/ai-brain test) or customer (public widget)
     const isContractor = source === "dashboard" || source === "ai-test" || !source;

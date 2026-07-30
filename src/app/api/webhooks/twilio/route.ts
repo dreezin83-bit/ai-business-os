@@ -131,9 +131,7 @@ export async function POST(request: Request) {
         // Handle appointment marker
         const [, date, startTime, endTime, service, customerName, customerPhone, customerEmail] = apptMatch;
         if (date && startTime && endTime && service && date !== "not provided") {
-          await db.insert(message).values({ // use message from schema
-            // Actually need to use the appointment schema
-          });
+          // TODO: Create appointment from AI marker
           // Simplified: skip appointment creation for now
         }
       }

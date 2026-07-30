@@ -89,16 +89,16 @@ export async function GET(
     website: biz.website,
     address: biz.address,
     aiNumbers: phones.map((p) => ({ number: p.number, provider: p.provider })),
-    subscription: sub
+    subscription: sub?.[0]
       ? {
-          plan: sub.plan,
-          status: sub.status,
-          amount: sub.amount,
-          currency: sub.currency,
-          interval: sub.interval,
-          currentPeriodStart: sub.currentPeriodStart,
-          currentPeriodEnd: sub.currentPeriodEnd,
-          canceledAt: sub.canceledAt,
+          plan: sub[0].plan,
+          status: sub[0].status,
+          amount: sub[0].amount,
+          currency: sub[0].currency,
+          interval: sub[0].interval,
+          currentPeriodStart: sub[0].currentPeriodStart,
+          currentPeriodEnd: sub[0].currentPeriodEnd,
+          canceledAt: sub[0].canceledAt,
         }
       : null,
     usage: {
