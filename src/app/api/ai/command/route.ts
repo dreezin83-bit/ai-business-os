@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { db } from "@/db";
 import { lead, business, aiBrainConfig, appointment, conversation } from "@/db/schema";
-import { eq, desc, and } from "drizzle-orm";
+import { eq, desc, and, sql } from "drizzle-orm";
 import { ensureBusiness } from "@/lib/business";
 import { createLlmCompletion } from "@/lib/llm";
 import { sendEmail } from "@/lib/notifications";
@@ -48,8 +48,40 @@ export async function POST(request: Request) {
     const msg = userMessage || "";
     if (!msg) return NextResponse.json({ error: "Message required" }, { status: 400 });
 
-    const [biz] = await db.select().from(business).where(eq(business.id, businessId));
-    const [config] = await db.select().from(aiBrainConfig).where(eq(aiBrainConfig.businessId, businessId));
+    // ─── Parallelize all queries ───
+    const thisMonth = new Date(); thisMonth.setDate(1); thisMonth.setHours(0, 0, 0, 0);
+    const today = new Date().toISOString().split("T")[0];
+    const coldThreshold = new Date(Date.now() - 2 * 86400000);
+
+    const [
+      [biz],
+      [config],
+      allLeads,
+      leadCounts,
+      todayAppts,
+      recentConvs,
+    ] = await Promise.all([
+      db.select({ name: business.name, email: business.email }).from(business).where(eq(business.id, businessId)),
+      db.select({ services: aiBrainConfig.services }).from(aiBrainConfig).where(eq(aiBrainConfig.businessId, businessId)),
+
+      // Only fetch last 50 leads — enough for the table, not the entire history
+      db.select({
+        name: lead.name, phone: lead.phone, email: lead.email,
+        serviceRequest: lead.serviceRequest, status: lead.status, createdAt: lead.createdAt,
+      }).from(lead).where(eq(lead.businessId, businessId)).orderBy(desc(lead.createdAt)).limit(50),
+
+      // Lead counts pushed to DB — no JS filtering
+      db.select({ status: lead.status, count: sql<number>`count(*)::int` })
+        .from(lead).where(eq(lead.businessId, businessId)).groupBy(lead.status),
+
+      db.select({ count: sql<number>`count(*)::int` }).from(appointment)
+        .where(and(eq(appointment.businessId, businessId), eq(appointment.date, today), eq(appointment.status, "scheduled"))),
+
+      db.select({ id: conversation.id, customerName: conversation.customerName, createdAt: conversation.createdAt })
+        .from(conversation).where(eq(conversation.businessId, businessId))
+        .orderBy(desc(conversation.createdAt)).limit(5),
+    ]);
+
     const businessName = biz?.name || "your business";
     const businessEmail = biz?.email || "";
 
@@ -72,25 +104,18 @@ export async function POST(request: Request) {
       else if (svc.includes("law") || svc.includes("legal")) industry = "legal";
     } catch {}
 
-    // Load leads
-    const allLeads = await db.select().from(lead).where(eq(lead.businessId, businessId)).orderBy(desc(lead.createdAt));
-    const thisMonth = new Date(); thisMonth.setDate(1); thisMonth.setHours(0, 0, 0, 0);
-    const monthlyLeads = allLeads.filter((l) => new Date(l.createdAt) >= thisMonth);
-    const wonLeads = allLeads.filter((l) => l.status === "won");
-    const newLeads = allLeads.filter((l) => l.status === "new");
-    const contactedLeads = allLeads.filter((l) => l.status === "contacted");
-    const lostLeads = allLeads.filter((l) => l.status === "lost");
-    const winRate = allLeads.length > 0 ? Math.round((wonLeads.length / (wonLeads.length + lostLeads.length || 1)) * 100) : 0;
-    const coldLeads = newLeads.filter((l) => {
-      const days = (Date.now() - new Date(l.createdAt).getTime()) / 86400000;
-      return days > 2;
-    });
+    // Compute lead stats from DB-grouped counts — no JS iteration
+    const statusMap = new Map(leadCounts.map(r => [r.status, Number(r.count)]));
+    const totalLeads = [...statusMap.values()].reduce((a, b) => a + b, 0);
+    const wonLeads = statusMap.get("won") || 0;
+    const newLeads = statusMap.get("new") || 0;
+    const contactedLeads = statusMap.get("contacted") || 0;
+    const lostLeads = statusMap.get("lost") || 0;
+    const winRate = totalLeads > 0 ? Math.round((wonLeads / (wonLeads + lostLeads || 1)) * 100) : 0;
 
-    const today = new Date().toISOString().split("T")[0];
-    const todayAppts = await db.select().from(appointment)
-      .where(and(eq(appointment.businessId, businessId), eq(appointment.date, today), eq(appointment.status, "scheduled")));
-    const recentConvs = await db.select().from(conversation)
-      .where(eq(conversation.businessId, businessId)).orderBy(desc(conversation.createdAt)).limit(5);
+    // Monthly leads: count from fetched leads (limited to 50, but close enough for overview)
+    const monthlyLeads = allLeads.filter((l) => new Date(l.createdAt) >= thisMonth).length;
+    const coldLeads = allLeads.filter((l) => l.status === "new" && new Date(l.createdAt) < coldThreshold).length;
 
     const leadTable = allLeads.slice(0, 20).map((l, i) => {
       const daysOld = Math.round((Date.now() - new Date(l.createdAt).getTime()) / 86400000);
@@ -122,11 +147,11 @@ The email will be sent FROM ${businessEmail || "your business email"} using the 
 Always confirm with the user before sending: "I'll draft that email for you now. It'll come from ${businessEmail || "your email"}. Ready to send?"
 
 LIVE BUSINESS DATA:
-• Total Leads: ${allLeads.length} | This Month: ${monthlyLeads.length}
-• Won/Closed: ${wonLeads.length}
-• In Progress: ${contactedLeads.length} | New (not contacted): ${newLeads.length}
-• ⚠️ Cold (2+ days): ${coldLeads.length} | Lost: ${lostLeads.length}
-• Win Rate: ${winRate}% | Today's Appointments: ${todayAppts.length}
+• Total Leads: ${totalLeads} | This Month: ${monthlyLeads}
+• Won/Closed: ${wonLeads}
+• In Progress: ${contactedLeads} | New (not contacted): ${newLeads}
+• ⚠️ Cold (2+ days): ${coldLeads} | Lost: ${lostLeads}
+• Win Rate: ${winRate}% | Today's Appointments: ${todayAppts[0]?.count ?? 0}
 • Services: ${services.join(", ") || "not configured"}
 • Business Email: ${businessEmail || "not set"}
 
