@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
   Building2, Users, DollarSign, Phone, MessageSquare, Mail,
-  TrendingUp, BarChart3, ArrowRight,
+  TrendingUp, BarChart3, ArrowRight, Target, MessageCircle,
 } from "lucide-react";
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
@@ -20,8 +20,22 @@ interface AdminStats {
   signups: { thisWeek: number; thisMonth: number };
 }
 
+interface AnalyticsData {
+  revenue: { mrrDollars: string; activeSubscriptions: number; planBreakdown: { plan: string; total: number }[] };
+  businesses: { total: number; active: number; suspended: number; onboarded: number; onboardingRate: string; categories: { category: string; total: number }[] };
+  usage: { dailyAiCalls: { date: string; total: number }[]; aiCallsLast30Days: number; smsLast30Days: number; emailsLast30Days: number; topTenants: { id: string; name: string; calls: number }[] };
+  conversion: { totalLeads: number; leadConversionRate: string; totalAppointments: number; totalConversations: number; conversationResolutionRate: string };
+}
+
+/** Format "YYYY-MM-DD" to "Mon 12" style */
+function formatChartDate(iso: string): string {
+  const d = new Date(iso + "T00:00:00");
+  return d.toLocaleDateString("en-US", { weekday: "short", day: "numeric" });
+}
+
 export default function AdminOverviewPage() {
   const [stats, setStats] = useState<AdminStats | null>(null);
+  const [analytics, setAnalytics] = useState<AnalyticsData | null>(null);
   const [tenants, setTenants] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
@@ -29,9 +43,10 @@ export default function AdminOverviewPage() {
   useEffect(() => {
     async function load() {
       try {
-        const [statsRes, tenantsRes] = await Promise.all([
+        const [statsRes, tenantsRes, analyticsRes] = await Promise.all([
           fetch("/api/admin/stats"),
           fetch("/api/admin/tenants"),
+          fetch("/api/admin/analytics"),
         ]);
         if (statsRes.ok) setStats(await statsRes.json());
         else if (statsRes.status === 403) { setError(true); setLoading(false); return; }
@@ -39,6 +54,7 @@ export default function AdminOverviewPage() {
           const t = await tenantsRes.json();
           setTenants(Array.isArray(t) ? t.slice(0, 5) : []);
         }
+        if (analyticsRes.ok) setAnalytics(await analyticsRes.json());
       } catch {}
       setLoading(false);
     }
@@ -81,11 +97,20 @@ export default function AdminOverviewPage() {
     { label: "Emails Sent (Today)", value: stats.activity.emailsSentToday, icon: Mail, color: "rose" },
   ];
 
-  const chartData = [
-    { day: "Mon", calls: 12 }, { day: "Tue", calls: 19 }, { day: "Wed", calls: 8 },
-    { day: "Thu", calls: 24 }, { day: "Fri", calls: 31 }, { day: "Sat", calls: 15 },
-    { day: "Sun", calls: 22 },
-  ];
+  // Real chart data from analytics, fall back to empty array
+  const chartData = (analytics?.usage?.dailyAiCalls || []).map((d) => ({
+    date: formatChartDate(d.date),
+    calls: d.total,
+    rawDate: d.date,
+  }));
+
+  // Extra stat cards from analytics (shown below main cards)
+  const conversionStats = analytics ? [
+    { label: "Onboarding Rate", value: `${analytics.businesses.onboardingRate}%`, color: "text-sky-400" },
+    { label: "Lead Conv. Rate", value: `${analytics.conversion.leadConversionRate}%`, color: "text-emerald-400" },
+    { label: "Total Conversations", value: analytics.conversion.totalConversations, color: "text-violet-400" },
+    { label: "Resolution Rate", value: `${analytics.conversion.conversationResolutionRate}%`, color: "text-amber-400" },
+  ] : [];
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -113,24 +138,40 @@ export default function AdminOverviewPage() {
         ))}
       </div>
 
+      {/* Conversion / quality stats from analytics */}
+      {conversionStats.length > 0 && (
+        <div className="grid gap-4 grid-cols-2 sm:grid-cols-4">
+          {conversionStats.map((s) => (
+            <div key={s.label} className="stat-card text-center">
+              <p className="text-[10px] text-white/30 uppercase tracking-widest mb-1">{s.label}</p>
+              <p className={`text-xl font-bold ${s.color}`}>{s.value}</p>
+            </div>
+          ))}
+        </div>
+      )}
+
       <div className="grid gap-4 lg:grid-cols-5">
         <Card className="lg:col-span-3">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-semibold flex items-center gap-2">
-              <TrendingUp className="h-4 w-4 text-blue-400" /> AI Usage
+              <TrendingUp className="h-4 w-4 text-blue-400" /> AI Usage (Last 30 Days)
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="h-52">
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={chartData} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(0 0% 100% / 0.04)" vertical={false} />
-                  <XAxis dataKey="day" axisLine={false} tickLine={false} tick={{ fill: "hsl(0 0% 100% / 0.25)", fontSize: 11 }} />
-                  <YAxis axisLine={false} tickLine={false} tick={{ fill: "hsl(0 0% 100% / 0.2)", fontSize: 10 }} />
-                  <Tooltip contentStyle={{ backgroundColor: "hsl(0 0% 3%)", border: "1px solid hsl(0 0% 100% / 0.08)", borderRadius: 12, fontSize: 12, color: "hsl(0 0% 93%)" }} />
-                  <Area type="monotone" dataKey="calls" stroke="hsl(217 91% 60%)" fill="hsl(217 91% 60% / 0.12)" strokeWidth={2} />
-                </AreaChart>
-              </ResponsiveContainer>
+              {chartData.length > 0 ? (
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={chartData} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(0 0% 100% / 0.04)" vertical={false} />
+                    <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fill: "hsl(0 0% 100% / 0.25)", fontSize: 11 }} interval="preserveStartEnd" />
+                    <YAxis axisLine={false} tickLine={false} tick={{ fill: "hsl(0 0% 100% / 0.2)", fontSize: 10 }} />
+                    <Tooltip contentStyle={{ backgroundColor: "hsl(0 0% 3%)", border: "1px solid hsl(0 0% 100% / 0.08)", borderRadius: 12, fontSize: 12, color: "hsl(0 0% 93%)" }} />
+                    <Area type="monotone" dataKey="calls" stroke="hsl(217 91% 60%)" fill="hsl(217 91% 60% / 0.12)" strokeWidth={2} />
+                  </AreaChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="flex items-center justify-center h-full text-sm text-white/20">No usage data yet</div>
+              )}
             </div>
           </CardContent>
         </Card>
