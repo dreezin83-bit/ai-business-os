@@ -7,16 +7,39 @@ import { ensureBusiness } from "@/lib/business";
 import { generateId } from "@/lib/utils";
 import { notifyContractorOfNewAppointment, sendCustomerAppointmentConfirmation } from "@/lib/notifications";
 
+const DEFAULT_LIMIT = 50;
+const MAX_LIMIT = 200;
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
     const businessId = await ensureBusiness();
     if (!businessId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+    const { searchParams } = new URL(request.url);
+    const limit = Math.min(Number(searchParams.get("limit")) || DEFAULT_LIMIT, MAX_LIMIT);
+
     const appointments = await db
-      .select()
+      .select({
+        id: appointment.id,
+        customerName: appointment.customerName,
+        customerPhone: appointment.customerPhone,
+        customerEmail: appointment.customerEmail,
+        service: appointment.service,
+        date: appointment.date,
+        startTime: appointment.startTime,
+        endTime: appointment.endTime,
+        status: appointment.status,
+        notes: appointment.notes,
+        leadId: appointment.leadId,
+        googleEventId: appointment.googleEventId,
+        createdAt: appointment.createdAt,
+        updatedAt: appointment.updatedAt,
+      })
       .from(appointment)
       .where(eq(appointment.businessId, businessId))
-      .orderBy(desc(appointment.date), desc(appointment.startTime));
+      .orderBy(desc(appointment.date), desc(appointment.startTime))
+      .limit(limit);
+
     return NextResponse.json(appointments);
   } catch (error) {
     console.error("Failed to fetch appointments:", error);

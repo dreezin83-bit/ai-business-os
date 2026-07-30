@@ -141,8 +141,23 @@ export async function POST(request: Request) {
     });
 
     // Load config
-    const [config] = await db.select().from(aiBrainConfig).where(eq(aiBrainConfig.businessId, businessId));
+    const [config, bizRow] = await Promise.all([
+      db.select({
+        services: aiBrainConfig.services,
+        businessInfo: aiBrainConfig.businessInfo,
+        businessHours: aiBrainConfig.businessHours,
+        serviceAreas: aiBrainConfig.serviceAreas,
+        pricingGuidance: aiBrainConfig.pricingGuidance,
+        companyPolicies: aiBrainConfig.companyPolicies,
+        faqs: aiBrainConfig.faqs,
+        responseStyle: aiBrainConfig.responseStyle,
+        leadCollectionRules: aiBrainConfig.leadCollectionRules,
+        appointmentBookingRules: aiBrainConfig.appointmentBookingRules,
+      }).from(aiBrainConfig).where(eq(aiBrainConfig.businessId, businessId)),
+      db.select({ name: business.name }).from(business).where(eq(business.id, businessId)).limit(1),
+    ]);
     const configured = isConfigured(config);
+    const bizName = bizRow?.name || "not set";
 
     // Determine if this is a contractor (dashboard/ai-brain test) or customer (public widget)
     const isContractor = source === "dashboard" || source === "ai-test" || !source;
@@ -152,7 +167,7 @@ export async function POST(request: Request) {
       const onboardingPrompt = `You are an AI setup assistant for a new contractor. Your ONLY job right now is to help them configure their business. You are NOT talking to a customer.
 
 CURRENT STATE:
-- Business Name: ${(await db.select().from(business).where(eq(business.id, businessId)).limit(1))[0]?.name || "not set"}
+- Business Name: ${bizName}
 - Services: not set
 - Other info: not set
 

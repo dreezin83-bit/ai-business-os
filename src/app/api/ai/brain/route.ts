@@ -89,8 +89,8 @@ export async function PUT(request: Request) {
     // Invalidate cached AI context so next request gets fresh config
     invalidateAiContextCache(businessId);
 
-    const [config] = await db.select().from(aiBrainConfig).where(eq(aiBrainConfig.businessId, businessId));
-    return NextResponse.json(config);
+    // Return the data we just saved — no need to re-query
+    return NextResponse.json({ id: existing?.id || generateId(), businessId, ...data });
   } catch (error) {
     console.error("Failed to save AI brain config:", error);
     return NextResponse.json({ error: "Failed to save config" }, { status: 500 });
