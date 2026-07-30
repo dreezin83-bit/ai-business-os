@@ -24,7 +24,7 @@ import {
   Shield,
   ChevronDown,
 } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useClerk, useUser } from "@clerk/nextjs";
 import { Button } from "@/components/ui/button";
 
@@ -57,12 +57,23 @@ export function Sidebar() {
 
   const isAdmin = isLoaded && (user?.publicMetadata as any)?.role === "admin";
 
+  // Lock body scroll when mobile sidebar is open
+  useEffect(() => {
+    if (mobileOpen) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+    return () => { document.body.style.overflow = ""; };
+  }, [mobileOpen]);
+
   return (
     <>
       {/* Mobile toggle */}
       <button
         onClick={() => setMobileOpen(!mobileOpen)}
-        className="fixed top-4 left-4 z-50 md:hidden"
+        className="fixed top-3 left-3 z-50 md:hidden h-10 w-10 rounded-xl bg-slate-900/80 backdrop-blur border border-white/10 flex items-center justify-center text-white hover:bg-slate-800 transition-colors shadow-lg"
+        aria-label={mobileOpen ? "Close menu" : "Open menu"}
       >
         {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
       </button>
@@ -89,6 +100,14 @@ export function Sidebar() {
               AI
             </div>
             <span className="font-semibold text-sm tracking-tight text-white">AI Business OS</span>
+            {/* Mobile close — tappable close inside sidebar */}
+            <button
+              onClick={() => setMobileOpen(false)}
+              className="ml-auto md:hidden h-8 w-8 rounded-lg flex items-center justify-center text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
+              aria-label="Close sidebar"
+            >
+              <X className="h-4 w-4" />
+            </button>
           </div>
 
           {/* Navigation */}
