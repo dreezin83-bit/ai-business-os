@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { db } from "@/db";
 import { business, aiBrainConfig, lead, conversation, message, appointment } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
-import { generateId } from "@/lib/utils";
+import { generateId, timeToMinutes, computeDefaultEndTime } from "@/lib/utils";
 import { buildAiContext } from "@/lib/ai-context";
 import { createLlmCompletion } from "@/lib/llm";
 import { notifyContractorOfNewLead, sendCustomerConfirmation } from "@/lib/notifications";
@@ -167,19 +167,50 @@ IMPORTANT: End your response with a clear question so the conversation continues
       }
     }
 
-    // Check for appointment markers
-    const apptMatch = reply.match(/\[CONFIRM_APPOINTMENT\]::([^:]+)::([^:]+)::([^:]+)::([^:]+)::([^:]+)::([^:]+)::([^:\n]+)/);
+    // Check for appointment markers (flexible regex — same fix as ai/chat/route.ts)
+    const apptMatch = reply.match(/\[CONFIRM_APPOINTMENT\]::([^:\n]*?)::([^:\n]*?)::([^:\n]*?)::([^:\n]*?)::([^:\n]*?)(?:::([^:\n]*?))?(?:::([^:\n]*?))?(?=\s*(?:$|\[|\n))/);
     if (apptMatch) {
-      const [, date, startTime, endTime, service, cName, cPhone, cEmail] = apptMatch;
-      if (date && date !== "not provided") {
-        const apptId = generateId();
-        await db.insert(appointment).values({
-          id: apptId, businessId, customerName: cName.trim() || "Voice Caller",
-          customerPhone: cPhone.trim() || callerNumber,
-          customerEmail: cEmail.trim() || "",
-          service: service.trim(), date: date.trim(), startTime: startTime.trim(),
-          endTime: endTime.trim(), status: "scheduled",
-        });
+      const date = apptMatch[1]?.trim() || "";
+      const startTime = apptMatch[2]?.trim() || "";
+      const rawEndTime = apptMatch[3]?.trim() || "";
+      const service = apptMatch[4]?.trim() || "";
+      const cName = apptMatch[5]?.trim() || "Voice Caller";
+      const cPhone = apptMatch[6]?.trim() || callerNumber;
+      const cEmail = apptMatch[7]?.trim() || "";
+      const endTime = rawEndTime || computeDefaultEndTime(startTime);
+
+      if (date && date !== "not provided" && startTime) {
+        // Check for time conflicts before inserting
+        let hasConflict = false;
+        try {
+          const existingAppts = await db
+            .select()
+            .from(appointment)
+            .where(
+              and(
+                eq(appointment.businessId, businessId),
+                eq(appointment.date, date),
+                eq(appointment.status, "scheduled"),
+              ),
+            );
+          const newStart = timeToMinutes(startTime);
+          const newEnd = timeToMinutes(endTime);
+          hasConflict = existingAppts.some((a) => {
+            const aStart = timeToMinutes(a.startTime);
+            const aEnd = timeToMinutes(a.endTime || computeDefaultEndTime(a.startTime));
+            return newStart < aEnd && newEnd > aStart;
+          });
+        } catch { /* fall through — insert anyway */ }
+
+        if (!hasConflict) {
+          const apptId = generateId();
+          await db.insert(appointment).values({
+            id: apptId, businessId, customerName: cName,
+            customerPhone: cPhone, customerEmail: cEmail,
+            service: service, date: date, startTime: startTime,
+            endTime: endTime, status: "scheduled",
+          });
+        }
       }
     }
 
