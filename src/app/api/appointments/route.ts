@@ -4,7 +4,7 @@ import { appointment, business } from "@/db/schema";
 import { eq, desc, and } from "drizzle-orm";
 import { auth } from "@clerk/nextjs/server";
 import { ensureBusiness } from "@/lib/business";
-import { generateId } from "@/lib/utils";
+import { generateId, timeToMinutes, computeDefaultEndTime } from "@/lib/utils";
 import { notifyContractorOfNewAppointment, sendCustomerAppointmentConfirmation } from "@/lib/notifications";
 
 const DEFAULT_LIMIT = 50;
@@ -59,7 +59,9 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
     }
 
-    // Double booking check — checks for ANY overlapping appointments, not just exact startTime matches
+    // Double booking check — uses proper time-to-minutes comparison
+    const startMins = timeToMinutes(startTime);
+    const endMins = timeToMinutes(endTime || computeDefaultEndTime(startTime));
     const existing = await db
       .select()
       .from(appointment)
@@ -71,8 +73,13 @@ export async function POST(request: Request) {
         )
       );
 
-    const conflict = existing.some(
-      (a) => startTime < a.endTime && (endTime || "") > a.startTime
+    const conflict = startMins >= 0 && endMins >= 0 && existing.some(
+      (a) => {
+        const aStart = timeToMinutes(a.startTime);
+        const aEnd = timeToMinutes(a.endTime);
+        if (aStart < 0 || aEnd < 0) return false;
+        return startMins < aEnd && endMins > aStart;
+      }
     );
 
     if (conflict) {
@@ -81,6 +88,8 @@ export async function POST(request: Request) {
         { status: 409 }
       );
     }
+
+    const finalEndTime = endTime || computeDefaultEndTime(startTime);
 
     const newAppointment = {
       id: generateId(),
@@ -92,7 +101,7 @@ export async function POST(request: Request) {
       service,
       date,
       startTime,
-      endTime: endTime || "",
+      endTime: finalEndTime,
       status: "scheduled",
       notes: notes || "",
       googleEventId: "",

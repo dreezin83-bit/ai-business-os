@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { db } from "@/db";
 import { conversation, message, lead, appointment, aiBrainConfig, business } from "@/db/schema";
 import { eq, desc, and } from "drizzle-orm";
-import { generateId } from "@/lib/utils";
+import { generateId, timeToMinutes, computeDefaultEndTime } from "@/lib/utils";
 import { ensureBusiness } from "@/lib/business";
 import { buildAiContext } from "@/lib/ai-context";
 import { createLlmCompletion } from "@/lib/llm";
@@ -25,10 +25,34 @@ function parseOnboardingMarkers(text: string): Record<string, string> {
   return saved;
 }
 
+/** Parse [CONFIRM_APPOINTMENT] marker with flexible field matching.
+ *  Supports partial markers (missing optional fields like email/phone/endTime).
+ *  Returns null only if date+startTime+service+customerName are all missing. */
 function parseAppointmentMarker(text: string) {
-  const match = text.match(/\[CONFIRM_APPOINTMENT\]::([^:]+)::([^:]+)::([^:]+)::([^:]+)::([^:]+)::([^:]+)::([^:\n]+)/);
+  // Match the marker with optional trailing fields (email and phone may be absent)
+  const match = text.match(/\[CONFIRM_APPOINTMENT\]::([^:\n]*?)::([^:\n]*?)::([^:\n]*?)::([^:\n]*?)::([^:\n]*?)(?:::([^:\n]*?))?(?:::([^:\n]*?))?(?=\s*(?:$|\[|\n))/);
   if (!match) return null;
-  return { date: match[1].trim(), startTime: match[2].trim(), endTime: match[3].trim(), service: match[4].trim(), customerName: match[5].trim(), customerPhone: match[6].trim(), customerEmail: match[7].trim() };
+
+  const date = match[1]?.trim() || "";
+  const startTime = match[2]?.trim() || "";
+  const endTime = match[3]?.trim() || "";
+  const service = match[4]?.trim() || "";
+  const customerName = match[5]?.trim() || "";
+  const customerPhone = match[6]?.trim() || "";
+  const customerEmail = match[7]?.trim() || "";
+
+  // Require at minimum: date + startTime + service + customerName
+  if (!date || date === "not provided" || !startTime || !service || !customerName) {
+    return null;
+  }
+
+  // Auto-compute endTime if missing (default 1 hour)
+  let finalEndTime = endTime;
+  if (!finalEndTime || finalEndTime === "not provided") {
+    finalEndTime = computeDefaultEndTime(startTime);
+  }
+
+  return { date, startTime, endTime: finalEndTime, service, customerName, customerPhone, customerEmail };
 }
 
 function parseLeadMarker(text: string) {
@@ -46,6 +70,10 @@ function cleanResponse(text: string): string {
 }
 
 async function checkAppointmentConflict(businessId: string, date: string, startTime: string, endTime: string): Promise<string[]> {
+  const startMins = timeToMinutes(startTime);
+  const endMins = timeToMinutes(endTime);
+  if (startMins < 0 || endMins < 0) return []; // can't parse times — allow booking
+
   // Query directly for overlapping appointments — database-level filtering
   const overlapping = await db
     .select({ startTime: appointment.startTime, endTime: appointment.endTime, customerName: appointment.customerName, service: appointment.service })
@@ -59,7 +87,12 @@ async function checkAppointmentConflict(businessId: string, date: string, startT
     );
   // Return list of conflicting time slots (stringified)
   return overlapping
-    .filter((a) => startTime < a.endTime && endTime > a.startTime)
+    .filter((a) => {
+      const aStart = timeToMinutes(a.startTime);
+      const aEnd = timeToMinutes(a.endTime);
+      if (aStart < 0 || aEnd < 0) return false; // skip unparseable entries
+      return startMins < aEnd && endMins > aStart;
+    })
     .map((a) => `${a.startTime}-${a.endTime} (${a.service})`);
 }
 
