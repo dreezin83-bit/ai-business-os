@@ -1,150 +1,163 @@
 /**
- * Flutterwave Webhook Handler
+ * Flutterwave Payment Webhook Handler
  *
- * Listens for charge.completed events and automates phone number provisioning
- * for businesses that have just upgraded their subscription.
+ * Receives charge.completed events from Flutterwave, creates/updates
+ * subscription records, and triggers Vapi voice provisioning when both
+ * subscription is active AND onboarding is complete.
  *
- * Flow:
- *  1. Verify the webhook signature (verif-hash header)
- *  2. Parse the charge.completed event
- *  3. Look up the business from metadata.businessId
- *  4. Buy a Vapi phone number for the business
- *  5. Set its serverUrl to the business's Vapi webhook endpoint
- *  6. Save the phone number to the phone_numbers table
- *  7. Mark the business as voice_setup_ready
- *
- * Public route: /api/webhooks(.*) is already whitelisted in middleware.
- *
- * Required env: FLUTTERWAVE_SECRET_HASH, VAPI_API_KEY
+ * Flutterwave webhook secret: FLUTTERWAVE_WEBHOOK_SECRET
+ * Webhook URL: /api/webhooks/flutterwave
  */
 
 import { NextResponse } from "next/server";
 import { db } from "@/db";
-import { business, phoneNumber } from "@/db/schema";
+import { business, subscription } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { generateId } from "@/lib/utils";
-import { buyPhoneNumber, createPhoneNumber, updatePhoneNumber } from "@/lib/vapi-client";
+import { provisionVapiVoice, canProvisionVoice } from "@/lib/vapi-provisioning";
+import crypto from "crypto";
 
-/** Verify webhook signature via Flutterwave's verif-hash header */
-function verifySignature(request: Request): boolean {
-  const secretHash = process.env.FLUTTERWAVE_SECRET_HASH;
-  if (!secretHash) {
-    console.warn("[Flutterwave] FLUTTERWAVE_SECRET_HASH not set — accepting all (insecure)");
-    return true;
-  }
-  const verifHash = request.headers.get("verif-hash") || "";
-  return verifHash === secretHash;
+// ─── Types ──────────────────────────────────────────────────
+
+interface FlutterwaveWebhookPayload {
+  event: string;
+  data: {
+    id: number;
+    tx_ref: string;
+    amount: number;
+    currency: string;
+    status: string;
+    customer: {
+      email: string;
+      name?: string;
+    };
+    meta?: {
+      businessId?: string;
+      plan?: string;
+    };
+    created_at: string;
+  };
 }
 
-export async function POST(request: Request) {
-  if (!verifySignature(request)) {
-    return NextResponse.json({ error: "Invalid signature" }, { status: 401 });
+// ─── Signature verification ─────────────────────────────────
+
+function verifyFlutterwaveSignature(payload: string, signature: string): boolean {
+  const secret = process.env.FLUTTERWAVE_WEBHOOK_SECRET;
+  if (!secret) {
+    console.warn("[flutterwave] FLUTTERWAVE_WEBHOOK_SECRET not set — skipping signature check");
+    return true;
   }
 
-  let payload: any;
   try {
-    payload = await request.json();
+    const hash = crypto.createHmac("sha256", secret).update(payload).digest("hex");
+    return hash === signature;
   } catch {
-    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
+    return false;
   }
+}
 
-  const event = payload.event || payload["event.type"];
-  const data = payload.data || {};
+// ─── Handler ───────────────────────────────────────────────
 
-  console.log(`[Flutterwave] Event: ${event}, tx_ref: ${data.tx_ref || "N/A"}`);
-
-  // ── Only handle successful charge completions ──────────────
-  if (event !== "charge.completed") {
-    return NextResponse.json({ status: "ignored", event }, { status: 200 });
-  }
-
-  if (data.status !== "successful") {
-    console.log(`[Flutterwave] Charge not successful: status=${data.status}`);
-    return NextResponse.json({ status: "skipped", reason: "not successful" });
-  }
-
-  // ── Extract business ID from metadata ─────────────────────
-  const meta = data.meta || {};
-  const businessId = meta.businessId || meta.business_id || null;
-
-  if (!businessId) {
-    console.log("[Flutterwave] No businessId in metadata — skipping");
-    return NextResponse.json({ status: "skipped", reason: "no businessId" });
-  }
-
-  // ── Look up the business ──────────────────────────────────
-  const [biz] = await db
-    .select()
-    .from(business)
-    .where(eq(business.id, businessId))
-    .limit(1);
-
-  if (!biz) {
-    console.error(`[Flutterwave] Business ${businessId} not found`);
-    return NextResponse.json({ status: "skipped", reason: "business not found" });
-  }
-
-  // Don't double-provision
-  const existingNumbers = await db
-    .select()
-    .from(phoneNumber)
-    .where(eq(phoneNumber.businessId, businessId));
-
-  if (existingNumbers.length > 0) {
-    console.log(`[Flutterwave] Business ${businessId} already has ${existingNumbers.length} phone(s)`);
-    return NextResponse.json({
-      status: "skipped",
-      reason: "already provisioned",
-      phoneCount: existingNumbers.length,
-    });
-  }
-
-  // ── Auto-provision phone number ───────────────────────────
+export async function POST(request: Request) {
   try {
-    const serverUrl = `https://ai-business-os-six.vercel.app/api/voice/vapi/${biz.vapiWebhookToken}`;
+    const rawBody = await request.text();
 
-    // Buy a number from Vapi's pool
-    const vapiNumber = await buyPhoneNumber({});
+    // ── Verify signature ──
+    const signature = request.headers.get("verif-hash") || "";
+    if (!verifyFlutterwaveSignature(rawBody, signature)) {
+      return NextResponse.json({ error: "Invalid signature" }, { status: 403 });
+    }
 
-    // Configure it with the business's server URL
-    await createPhoneNumber({
-      number: vapiNumber.number,
-      name: `${biz.name || "Business"} Voice Line`,
-      serverUrl,
-      serverUrlSecret: process.env.VAPI_WEBHOOK_SECRET || "",
-    });
+    // ── Parse payload ──
+    let payload: FlutterwaveWebhookPayload;
+    try {
+      payload = JSON.parse(rawBody);
+    } catch {
+      return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
+    }
 
-    // Save to our database
-    const recordId = generateId();
-    await db.insert(phoneNumber).values({
-      id: recordId,
-      businessId,
-      vapiPhoneNumberId: vapiNumber.id,
-      number: vapiNumber.number,
-      serverUrl,
-      provider: vapiNumber.provider,
-    });
+    // Only process charge.completed events
+    if (payload.event !== "charge.completed") {
+      console.log(`[flutterwave] Ignoring event: ${payload.event}`);
+      return NextResponse.json({ received: true });
+    }
 
-    // Mark business as voice-ready
-    await db
-      .update(business)
-      .set({ voiceSetupReady: true })
-      .where(eq(business.id, businessId));
+    const { data } = payload;
+    if (data.status !== "successful") {
+      console.log(`[flutterwave] Payment not successful: ${data.status}`);
+      return NextResponse.json({ received: true });
+    }
 
-    console.log(
-      `[Flutterwave] Provisioned ${vapiNumber.number} for business ${businessId}`
-    );
+    const businessId = data.meta?.businessId;
+    if (!businessId) {
+      console.log(`[flutterwave] No businessId in meta — cannot link payment`);
+      return NextResponse.json({ received: true, note: "Missing businessId in meta" });
+    }
 
-    return NextResponse.json({
-      status: "provisioned",
-      businessId,
-      phoneNumber: vapiNumber.number,
-    });
+    console.log(`[flutterwave] Payment confirmed for business ${businessId} — amount=${data.amount} ${data.currency}`);
+
+    // ── Upsert subscription ──
+    const [existingSub] = await db
+      .select()
+      .from(subscription)
+      .where(eq(subscription.businessId, businessId));
+
+    const now = new Date();
+    const subId = existingSub?.id || generateId();
+
+    if (existingSub) {
+      await db
+        .update(subscription)
+        .set({
+          status: "active",
+          plan: data.meta?.plan || existingSub.plan || "starter",
+          amount: data.amount,
+          currency: data.currency,
+          flutterwaveSubId: String(data.id),
+          currentPeriodStart: now,
+          currentPeriodEnd: new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000), // +30 days
+          updatedAt: now,
+        })
+        .where(eq(subscription.id, existingSub.id));
+    } else {
+      await db.insert(subscription).values({
+        id: subId,
+        businessId,
+        status: "active",
+        plan: data.meta?.plan || "starter",
+        amount: data.amount,
+        currency: data.currency,
+        interval: "month",
+        flutterwaveSubId: String(data.id),
+        currentPeriodStart: now,
+        currentPeriodEnd: new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000),
+      });
+    }
+
+    console.log(`[flutterwave] Subscription ${existingSub ? "updated" : "created"} for business ${businessId}`);
+
+    // ── Check if we can provision voice ──
+    const canProvision = await canProvisionVoice(businessId);
+    if (canProvision) {
+      console.log(`[flutterwave] Business ${businessId} ready for voice provisioning — triggering...`);
+      // Fire-and-forget: don't block the webhook response
+      provisionVapiVoice(businessId)
+        .then((result) => {
+          console.log(`[flutterwave] Provisioning result for ${businessId}: ${result.success ? "SUCCESS" : "FAILED"}`);
+          if (!result.success) {
+            console.error(`[flutterwave] Provisioning error: ${result.error}`);
+          }
+        })
+        .catch((err) => {
+          console.error(`[flutterwave] Provisioning threw:`, err);
+        });
+    } else {
+      console.log(`[flutterwave] Business ${businessId} not yet ready for provisioning (onboarding incomplete?)`);
+    }
+
+    return NextResponse.json({ received: true });
   } catch (error: any) {
-    console.error(`[Flutterwave] Provisioning failed for ${businessId}:`, error?.message);
-    return NextResponse.json(
-      { status: "error", error: error?.message },
-      { status: 200 } // Never 5xx — Flutterwave would retry
-    );
+    console.error("[flutterwave] Error:", error?.message);
+    return NextResponse.json({ received: true, error: "Internal error" }, { status: 200 });
   }
 }

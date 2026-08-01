@@ -12,6 +12,7 @@ import { eq } from "drizzle-orm";
 import { generateId } from "@/lib/utils";
 import { getTemplate } from "@/lib/ai-templates/index";
 import { invalidateAiContextCache } from "@/lib/ai-context-cache";
+import { canProvisionVoice, provisionVapiVoice } from "@/lib/vapi-provisioning";
 
 export async function POST(request: Request) {
   const { userId } = await auth();
@@ -198,6 +199,19 @@ export async function POST(request: Request) {
 
   // Invalidate cache — onboarding changed business + AI config
   invalidateAiContextCache(biz.id);
+
+  // ── Trigger Vapi provisioning if subscription is active ──
+  const ready = await canProvisionVoice(biz.id);
+  if (ready) {
+    console.log(`[onboarding] Business ${biz.id} ready — triggering voice provisioning`);
+    provisionVapiVoice(biz.id)
+      .then((result) => {
+        console.log(`[onboarding] Voice provisioning for ${biz.id}: ${result.success ? "SUCCESS" : "FAILED — " + result.error}`);
+      })
+      .catch((err) => {
+        console.error(`[onboarding] Voice provisioning threw for ${biz.id}:`, err);
+      });
+  }
 
   return NextResponse.json({
     success: true,
