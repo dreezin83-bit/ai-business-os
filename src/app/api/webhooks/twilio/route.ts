@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
 import { db } from "@/db";
-import { business, conversation, message, lead, communicationLog } from "@/db/schema";
+import { business, conversation, message, lead, communicationLog, appointment } from "@/db/schema";
 import { eq, desc, and } from "drizzle-orm";
-import { generateId } from "@/lib/utils";
+import { generateId, timeToMinutes, computeDefaultEndTime } from "@/lib/utils";
 import { buildAiContext } from "@/lib/ai-context";
 import { createLlmCompletion } from "@/lib/llm";
 import { extractLeadFromConversation } from "@/lib/lead-extractor";
@@ -124,15 +124,52 @@ export async function POST(request: Request) {
       aiResponse = completion.content;
 
       // Parse markers
-      const apptMatch = aiResponse.match(/\[CONFIRM_APPOINTMENT\]::([^:]+)::([^:]+)::([^:]+)::([^:]+)::([^:]+)::([^:]+)::([^\n]+)/);
+      const apptMatch = aiResponse.match(/\[CONFIRM_APPOINTMENT\]::([^:\n]*?)::([^:\n]*?)::([^:\n]*?)::([^:\n]*?)::([^:\n]*?)(?:::([^:\n]*?))?(?:::([^:\n]*?))?(?=\s*(?:$|\[|\n))/);
       const leadMatch = aiResponse.match(/\[CREATE_LEAD\]::([^:]+)::([^:]*)::([^:]*)::([^:]*)::([^\n]+)/);
 
       if (apptMatch) {
-        // Handle appointment marker
-        const [, date, startTime, endTime, service, customerName, customerPhone, customerEmail] = apptMatch;
-        if (date && startTime && endTime && service && date !== "not provided") {
-          // TODO: Create appointment from AI marker
-          // Simplified: skip appointment creation for now
+        const apptDate = apptMatch[1]?.trim() || "";
+        const apptStart = apptMatch[2]?.trim() || "";
+        const rawEnd = apptMatch[3]?.trim() || "";
+        const apptService = apptMatch[4]?.trim() || "";
+        const apptCName = apptMatch[5]?.trim() || "WhatsApp Customer";
+        const apptCPhone = apptMatch[6]?.trim() || from;
+        const apptCEmail = apptMatch[7]?.trim() || "";
+        const apptEnd = rawEnd || computeDefaultEndTime(apptStart);
+
+        if (apptDate && apptStart && apptService && apptDate !== "not provided") {
+          try {
+            // Check time conflict
+            const existing = await db
+              .select()
+              .from(appointment)
+              .where(
+                and(
+                  eq(appointment.businessId, businessId),
+                  eq(appointment.date, apptDate),
+                  eq(appointment.status, "scheduled"),
+                ),
+              );
+            const newStart = timeToMinutes(apptStart);
+            const newEnd = timeToMinutes(apptEnd);
+            const hasConflict = existing.some((a) => {
+              const aStart = timeToMinutes(a.startTime);
+              const aEnd = timeToMinutes(a.endTime || computeDefaultEndTime(a.startTime));
+              return newStart < aEnd && newEnd > aStart;
+            });
+
+            if (!hasConflict) {
+              const apptId = generateId();
+              await db.insert(appointment).values({
+                id: apptId, businessId, customerName: apptCName,
+                customerPhone: apptCPhone, customerEmail: apptCEmail,
+                service: apptService, date: apptDate, startTime: apptStart,
+                endTime: apptEnd, status: "scheduled",
+              });
+            }
+          } catch (err) {
+            console.error("[twilio-webhook] Appointment creation error:", err);
+          }
         }
       }
 
