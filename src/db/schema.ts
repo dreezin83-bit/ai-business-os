@@ -18,6 +18,7 @@ export const business = pgTable("business", {
   vapiWebhookToken: text("vapi_webhook_token").unique(),
   vapiAssistantId: text("vapi_assistant_id"),
   voiceSetupReady: boolean("voice_setup_ready").default(false),
+  voiceProvisionState: text("voice_provision_state").default("idle"), // idle | provisioning | completed | failed
   voiceProvisionError: text("voice_provision_error"),
   voiceProvisionedAt: timestamp("voice_provisioned_at"),
   category: text("category").default(""),
