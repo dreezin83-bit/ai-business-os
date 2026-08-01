@@ -49,7 +49,7 @@ export default function LeadsPage() {
   useEffect(() => {
     fetch("/api/leads")
       .then((r) => r.ok ? r.json() : Promise.reject("Failed to load"))
-      .then((data) => { setLeads(data); setLoading(false); })
+      .then((data) => { setLeads(data.leads || data); setLoading(false); })
       .catch(() => { setError("Failed to load leads"); setLoading(false); });
   }, []);
 
