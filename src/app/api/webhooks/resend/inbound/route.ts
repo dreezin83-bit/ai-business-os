@@ -120,12 +120,14 @@ function parseEmailAddress(raw: string): string {
 
 /**
  * Look up a business by matching any of the "to" addresses against business.email.
- * Also tries matching against a REPLY_TO address if one is configured.
+ * Requires an EXACT normalized match — no domain fallback.
+ * Returns null for ambiguous or unmatched recipients so customer email
+ * is never routed to the wrong contractor.
  */
 async function findBusinessByEmail(toAddresses: string[]) {
   const normalized = toAddresses.map(parseEmailAddress);
 
-  // Try exact match first
+  // Exact match only — tenant isolation is mandatory
   const allBusinesses = await db.select().from(business);
   for (const addr of normalized) {
     const match = allBusinesses.find(
@@ -134,16 +136,11 @@ async function findBusinessByEmail(toAddresses: string[]) {
     if (match) return match;
   }
 
-  // Try domain match as fallback
-  for (const addr of normalized) {
-    const domain = addr.split("@")[1];
-    if (!domain) continue;
-    const match = allBusinesses.find(
-      (b) => b.email && parseEmailAddress(b.email).endsWith(`@${domain}`),
-    );
-    if (match) return match;
-  }
-
+  // No match found — safely reject so email is never misrouted
+  console.log(
+    `[resend-inbound] No exact business match for: ${normalized.join(", ")}. ` +
+    `Rejecting to prevent cross-tenant routing.`
+  );
   return null;
 }
 
