@@ -21,11 +21,9 @@ import {
   Sparkles,
   Terminal,
   TrendingUp,
-  Shield,
-  ChevronDown,
 } from "lucide-react";
 import { useState } from "react";
-import { useClerk, useUser } from "@clerk/nextjs";
+import { useClerk } from "@clerk/nextjs";
 import { Button } from "@/components/ui/button";
 
 const navigation = [
@@ -43,19 +41,10 @@ const navigation = [
   { name: "Settings", href: "/dashboard/settings", icon: Settings },
 ];
 
-const adminNav = [
-  { name: "Overview", href: "/admin/overview", icon: TrendingUp },
-  { name: "Tenants", href: "/admin/tenants", icon: Users },
-];
-
 export function Sidebar() {
   const pathname = usePathname();
   const { signOut } = useClerk();
-  const { user, isLoaded } = useUser();
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [adminOpen, setAdminOpen] = useState(false);
-
-  const isAdmin = isLoaded && (user?.publicMetadata as any)?.role === "admin";
 
   return (
     <>
@@ -93,27 +82,6 @@ export function Sidebar() {
 
           {/* Navigation */}
           <nav className="flex-1 px-2.5 py-3 space-y-0.5 overflow-y-auto">
-            {/* Admin section */}
-            {isAdmin && (
-              <div className="mb-2">
-                <button onClick={() => setAdminOpen(!adminOpen)} className="flex items-center justify-between w-full px-3 py-2.5 rounded-lg text-sm font-medium text-amber-400 hover:bg-amber-500/10 transition-all duration-150">
-                  <span className="flex items-center gap-3"><Shield className="h-4 w-4" />Admin</span>
-                  <ChevronDown className={cn("h-3.5 w-3.5 transition-transform duration-200", adminOpen && "rotate-180")} />
-                </button>
-                {adminOpen && (
-                  <div className="mt-0.5 ml-4 space-y-0.5 border-l border-slate-800 pl-3">
-                    {adminNav.map((item) => {
-                      const isActive = pathname === item.href || pathname.startsWith(item.href + "/");
-                      return (
-                        <Link key={item.href} href={item.href} onClick={() => setMobileOpen(false)} className={cn("flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-150", isActive ? "bg-slate-800 text-white shadow-sm" : "text-slate-400 hover:text-white hover:bg-slate-800/50")}>
-                          <item.icon className="h-4 w-4 flex-shrink-0" />{item.name}
-                        </Link>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-            )}
             {navigation.map((item) => {
               const isActive = pathname === item.href || pathname.startsWith(item.href + "/");
               const isExternal = (item as any).external;
