@@ -5,25 +5,22 @@ import { eq, and, desc } from "drizzle-orm";
 import { generateId } from "@/lib/utils";
 import { buildAiContext } from "@/lib/ai-context";
 import { createLlmCompletion } from "@/lib/llm";
+import { verifyTwilioSignature } from "@/lib/twilio-verify";
 
 /**
- * Twilio Voice webhook handler.
- * Called when someone calls a contractor's Twilio number.
- *
- * Flow:
- * 1. Twilio sends call status webhook
- * 2. If status is "no-answer" or "busy" or "failed" → missed call
- * 3. Look up which business owns this number
- * 4. Send WhatsApp message via Twilio to the caller
- * 5. Start AI conversation via WhatsApp
+ * Twilio Voice webhook handler — X-Twilio-Signature verified.
  */
 export async function POST(request: Request) {
   try {
-    const formData = await request.formData();
-    const callStatus = formData.get("CallStatus")?.toString() || "";
-    const from = formData.get("From")?.toString() || "";  // Caller's number
-    const to = formData.get("To")?.toString() || "";       // Contractor's number
-    const callSid = formData.get("CallSid")?.toString() || "";
+    const rawBody = await request.text();
+    if (!(await verifyTwilioSignature(request, rawBody))) {
+      return NextResponse.json({ error: "Invalid signature" }, { status: 403 });
+    }
+    const formData = new URLSearchParams(rawBody);
+    const callStatus = formData.get("CallStatus") || "";
+    const from = formData.get("From") || "";
+    const to = formData.get("To") || "";
+    const callSid = formData.get("CallSid") || "";
 
     console.log(`[twilio-voice] CallStatus=${callStatus} From=${from} To=${to}`);
 

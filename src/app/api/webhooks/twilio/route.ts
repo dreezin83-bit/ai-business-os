@@ -7,27 +7,22 @@ import { buildAiContext } from "@/lib/ai-context";
 import { createLlmCompletion } from "@/lib/llm";
 import { extractLeadFromConversation } from "@/lib/lead-extractor";
 import { notifyContractorOfNewLead, sendCustomerConfirmation } from "@/lib/notifications";
+import { verifyTwilioSignature } from "@/lib/twilio-verify";
 
 /**
- * Twilio WhatsApp webhook handler.
- * When a customer sends a WhatsApp message to a contractor's number,
- * Twilio POSTs to this endpoint with the message details.
- *
- * Flow:
- * 1. Receive message from Twilio
- * 2. Look up which business owns this WhatsApp number
- * 3. Route to AI for response
- * 4. Send AI response back via Twilio
- * 5. Auto-detect and create leads
+ * Twilio WhatsApp webhook handler — X-Twilio-Signature verified.
  */
 export async function POST(request: Request) {
   try {
-    // Twilio sends form-encoded data, not JSON
-    const formData = await request.formData();
-    const from = formData.get("From")?.toString() || ""; // Customer's WhatsApp number
-    const to = formData.get("To")?.toString() || "";     // Contractor's WhatsApp number
-    const body = formData.get("Body")?.toString() || "";
-    const messageSid = formData.get("MessageSid")?.toString() || "";
+    const rawBody = await request.text();
+    if (!(await verifyTwilioSignature(request, rawBody))) {
+      return NextResponse.json({ error: "Invalid signature" }, { status: 403 });
+    }
+    const formData = new URLSearchParams(rawBody);
+    const from = formData.get("From") || "";
+    const to = formData.get("To") || "";
+    const body = formData.get("Body") || "";
+    const messageSid = formData.get("MessageSid") || "";
 
     console.log(`[twilio-webhook] From: ${from}, To: ${to}, Body: ${body}`);
 
