@@ -12,8 +12,8 @@
     {
       "idx": 1,
       "version": "7",
-      "when": 1785705673045,
-      "tag": "0001_provisioning_subscription",
+      "when": 1785706235043,
+      "tag": "0001_safe_provisioning_v2",
       "breakpoints": true
     }
   ]

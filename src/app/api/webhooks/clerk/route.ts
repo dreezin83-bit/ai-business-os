@@ -4,23 +4,50 @@ import { business, aiBrainConfig } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { generateId } from "@/lib/utils";
 
-async function verifySvix(request, rawBody) {
+async function verifySvix(
+  request: Request,
+  rawBody: string
+): Promise<boolean> {
   const secret = process.env.CLERK_WEBHOOK_SECRET;
+  if (!secret) {
+    console.error("[clerk] CLERK_WEBHOOK_SECRET is not set — rejecting all webhooks");
+    return false;
+  }
   const svixId = request.headers.get("svix-id");
   const ts = request.headers.get("svix-timestamp");
   const sig = request.headers.get("svix-signature");
+  if (!svixId || !ts || !sig) {
+    console.error("[clerk] Missing Svix headers");
+    return false;
+  }
   try {
     const signed = svixId + "." + ts + "." + rawBody;
     const enc = new TextEncoder();
-    const key = await crypto.subtle.importKey("raw", enc.encode((secret.split("whsec_").pop() || secret)), { name: "HMAC", hash: "SHA-256" }, false, ["verify"]);
-    for (const s of sig.split(" ").map(x => x.split(",")[1]).filter(Boolean)) {
-      if (await crypto.subtle.verify("HMAC", key, Uint8Array.from([...atob(s)].map(c => c.charCodeAt(0))), enc.encode(signed))) return true;
+    const rawSecret = secret.startsWith("whsec_") ? secret.slice(6) : secret;
+    const key = await crypto.subtle.importKey(
+      "raw",
+      enc.encode(rawSecret),
+      { name: "HMAC", hash: "SHA-256" },
+      false,
+      ["verify"]
+    );
+    // Svix signatures are format: "v1,<base64> v1,<base64>..."
+    for (const part of sig.split(" ")) {
+      const [, b64] = part.split(",");
+      if (!b64) continue;
+      const sigBytes = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
+      if (await crypto.subtle.verify("HMAC", key, sigBytes, enc.encode(signed))) {
+        return true;
+      }
     }
     return false;
-  } catch { return false; }
+  } catch (err) {
+    console.error("[clerk] Svix verification error:", err);
+    return false;
+  }
 }
 
-export async function POST(request) {
+export async function POST(request: Request) {
   try {
     const rawBody = await request.text();
     if (!(await verifySvix(request, rawBody))) return NextResponse.json({ error: "Invalid signature" }, { status: 403 });
