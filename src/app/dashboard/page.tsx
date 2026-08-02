@@ -259,7 +259,7 @@ export default function DashboardPage() {
           <h3 className="text-sm font-semibold text-white mb-4">Quick Actions</h3>
           <div className="grid grid-cols-2 gap-2">
             {[
-              { label: "AI Command", href: "/dashboard/ai-command", icon: Sparkles, color: "text-purple-400", bg: "bg-purple-500/10", border: "border-purple-500/20" },
+              { label: "AI Commander", href: "/dashboard/ai-commander", icon: Sparkles, color: "text-purple-400", bg: "bg-purple-500/10", border: "border-purple-500/20" },
               { label: "Add Lead", href: "/dashboard/leads", icon: PlusCircle, color: "text-blue-400", bg: "bg-blue-500/10", border: "border-blue-500/20" },
               { label: "AI Brain", href: "/dashboard/ai-brain", icon: Bot, color: "text-emerald-400", bg: "bg-emerald-500/10", border: "border-emerald-500/20" },
               { label: "Chatbot", href: "/dashboard/chatbot", icon: MessageSquare, color: "text-amber-400", bg: "bg-amber-500/10", border: "border-amber-500/20" },

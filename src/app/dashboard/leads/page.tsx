@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -35,6 +36,7 @@ interface Lead {
 const STATUSES = ["new", "contacted", "appointment_booked", "quote_sent", "won", "lost"];
 
 export default function LeadsPage() {
+  const router = useRouter();
   const [leads, setLeads] = useState<Lead[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -306,7 +308,7 @@ export default function LeadsPage() {
                     <tr
                       key={lead.id}
                       className="border-b border-border hover:bg-accent/30 cursor-pointer transition-colors"
-                      onClick={() => window.location.href = `/dashboard/leads/${lead.id}`}
+                      onClick={() => router.push(`/dashboard/leads/${lead.id}`)}
                     >
                       <td className="py-3 px-4">
                         <div className="flex items-center gap-2">

@@ -465,8 +465,8 @@ function AiBrainContent() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {[
               { icon: Phone, title: "Phone", desc: businessInfo.phone || "Not configured", link: "/dashboard/settings", linkLabel: "Configure", color: "emerald" },
-              { icon: MessageSquare, title: "SMS", desc: "Automated text messaging", link: "/dashboard/sms", linkLabel: "SMS Settings", color: "blue" },
-              { icon: Mail, title: "Email", desc: "Automated email responses", link: "/dashboard/email", linkLabel: "Email Settings", color: "purple" },
+              { icon: MessageSquare, title: "SMS", desc: "Automated text messaging", link: "/dashboard/automation", linkLabel: "Automation", color: "blue" },
+              { icon: Mail, title: "Email", desc: "Automated email responses", link: "/dashboard/messages/compose", linkLabel: "Compose", color: "purple" },
               { icon: Globe, title: "Chatbot", desc: "Website widget & embed", link: "/dashboard/chatbot", linkLabel: "Chatbot Setup", color: "amber" },
               { icon: Clock, title: "Business Hours", desc: hasBusinessHours ? "Hours configured" : "Set your hours", link: "#", linkLabel: "Business Profile", color: "cyan", onClick: () => setActiveTab("profile") },
               { icon: Bell, title: "Notifications", desc: "Alert preferences", link: "/dashboard/settings", linkLabel: "Settings", color: "rose" },

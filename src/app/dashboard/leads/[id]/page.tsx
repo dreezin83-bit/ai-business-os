@@ -288,7 +288,7 @@ export default function LeadDetailPage() {
                   </Button>
                 </a>
               )}
-              <Button variant="outline" size="sm" className="w-full justify-start">
+              <Button variant="outline" size="sm" className="w-full justify-start" onClick={() => router.push("/dashboard/appointments")}>
                 <Calendar className="h-4 w-4 mr-2" /> Book Appointment
               </Button>
             </CardContent>
