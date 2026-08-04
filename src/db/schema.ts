@@ -207,6 +207,8 @@ export const subscription = pgTable("subscription", {
   currency: text("currency").default("usd"),
   interval: text("interval").default("month"),
   flutterwaveSubId: text("flutterwave_sub_id"),
+  paystackSubId: text("paystack_sub_id"),
+  paymentProvider: text("payment_provider").default("paystack"),
   currentPeriodStart: timestamp("current_period_start"),
   currentPeriodEnd: timestamp("current_period_end"),
   canceledAt: timestamp("canceled_at"),

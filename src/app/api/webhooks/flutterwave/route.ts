@@ -1,14 +1,21 @@
 /**
- * Flutterwave Payment Webhook Handler
+ * Flutterwave Payment Webhook — DISABLED.
  *
- * Receives charge.completed events from Flutterwave, creates/updates
- * subscription records, and triggers Vapi voice provisioning when both
- * subscription is active AND onboarding is complete.
- *
- * Flutterwave webhook secret: FLUTTERWAVE_WEBHOOK_SECRET
- * Webhook URL: /api/webhooks/flutterwave
+ * Owner has switched to Paystack. This endpoint returns 410 Gone.
+ * New payments should use /api/paystack/checkout and the Paystack webhook.
  */
 
+import { NextResponse } from "next/server";
+
+export async function POST() {
+  return NextResponse.json(
+    { error: "Flutterwave is no longer supported — use Paystack" },
+    { status: 410 }
+  );
+}
+
+// Dead code below preserved for reference
+/*
 import { NextResponse } from "next/server";
 import { db } from "@/db";
 import { business, subscription } from "@/db/schema";
@@ -161,3 +168,4 @@ export async function POST(request: Request) {
     return NextResponse.json({ received: true, error: "Internal error" }, { status: 200 });
   }
 }
+*/
