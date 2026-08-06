@@ -30,7 +30,7 @@ const PAYSTACK_SECRET = process.env.PAYSTACK_SECRET_KEY!;
 
 // ─── Signature verification ──────────────────────────────────
 
-function verifyPaystackSignature(body: string, header: string | null): boolean {
+async function verifyPaystackSignature(body: string, header: string | null): Promise<boolean> {
   if (!header || !PAYSTACK_SECRET) return false;
   try {
     const encoder = new TextEncoder();
@@ -44,13 +44,11 @@ function verifyPaystackSignature(body: string, header: string | null): boolean {
       return true;
     }
 
-    return crypto.subtle
-      .importKey("raw", keyBytes, { name: "HMAC", hash: "SHA-512" }, false, ["verify"])
-      .then((key) => {
-        const sigBytes = Uint8Array.from(atob(header), (c) => c.charCodeAt(0));
-        return crypto.subtle.verify("HMAC", key, sigBytes, msgBytes);
-      })
-      .catch(() => false) as unknown as boolean;
+    const key = await crypto.subtle.importKey(
+      "raw", keyBytes, { name: "HMAC", hash: "SHA-512" }, false, ["verify"],
+    );
+    const sigBytes = Uint8Array.from(atob(header), (c) => c.charCodeAt(0));
+    return crypto.subtle.verify("HMAC", key, sigBytes, msgBytes);
   } catch {
     return false;
   }
@@ -142,7 +140,7 @@ export async function POST(request: Request) {
 
     // ── Verify Paystack HMAC-SHA512 signature ──
     const signature = request.headers.get("x-paystack-signature");
-    if (!verifyPaystackSignature(rawBody, signature)) {
+    if (!(await verifyPaystackSignature(rawBody, signature))) {
       return NextResponse.json({ error: "Invalid signature" }, { status: 403 });
     }
 
@@ -198,6 +196,7 @@ export async function POST(request: Request) {
 
     // ── Create Paystack Subscription ($199/mo recurring) ──
     let paystackSubscriptionCode: string | null = null;
+    let subscriptionFailed = false;
     const planCode = data.metadata?.planCode;
     const authorizationCode = data.authorization?.authorization_code;
 
@@ -216,14 +215,21 @@ export async function POST(request: Request) {
         console.error(
           `[paystack-webhook] Failed to create Paystack subscription: ${err?.message}`,
         );
-        // Don't fail the webhook — the one-time setup payment succeeded.
-        // We'll retry subscription creation or handle it manually.
+        subscriptionFailed = true;
+        // One-time $499 succeeded but recurring subscription setup failed.
+        // Return 202 to flag the partial state — Paystack won't retry,
+        // but the business is marked as "pending_subscription" for manual/retry.
       }
     }
 
     // ── Upsert local subscription ──
     const now = new Date();
     const periodEnd = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+
+    // Only mark active if the Paystack subscription was actually created.
+    // If it failed, persist as "pending_subscription" — won't pass the
+    // provisioning gate, and can be retried from an admin endpoint.
+    const subStatus = subscriptionFailed ? "pending_subscription" : "active";
 
     const [existingSub] = await db
       .select()
@@ -242,7 +248,7 @@ export async function POST(request: Request) {
       await db
         .update(subscription)
         .set({
-          status: "active",
+          status: subStatus,
           plan: data.metadata?.plan || existingSub.plan || "starter",
           amount: data.amount,
           currency: data.currency,
@@ -258,7 +264,7 @@ export async function POST(request: Request) {
       await db.insert(subscription).values({
         id: subId,
         businessId,
-        status: "active",
+        status: subStatus,
         plan: data.metadata?.plan || "starter",
         amount: data.amount,
         currency: data.currency,
@@ -270,7 +276,18 @@ export async function POST(request: Request) {
       });
     }
 
-    console.log(`[paystack-webhook] Local subscription saved for ${businessId}`);
+    console.log(
+      `[paystack-webhook] Local subscription saved for ${businessId} (status: ${subStatus})`,
+    );
+
+    // ── On subscription failure, return 202 Accepted ──
+    if (subscriptionFailed) {
+      return NextResponse.json({
+        received: true,
+        status: "partial",
+        detail: "Setup payment captured; recurring subscription creation failed. Retry pending.",
+      }, { status: 202 });
+    }
 
     // ── Check Vapi provisioning ──
     const canProvision = await canProvisionVoice(businessId);
