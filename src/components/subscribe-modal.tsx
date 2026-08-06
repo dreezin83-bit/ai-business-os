@@ -89,8 +89,8 @@ export default function SubscribeModal({ open, onClose }: SubscribeModalProps) {
               }`}
             >
               <div className="text-xs font-semibold text-white/70 mb-0.5">Starter</div>
-              <div className="text-lg font-bold text-white">$199<span className="text-xs font-normal text-white/30">/mo</span></div>
-              <div className="text-[11px] text-white/30 mt-0.5">+ $399 setup</div>
+              <div className="text-lg font-bold text-white">$399<span className="text-xs font-normal text-white/30"> first mo</span></div>
+              <div className="text-[11px] text-white/30 mt-0.5">then $199/month</div>
             </button>
             <button
               type="button"
@@ -102,8 +102,8 @@ export default function SubscribeModal({ open, onClose }: SubscribeModalProps) {
               }`}
             >
               <div className="text-xs font-semibold text-white/70 mb-0.5">Professional</div>
-              <div className="text-lg font-bold text-white">$199<span className="text-xs font-normal text-white/30">/mo</span></div>
-              <div className="text-[11px] text-white/30 mt-0.5">+ $399 setup</div>
+              <div className="text-lg font-bold text-white">$399<span className="text-xs font-normal text-white/30"> first mo</span></div>
+              <div className="text-[11px] text-white/30 mt-0.5">then $199/month</div>
             </button>
           </div>
 
