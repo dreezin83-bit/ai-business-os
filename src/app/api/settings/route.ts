@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { db } from "@/db";
-import { business } from "@/db/schema";
-import { eq } from "drizzle-orm";
+import { business, usageAiCall } from "@/db/schema";
+import { eq, desc } from "drizzle-orm";
 import { ensureBusiness } from "@/lib/business";
 
 export async function GET() {
@@ -10,7 +10,20 @@ export async function GET() {
     if (!businessId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const [found] = await db.select().from(business).where(eq(business.id, businessId));
-    return NextResponse.json(found);
+    if (!found) return NextResponse.json({ error: "Not found" }, { status: 404 });
+
+    // Fetch last AI call timestamp (tenant-safe)
+    const [lastCall] = await db
+      .select({ createdAt: usageAiCall.createdAt })
+      .from(usageAiCall)
+      .where(eq(usageAiCall.businessId, businessId))
+      .orderBy(desc(usageAiCall.createdAt))
+      .limit(1);
+
+    return NextResponse.json({
+      ...found,
+      lastCallAt: lastCall?.createdAt || null,
+    });
   } catch (error) {
     console.error("Failed to fetch settings:", error);
     return NextResponse.json({ error: "Failed to fetch settings" }, { status: 500 });
