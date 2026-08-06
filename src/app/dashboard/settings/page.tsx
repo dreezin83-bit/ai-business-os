@@ -12,8 +12,10 @@ import {
   Copy,
   Check,
   Phone,
+  CreditCard,
 } from "lucide-react";
 import { useToast } from "@/components/toaster";
+import SubscribeModal from "@/components/subscribe-modal";
 
 interface BusinessSettings {
   name: string;
@@ -43,6 +45,7 @@ export default function SettingsPage() {
   const [saving, setSaving] = useState(false);
   const [copiedNumber, setCopiedNumber] = useState(false);
   const [businessId, setBusinessId] = useState<string | null>(null);
+  const [subscribeOpen, setSubscribeOpen] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -134,6 +137,7 @@ export default function SettingsPage() {
 
   return (
     <div className="space-y-6">
+      <SubscribeModal open={subscribeOpen} onClose={() => setSubscribeOpen(false)} />
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
@@ -243,6 +247,17 @@ export default function SettingsPage() {
                 <p className="text-sm text-white/30">
                   Available with a paid plan
                 </p>
+                <p className="text-xs text-white/20 mt-1">
+                  Subscribe to get your AI phone number
+                </p>
+                <Button
+                  size="sm"
+                  onClick={() => setSubscribeOpen(true)}
+                  className="mt-4 bg-white hover:bg-white/90 text-black font-semibold text-xs h-9 px-5 rounded-full"
+                >
+                  <CreditCard className="h-3.5 w-3.5 mr-1.5" />
+                  Subscribe Now — $199/mo
+                </Button>
               </div>
             ) : aiNumber ? (
               <div className="flex items-center gap-4 bg-white/[0.03] border border-white/[0.06] rounded-xl px-5 py-4">
