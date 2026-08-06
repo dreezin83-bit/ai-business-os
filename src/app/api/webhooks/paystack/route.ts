@@ -22,36 +22,12 @@ import { generateId } from "@/lib/utils";
 import {
   verifyPaystackTransaction,
   createPaystackSubscription,
+  verifyPaystackSignature,
   type SignupMetadata,
 } from "@/lib/paystack";
 import { canProvisionVoice, provisionVapiVoice } from "@/lib/vapi-provisioning";
 
 const PAYSTACK_SECRET = process.env.PAYSTACK_SECRET_KEY!;
-
-// ─── Signature verification ──────────────────────────────────
-
-async function verifyPaystackSignature(body: string, header: string | null): Promise<boolean> {
-  if (!header || !PAYSTACK_SECRET) return false;
-  try {
-    const encoder = new TextEncoder();
-    const keyBytes = encoder.encode(PAYSTACK_SECRET);
-    const msgBytes = encoder.encode(body);
-
-    // crypto.subtle is required for HMAC verification — if unavailable, reject.
-    if (!crypto.subtle) {
-      console.error("[paystack-webhook] crypto.subtle unavailable — rejecting signature check");
-      return false;
-    }
-
-    const key = await crypto.subtle.importKey(
-      "raw", keyBytes, { name: "HMAC", hash: "SHA-512" }, false, ["verify"],
-    );
-    const sigBytes = Uint8Array.from(atob(header), (c) => c.charCodeAt(0));
-    return crypto.subtle.verify("HMAC", key, sigBytes, msgBytes);
-  } catch {
-    return false;
-  }
-}
 
 // ─── Extract signup metadata ─────────────────────────────────
 
@@ -139,7 +115,7 @@ export async function POST(request: Request) {
 
     // ── Verify Paystack HMAC-SHA512 signature ──
     const signature = request.headers.get("x-paystack-signature");
-    if (!(await verifyPaystackSignature(rawBody, signature))) {
+    if (!(await verifyPaystackSignature(rawBody, signature, PAYSTACK_SECRET))) {
       return NextResponse.json({ error: "Invalid signature" }, { status: 403 });
     }
 

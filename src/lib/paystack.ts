@@ -159,3 +159,37 @@ export async function verifyPaystackTransaction(
   if (!data.status || data.data?.status !== "success") return null;
   return data.data;
 }
+
+// ─── HMAC-SHA512 signature verification ─────────────────────
+
+/**
+ * Verify a Paystack webhook signature (HMAC-SHA512).
+ * Must be awaited — returns Promise<boolean>.
+ * Fails closed: if crypto.subtle is unavailable, returns false.
+ */
+export async function verifyPaystackSignature(
+  body: string,
+  header: string | null,
+  secret: string,
+): Promise<boolean> {
+  if (!header || !secret) return false;
+  try {
+    const encoder = new TextEncoder();
+    const keyBytes = encoder.encode(secret);
+    const msgBytes = encoder.encode(body);
+
+    // crypto.subtle is required — fail closed if unavailable
+    if (!crypto.subtle) {
+      console.error("[paystack] crypto.subtle unavailable — rejecting");
+      return false;
+    }
+
+    const key = await crypto.subtle.importKey(
+      "raw", keyBytes, { name: "HMAC", hash: "SHA-512" }, false, ["verify"],
+    );
+    const sigBytes = Uint8Array.from(atob(header), (c) => c.charCodeAt(0));
+    return crypto.subtle.verify("HMAC", key, sigBytes, msgBytes);
+  } catch {
+    return false;
+  }
+}
