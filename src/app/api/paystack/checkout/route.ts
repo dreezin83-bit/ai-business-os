@@ -7,12 +7,12 @@
  *
  * Flow:
  *   1. Ensure $199/mo Paystack Plan exists (idempotent)
- *   2. Initialize $499 one-time setup transaction
+ *   2. Initialize $399 one-time setup transaction
  *   3. Embed signup metadata + plan code (so webhook can create account + subscription)
  *   4. Return authorization_url for client-side redirect
  *
- * Pricing: $499 USD setup (one-time) + $199 USD/month (recurring, via Paystack Subscription)
- * Currency: USD, amounts in CENTS (49900 = $499.00)
+ * Pricing: $399 USD setup (one-time) + $199 USD/month (recurring, via Paystack Subscription)
+ * Currency: USD, amounts in CENTS (39900 = $399.00)
  *
  * Required env: PAYSTACK_SECRET_KEY, NEXT_PUBLIC_APP_URL
  */
@@ -62,7 +62,7 @@ export async function POST(request: Request) {
       paymentType: "setup",
     };
 
-    // ── Initialize $499 setup transaction ───────────────
+    // ── Initialize $399 setup transaction ───────────────
     const res = await fetch(`${PAYSTACK_API}/transaction/initialize`, {
       method: "POST",
       headers: {
@@ -71,7 +71,7 @@ export async function POST(request: Request) {
       },
       body: JSON.stringify({
         email,
-        amount: SETUP_FEE_CENTS, // 49900 = $499.00 USD
+        amount: SETUP_FEE_CENTS, // 39900 = $399.00 USD
         currency: CURRENCY,
         metadata,
         callback_url: `${process.env.NEXT_PUBLIC_APP_URL}/onboarding?payment=done`,

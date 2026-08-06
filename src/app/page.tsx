@@ -10,6 +10,7 @@ import {
   Star, MessageCircle, Mail, Sparkles, BarChart3, Clock,
 } from "lucide-react";
 import Link from "next/link";
+import SubscribeModal from "@/components/subscribe-modal";
 
 const Spline = dynamic(() => import("@splinetool/react-spline/next"), { ssr: false });
 
@@ -153,9 +154,11 @@ export default function LandingPage() {
   });
   const heroScale = useTransform(scrollYProgress, [0, 1], [1, 0.95]);
   const heroOpacity = useTransform(scrollYProgress, [0, 0.5], [1, 0]);
+  const [subscribeOpen, setSubscribeOpen] = useState(false);
 
   return (
     <div className="bg-black text-white overflow-x-hidden">
+      <SubscribeModal open={subscribeOpen} onClose={() => setSubscribeOpen(false)} />
       <Script src="https://unpkg.com/@splinetool/viewer@1.12.98/build/spline-viewer.js" type="module" />
       {/* Nav */}
       <header className="fixed top-0 left-0 right-0 z-50 bg-black/80 backdrop-blur-xl border-b border-white/[0.06]">
@@ -169,7 +172,7 @@ export default function LandingPage() {
               <MessageCircle className="h-3.5 w-3.5" /> Support
             </a>
             <Link href="/sign-in" className="text-[13px] text-white/40 hover:text-white transition-colors px-3 py-1.5">Sign In</Link>
-            <Link href="/sign-up"><Button size="sm" className="btn-white text-xs h-9 px-5 rounded-full">Get Started</Button></Link>
+            <Button size="sm" onClick={() => setSubscribeOpen(true)} className="bg-white hover:bg-white/90 text-black font-semibold text-xs h-9 px-5 rounded-full">Subscribe Now</Button>
           </div>
         </div>
       </header>
@@ -218,16 +221,14 @@ export default function LandingPage() {
                 transition={{ duration: 0.7, delay: 0.5 }}
                 className="flex items-center gap-4 mt-10"
               >
+                <Button size="lg" onClick={() => setSubscribeOpen(true)} className="bg-white hover:bg-white/90 text-black font-semibold text-[15px] h-12 px-8 rounded-full">
+                  Subscribe Now <ArrowRight className="h-4 w-4 ml-1.5" />
+                </Button>
                 <Link href="/sign-up">
-                  <Button size="lg" className="btn-white text-[15px] h-12 px-8 rounded-full">
-                    Get Started <ArrowRight className="h-4 w-4 ml-1.5" />
+                  <Button variant="outline" size="lg" className="btn-outline text-[15px] h-12 px-8 rounded-full">
+                    Free Trial
                   </Button>
                 </Link>
-                <a href="https://wa.me/13057071059" target="_blank">
-                  <Button variant="outline" size="lg" className="btn-outline text-[15px] h-12 px-8 rounded-full">
-                    Talk to Us
-                  </Button>
-                </a>
               </motion.div>
             </div>
 
@@ -409,17 +410,24 @@ export default function LandingPage() {
               Ready to stop <span className="text-gradient">missing leads</span>?
             </h2>
             <p className="text-lg text-white/30 mb-10 max-w-xl mx-auto">
-              Join contractors who never miss another customer. 14-day free trial. No credit card.
+              Join 500+ service businesses who never miss another customer.
             </p>
-            <Link href="/sign-up">
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
               <motion.div whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.98 }}>
-                <Button size="lg" className="btn-white text-[15px] h-12 px-8 rounded-full relative overflow-hidden group">
+                <Button size="lg" onClick={() => setSubscribeOpen(true)} className="bg-white hover:bg-white/90 text-black font-semibold text-[15px] h-12 px-8 rounded-full relative overflow-hidden group">
                   <span className="relative z-10 flex items-center">
-                    Get Started Free <ArrowRight className="h-4 w-4 ml-1.5 group-hover:translate-x-0.5 transition-transform" />
+                    Subscribe Now <ArrowRight className="h-4 w-4 ml-1.5 group-hover:translate-x-0.5 transition-transform" />
                   </span>
                 </Button>
               </motion.div>
-            </Link>
+              <Link href="/sign-up">
+                <motion.div whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.98 }}>
+                  <Button variant="outline" size="lg" className="btn-outline text-[15px] h-12 px-8 rounded-full">
+                    14-Day Free Trial
+                  </Button>
+                </motion.div>
+              </Link>
+            </div>
           </Reveal>
         </div>
       </section>

@@ -191,7 +191,7 @@ export async function POST(request: Request) {
           `[paystack-webhook] Failed to create Paystack subscription: ${err?.message}`,
         );
         subscriptionFailed = true;
-        // One-time $499 succeeded but recurring subscription setup failed.
+        // One-time $399 succeeded but recurring subscription setup failed.
         // Return 202 to flag the partial state — Paystack won't retry,
         // but the business is marked as "pending_subscription" for manual/retry.
       }

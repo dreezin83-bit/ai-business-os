@@ -2,7 +2,7 @@
  * Paystack utilities — Plan management, subscription creation, verification.
  *
  * CURRENCY: All amounts in USD CENTS (Paystack convention for USD).
- *   $499 setup = 49_900 cents.  $199/month = 19_900 cents.
+ *   $399 setup = 39_900 cents.  $199/month = 19_900 cents.
  *
  * Required env: PAYSTACK_SECRET_KEY
  */
@@ -11,8 +11,8 @@ const PAYSTACK_API = "https://api.paystack.co";
 
 // ─── Constants ──────────────────────────────────────────────
 
-/** One-time setup fee: $499.00 USD in cents */
-export const SETUP_FEE_CENTS = 49_900;
+/** One-time setup fee: $399.00 USD in cents */
+export const SETUP_FEE_CENTS = 39_900;
 
 /** Recurring monthly fee: $199.00 USD in cents */
 export const RECURRING_CENTS = 19_900;
@@ -108,7 +108,7 @@ export async function ensurePaystackPlan(
 
 /**
  * Creates a Paystack Subscription that auto-charges $199/month.
- * Requires the authorization_code from a successful $499 setup transaction.
+ * Requires the authorization_code from a successful $399 setup transaction.
  */
 export async function createPaystackSubscription(
   customerEmail: string,

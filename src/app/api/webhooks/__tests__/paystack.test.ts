@@ -14,7 +14,7 @@ const VALID_BODY = JSON.stringify({
     id: 12345,
     reference: "ref_test_abc123",
     status: "success",
-    amount: 49900,
+    amount: 39900,
     currency: "USD",
     customer: { email: "test@example.com" },
     authorization: { authorization_code: "AUTH_abc123" },
