@@ -1,57 +1,68 @@
 /**
- * POST /api/paystack/checkout — Initialize Paystack payment.
+ * POST /api/paystack/checkout — Subscribe-first Paystack checkout.
  *
- * Creates a Paystack transaction for the subscription plan and returns
- * an authorization_url the client redirects to for payment.
+ * NO AUTHENTICATION REQUIRED.  The user pays BEFORE creating an account.
  *
- * Pricing: $499 setup + $199/month. Amount is in kobo (NGN) or cents (USD).
+ * Body: { email, name, companyName?, plan? }
+ *
+ * Flow:
+ *   1. Ensure $199/mo Paystack Plan exists (idempotent)
+ *   2. Initialize $499 one-time setup transaction
+ *   3. Embed signup metadata + plan code (so webhook can create account + subscription)
+ *   4. Return authorization_url for client-side redirect
+ *
+ * Pricing: $499 USD setup (one-time) + $199 USD/month (recurring, via Paystack Subscription)
+ * Currency: USD, amounts in CENTS (49900 = $499.00)
  *
  * Required env: PAYSTACK_SECRET_KEY, NEXT_PUBLIC_APP_URL
  */
-
 import { NextResponse } from "next/server";
-import { currentUser } from "@clerk/nextjs/server";
-import { db } from "@/db";
-import { business } from "@/db/schema";
-import { eq } from "drizzle-orm";
+import { ensurePaystackPlan, SETUP_FEE_CENTS, CURRENCY } from "@/lib/paystack";
 
 const PAYSTACK_SECRET = process.env.PAYSTACK_SECRET_KEY;
 const PAYSTACK_API = "https://api.paystack.co";
 
-interface PlanConfig {
-  id: string;
-  amount: number;   // in kobo (NGN) — 49900 = $499
-  recurring: number; // monthly after setup
-  label: string;
-}
-
-const PLANS: Record<string, PlanConfig> = {
-  starter: { id: "starter", amount: 49900, recurring: 19900, label: "Starter ($499 setup + $199/mo)" },
-  professional: { id: "professional", amount: 49900, recurring: 19900, label: "Professional ($499 setup + $199/mo)" },
-};
-
 export async function POST(request: Request) {
+  // ── Parse body ────────────────────────────────────────
+  let body: any;
   try {
-    const user = await currentUser();
-    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    body = await request.json();
+  } catch {
+    return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
+  }
 
-    const [biz] = await db.select().from(business).where(eq(business.ownerId, user.id)).limit(1);
-    if (!biz) return NextResponse.json({ error: "No business found — complete onboarding first" }, { status: 404 });
+  const email = String(body.email || "").trim();
+  const name = String(body.name || "").trim();
+  const companyName = String(body.companyName || "").trim();
+  const plan = (body.plan === "professional" ? "professional" : "starter") as "starter" | "professional";
 
-    let plan: string;
-    try {
-      const body = await request.json();
-      plan = body.plan || "starter";
-    } catch { plan = "starter"; }
+  if (!email) {
+    return NextResponse.json({ error: "Email is required" }, { status: 400 });
+  }
 
-    const planCfg = PLANS[plan] || PLANS.starter;
-    const email = biz.email || user.emailAddresses?.[0]?.emailAddress || "";
+  // ── Validate env ──────────────────────────────────────
+  if (!PAYSTACK_SECRET) {
+    return NextResponse.json({ error: "Payment provider not configured" }, { status: 503 });
+  }
+  if (!process.env.NEXT_PUBLIC_APP_URL) {
+    return NextResponse.json({ error: "App URL not configured" }, { status: 503 });
+  }
 
-    if (!PAYSTACK_SECRET) {
-      return NextResponse.json({ error: "Payment provider not configured" }, { status: 503 });
-    }
+  try {
+    // ── Ensure recurring plan exists ────────────────────
+    const planCfg = await ensurePaystackPlan(plan);
 
-    // Create Paystack transaction
+    // ── Build signup metadata ───────────────────────────
+    const metadata: Record<string, any> = {
+      signupEmail: email,
+      signupName: name,
+      signupCompany: companyName,
+      plan,
+      planCode: planCfg.planCode,
+      paymentType: "setup",
+    };
+
+    // ── Initialize $499 setup transaction ───────────────
     const res = await fetch(`${PAYSTACK_API}/transaction/initialize`, {
       method: "POST",
       headers: {
@@ -60,17 +71,20 @@ export async function POST(request: Request) {
       },
       body: JSON.stringify({
         email,
-        amount: planCfg.amount,
-        currency: "USD",
-        metadata: { businessId: biz.id, plan: planCfg.id },
-        callback_url: `${process.env.NEXT_PUBLIC_APP_URL || ""}/dashboard/settings?payment=done`,
+        amount: SETUP_FEE_CENTS, // 49900 = $499.00 USD
+        currency: CURRENCY,
+        metadata,
+        callback_url: `${process.env.NEXT_PUBLIC_APP_URL}/onboarding?payment=done`,
       }),
     });
 
-    const data = await res.json() as any;
+    const data = (await res.json()) as any;
     if (!data.status) {
       console.error("[paystack-checkout] Paystack error:", data);
-      return NextResponse.json({ error: data.message || "Payment initialization failed" }, { status: 502 });
+      return NextResponse.json(
+        { error: data.message || "Payment initialization failed" },
+        { status: 502 },
+      );
     }
 
     return NextResponse.json({
