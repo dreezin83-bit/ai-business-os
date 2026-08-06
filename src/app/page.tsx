@@ -433,7 +433,7 @@ export default function LandingPage() {
                 <div className="h-6 w-6 rounded-md bg-white flex items-center justify-center text-[10px] font-bold text-black">AI</div>
                 <span className="font-semibold text-sm">Business OS</span>
               </div>
-              <p className="text-xs text-white/25 leading-relaxed">AI-powered operating system for service businesses.</p>
+              <p className="text-xs text-white/25 leading-relaxed">Sagenify AI — the operating system for service businesses.</p>
             </div>
             <div>
               <h4 className="text-xs font-semibold text-white/50 mb-3">Contact</h4>
@@ -450,7 +450,7 @@ export default function LandingPage() {
               </div>
             </div>
           </div>
-          <div className="pt-8 border-t border-white/[0.04] text-center text-[11px] text-white/20">© 2026 AI Business OS</div>
+          <div className="pt-8 border-t border-white/[0.04] text-center text-[11px] text-white/20">© 2026 Sagenify AI</div>
         </div>
       </footer>
     </div>

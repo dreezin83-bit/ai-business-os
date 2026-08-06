@@ -191,7 +191,7 @@ export default function OnboardingPage() {
             </div>
             <h2 className="text-2xl font-bold text-white mb-2">You're all set!</h2>
             <p className="text-sm text-white/50 mb-6">
-              Your AI Business OS is ready. Redirecting to your dashboard...
+              Your Sagenify AI is ready. Redirecting to your dashboard...
             </p>
             <div className="loader" />
           </CardContent>
@@ -215,7 +215,7 @@ export default function OnboardingPage() {
             <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-xs font-bold text-white shadow-lg shadow-purple-500/25">
               AI
             </div>
-            <span className="font-semibold text-sm text-white">AI Business OS</span>
+            <span className="font-semibold text-sm text-white">Sagenify AI</span>
           </div>
           <h1 className="text-2xl font-bold text-white mb-1">Set Up Your Business</h1>
           <p className="text-sm text-white/40">
