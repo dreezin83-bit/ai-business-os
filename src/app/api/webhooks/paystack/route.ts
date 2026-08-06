@@ -37,11 +37,10 @@ async function verifyPaystackSignature(body: string, header: string | null): Pro
     const keyBytes = encoder.encode(PAYSTACK_SECRET);
     const msgBytes = encoder.encode(body);
 
-    // crypto.subtle may not be available in all edge runtimes —
-    // fall back gracefully (next step: server-side verify catches fraud).
+    // crypto.subtle is required for HMAC verification — if unavailable, reject.
     if (!crypto.subtle) {
-      console.warn("[paystack-webhook] crypto.subtle unavailable — skipping HMAC check");
-      return true;
+      console.error("[paystack-webhook] crypto.subtle unavailable — rejecting signature check");
+      return false;
     }
 
     const key = await crypto.subtle.importKey(

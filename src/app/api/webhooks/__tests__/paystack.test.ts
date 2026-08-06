@@ -49,7 +49,7 @@ async function verifyPaystackSignature(
     const encoder = new TextEncoder();
     const keyBytes = encoder.encode(secret);
     const msgBytes = encoder.encode(body);
-    if (!crypto.subtle) return true;
+    if (!crypto.subtle) return false;
     const key = await crypto.subtle.importKey(
       "raw", keyBytes, { name: "HMAC", hash: "SHA-512" }, false, ["verify"],
     );
