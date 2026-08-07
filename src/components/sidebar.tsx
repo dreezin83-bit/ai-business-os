@@ -17,18 +17,24 @@ import {
   X,
   LogOut,
   Mail,
-  Send,
-  Sparkles,
   Terminal,
   TrendingUp,
   Zap,
   MessageCircle,
 } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import { useState } from "react";
 import { useClerk } from "@clerk/nextjs";
 import { Button } from "@/components/ui/button";
 
-const navigation = [
+type NavItem = {
+  name: string;
+  href: string;
+  icon: LucideIcon;
+  external?: boolean;
+};
+
+const navigation: NavItem[] = [
   { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
   { name: "Overview", href: "/dashboard/overview", icon: TrendingUp },
   { name: "AI Commander", href: "/dashboard/ai-commander", icon: Terminal },
@@ -88,7 +94,7 @@ export function Sidebar() {
           <nav className="flex-1 px-2.5 py-3 space-y-0.5 overflow-y-auto">
             {navigation.map((item) => {
               const isActive = pathname === item.href || pathname.startsWith(item.href + "/");
-              const isExternal = (item as any).external;
+              const isExternal = item.external;
               const linkClass = cn(
                 "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-150",
                 isActive
