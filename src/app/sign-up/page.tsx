@@ -9,7 +9,7 @@ export default function SignUpPage() {
             AI
           </div>
           <h1 className="text-xl font-semibold">Create your account</h1>
-          <p className="text-sm text-muted-foreground mt-1">Start your free trial</p>
+          <p className="text-sm text-muted-foreground mt-1">Create your account to get started</p>
         </div>
         <SignUp
           forceRedirectUrl="/dashboard"
