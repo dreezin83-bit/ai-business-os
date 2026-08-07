@@ -61,7 +61,8 @@ export function Sidebar() {
       {/* Mobile toggle */}
       <button
         onClick={() => setMobileOpen(!mobileOpen)}
-        className="fixed top-4 left-4 z-50 md:hidden"
+        aria-label={mobileOpen ? "Close menu" : "Open menu"}
+        className="fixed top-4 left-4 z-50 md:hidden h-10 w-10 flex items-center justify-center rounded-lg bg-slate-900/80 border border-slate-800 text-white/80 hover:text-white active:scale-95 transition-all"
       >
         {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
       </button>

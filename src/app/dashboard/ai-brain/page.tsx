@@ -242,12 +242,12 @@ function AiBrainContent() {
       )}
 
       {/* Tabs */}
-      <div className="flex gap-1 border-b border-white/[0.06]">
+      <div className="flex gap-1 border-b border-white/[0.06] overflow-x-auto">
         {TABS.map((tab) => (
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
-            className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium border-b-2 -mb-[1px] transition-colors ${
+            className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium border-b-2 -mb-[1px] transition-colors whitespace-nowrap shrink-0 ${
               activeTab === tab.id ? "border-white text-white" : "border-transparent text-white/35 hover:text-white/60"
             }`}
           >
@@ -318,11 +318,11 @@ function AiBrainContent() {
               <CardContent>
                 <div className="grid gap-2 sm:grid-cols-2">
                   {hours.map((h: any, i: number) => (
-                    <div key={h.day} className="flex items-center gap-2 p-2 rounded-lg bg-white/[0.03]">
-                      <span className="text-sm w-24 shrink-0">{h.day}</span>
+                    <div key={h.day} className="flex flex-wrap items-center gap-2 p-2 rounded-lg bg-white/[0.03]">
+                      <span className="text-sm w-20 sm:w-24 shrink-0">{h.day}</span>
                       <input type="checkbox" checked={!h.closed} onChange={(e) => { const nh = [...hours]; nh[i] = { ...nh[i], closed: !e.target.checked }; setConfig({ ...config, businessHours: JSON.stringify(nh) }); }} className="accent-primary" />
                       <span className="text-xs text-white/30 mr-1">Open</span>
-                      {!h.closed ? (<><input type="time" value={h.open} onChange={(e) => { const nh = [...hours]; nh[i] = { ...nh[i], open: e.target.value }; setConfig({ ...config, businessHours: JSON.stringify(nh) }); }} className="h-7 w-20 rounded border border-white/[0.08] bg-transparent px-1 text-xs" /><span className="text-xs text-white/20">to</span><input type="time" value={h.close} onChange={(e) => { const nh = [...hours]; nh[i] = { ...nh[i], close: e.target.value }; setConfig({ ...config, businessHours: JSON.stringify(nh) }); }} className="h-7 w-20 rounded border border-white/[0.08] bg-transparent px-1 text-xs" /></>) : <span className="text-xs text-white/20">Closed</span>}
+                      {!h.closed ? (<><input type="time" value={h.open} onChange={(e) => { const nh = [...hours]; nh[i] = { ...nh[i], open: e.target.value }; setConfig({ ...config, businessHours: JSON.stringify(nh) }); }} className="h-7 w-16 sm:w-20 rounded border border-white/[0.08] bg-transparent px-1 text-xs" /><span className="text-xs text-white/20">to</span><input type="time" value={h.close} onChange={(e) => { const nh = [...hours]; nh[i] = { ...nh[i], close: e.target.value }; setConfig({ ...config, businessHours: JSON.stringify(nh) }); }} className="h-7 w-16 sm:w-20 rounded border border-white/[0.08] bg-transparent px-1 text-xs" /></>) : <span className="text-xs text-white/20">Closed</span>}
                     </div>
                   ))}
                 </div>
