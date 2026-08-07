@@ -6,6 +6,7 @@ import { generateId } from "@/lib/utils";
 import { buildAiContext } from "@/lib/ai-context";
 import { extractLeadFromConversation, isValidLead } from "@/lib/lead-extractor";
 import { notifyContractorOfNewLead, sendCustomerConfirmation } from "@/lib/notifications";
+import { upsertAiCall, updateCallOutcome, buildCallSummary } from "@/lib/ai-calls";
 
 // ─── Types ──────────────────────────────────────────────────
 
@@ -132,7 +133,26 @@ async function handleEndOfCall(businessId: string, msg: VapiMessageEnvelope): Pr
 
   console.log(`[Vapi] End-of-call report: call=${callId} messages=${allMessages.length}`);
 
-  if (allMessages.length === 0) return;
+  // ── Record call history (ai_call) — idempotent upsert ──
+  await upsertAiCall(businessId, {
+    callId,
+    status: "ended",
+    customerPhone: customerNumber,
+    customerName: msg.call?.customer?.name || "",
+    endedAt: new Date(),
+    endedReason: msg.endedReason || "",
+    summary: msg.summary || buildCallSummary(
+      allMessages.map((m) => ({ role: m.role, content: m.content })),
+    ),
+    recordingUrl: msg.recordingUrl || "",
+    messageCount: allMessages.length,
+  });
+
+  if (allMessages.length === 0) {
+    // No transcript — mark outcome as no_action.
+    await updateCallOutcome(callId, "no_action");
+    return;
+  }
 
   // Save conversation + messages
   const convId = generateId();
@@ -154,7 +174,10 @@ async function handleEndOfCall(businessId: string, msg: VapiMessageEnvelope): Pr
   try {
     const history = allMessages.map(m => ({ role: m.role as "user" | "assistant" | "system", content: m.content }));
     const extracted = await extractLeadFromConversation(history);
-    if (!extracted || !isValidLead(extracted)) return;
+    if (!extracted || !isValidLead(extracted)) {
+      await updateCallOutcome(callId, "no_action");
+      return;
+    }
 
     // Check for duplicate by name within this business
     const [existingLead] = await db.select({ id: lead.id }).from(lead)
@@ -162,6 +185,7 @@ async function handleEndOfCall(businessId: string, msg: VapiMessageEnvelope): Pr
       .limit(1);
     if (existingLead) {
       console.log(`[Vapi] Duplicate lead detected for ${extracted.name} — skipping`);
+      await updateCallOutcome(callId, "no_action");
       return;
     }
 
@@ -177,8 +201,12 @@ async function handleEndOfCall(businessId: string, msg: VapiMessageEnvelope): Pr
     const summary = allMessages.slice(-4).map(m => `${m.role}: ${m.content.substring(0, 80)}`).join(" | ");
     Promise.all([notifyContractorOfNewLead(businessId, leadId, summary), sendCustomerConfirmation(businessId, leadId)]).catch(() => {});
     console.log(`[Vapi] Lead created from voice: ${extracted.name}`);
+
+    // Mark outcome — a lead was captured from this call.
+    await updateCallOutcome(callId, "lead_created", msg.summary || summary);
   } catch (err) {
     console.error("[Vapi] Lead extraction error:", err);
+    await updateCallOutcome(callId, "no_action");
   }
 }
 
@@ -239,11 +267,22 @@ export async function POST(
       return NextResponse.json(config);
     }
 
-    // 2. status-update — log call lifecycle
+    // 2. status-update — log call lifecycle + record call history
     if (eventType === "status-update") {
       const callId = msg.call?.id || "?";
       const status = msg.status || msg.call?.status || "?";
       logEvent(webhookToken, eventType, `call=${callId} status=${status}`);
+      if (callId !== "?") {
+        // Fire-and-forget upsert; keep the webhook responsive.
+        upsertAiCall(businessId, {
+          callId,
+          status: status === "ended" ? "ended" : status === "in-progress" ? "in-progress" : status,
+          customerPhone: msg.call?.customer?.number || "",
+          customerName: msg.call?.customer?.name || "",
+          startedAt: msg.call?.status ? new Date() : undefined,
+          endedAt: status === "ended" ? new Date() : undefined,
+        }).catch((err) => console.error("[Vapi] status-update ai_call error:", err));
+      }
       return NextResponse.json({});
     }
 

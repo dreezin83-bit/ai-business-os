@@ -25,6 +25,7 @@ export const business = pgTable("business", {
   onboardingComplete: boolean("onboarding_complete").default(false),
   status: text("status").default("active"), // active | suspended
   suspendedAt: timestamp("suspended_at"),
+  lastCallAt: timestamp("last_call_at"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
@@ -47,6 +48,7 @@ export const aiBrainConfig = pgTable("ai_brain_config", {
   appointmentBookingRules: text("appointment_booking_rules").default(""),
   responseStyle: text("response_style").default(""),
   escalationRules: text("escalation_rules").default(""),
+  replyTemplates: text("reply_templates").default(""),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
@@ -135,6 +137,8 @@ export const appointment = pgTable("appointment", {
   status: text("status").notNull().default("scheduled"),
   googleEventId: text("google_event_id").default(""),
   notes: text("notes").default(""),
+  cancelReason: text("cancel_reason").default(""),
+  cancelledAt: timestamp("cancelled_at"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
@@ -227,4 +231,61 @@ export const usageAiCall = pgTable("usage_ai_call", {
   model: text("model").default("gpt-4o-mini"),
   source: text("source").default("chat"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+// ── Billing / provisioning status timeline ──────────────
+export const statusTimeline = pgTable("status_timeline", {
+  id: text("id").primaryKey(),
+  businessId: text("business_id")
+    .notNull()
+    .references(() => business.id, { onDelete: "cascade" }),
+  scope: text("scope").notNull().default("billing"), // billing | provisioning
+  event: text("event").notNull(),
+  detail: text("detail").default(""),
+  status: text("status").notNull().default("info"), // success | pending | failed | info
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+// ── AI voice call history ───────────────────────────────
+export const aiCall = pgTable("ai_call", {
+  id: text("id").primaryKey(),
+  businessId: text("business_id")
+    .notNull()
+    .references(() => business.id, { onDelete: "cascade" }),
+  callId: text("call_id").notNull().unique(),
+  customerPhone: text("customer_phone").default(""),
+  customerName: text("customer_name").default(""),
+  status: text("status").notNull().default("ended"), // queued | ringing | in-progress | ended
+  endedReason: text("ended_reason").default(""),
+  summary: text("summary").default(""),
+  outcome: text("outcome").notNull().default("unknown"), // lead_created | appointment_booked | no_action | unknown
+  recordingUrl: text("recording_url").default(""),
+  durationSeconds: integer("duration_seconds").default(0),
+  messageCount: integer("message_count").default(0),
+  startedAt: timestamp("started_at"),
+  endedAt: timestamp("ended_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+// ── Human handoff / escalation inbox ────────────────────
+export const handoff = pgTable("handoff", {
+  id: text("id").primaryKey(),
+  businessId: text("business_id")
+    .notNull()
+    .references(() => business.id, { onDelete: "cascade" }),
+  leadId: text("lead_id").references(() => lead.id, { onDelete: "set null" }),
+  conversationId: text("conversation_id").references(() => conversation.id, { onDelete: "set null" }),
+  customerName: text("customer_name").default(""),
+  customerPhone: text("customer_phone").default(""),
+  customerEmail: text("customer_email").default(""),
+  reason: text("reason").default(""),
+  summary: text("summary").default(""),
+  assignedTo: text("assigned_to").default(""),
+  status: text("status").notNull().default("pending"), // pending | assigned | resolved
+  priority: text("priority").notNull().default("normal"), // normal | high
+  notes: text("notes").default(""),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  resolvedAt: timestamp("resolved_at"),
 });

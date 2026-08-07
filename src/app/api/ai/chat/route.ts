@@ -8,6 +8,12 @@ import { buildAiContext } from "@/lib/ai-context";
 import { createLlmCompletion } from "@/lib/llm";
 import { notifyContractorOfNewLead, sendCustomerConfirmation, notifyContractorOfNewAppointment, sendCustomerAppointmentConfirmation } from "@/lib/notifications";
 import { extractLeadFromConversation, isValidLead } from "@/lib/lead-extractor";
+import {
+  createHandoff,
+  parseEscalateMarker,
+  cleanEscalateMarker,
+  buildConversationSummary,
+} from "@/lib/escalation";
 
 /** Parse onboarding markers that the AI uses to save business info */
 function parseOnboardingMarkers(text: string): Record<string, string> {
@@ -359,10 +365,32 @@ Start by asking: "Great, let's get your business set up! First, what's your busi
       } catch {}
     }
 
-    const cleanReply = cleanResponse(reply);
+    const cleanReply = cleanEscalateMarker(cleanResponse(reply));
     await db.insert(message).values({ id: generateId(), conversationId: convId, role: "assistant", content: cleanReply });
 
-    return NextResponse.json({ response: cleanReply, conversationId: convId, appointmentId: createdAppointmentId, leadId: createdLeadId });
+    // ─── HUMAN HANDOFF: [ESCALATE] marker → create escalation inbox item ───
+    const escalateData = parseEscalateMarker(reply);
+    if (escalateData) {
+      const summary = escalateData.summary || buildConversationSummary(history);
+      await createHandoff({
+        businessId,
+        conversationId: convId,
+        leadId: createdLeadId,
+        customerName: "",
+        customerPhone: "",
+        customerEmail: "",
+        reason: escalateData.reason,
+        summary,
+      });
+    }
+
+    return NextResponse.json({
+      response: cleanReply,
+      conversationId: convId,
+      appointmentId: createdAppointmentId,
+      leadId: createdLeadId,
+      escalated: !!escalateData,
+    });
   } catch (error: any) {
     console.error("AI chat error:", error?.message);
     return NextResponse.json({ error: "Failed to process chat", detail: error?.message }, { status: 500 });
