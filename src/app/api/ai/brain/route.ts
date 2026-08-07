@@ -39,6 +39,7 @@ export async function GET() {
         appointmentBookingRules: "",
         responseStyle: "",
         escalationRules: "",
+        replyTemplates: "",
       });
     }
     return NextResponse.json(config);
@@ -78,6 +79,7 @@ export async function PUT(request: Request) {
       appointmentBookingRules: body.appointmentBookingRules || "",
       responseStyle: body.responseStyle || "",
       escalationRules: body.escalationRules || "",
+      replyTemplates: body.replyTemplates || "",
     };
 
     if (existing) {

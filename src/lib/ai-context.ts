@@ -49,8 +49,10 @@ const ANSWERING_SECTION = `\n\nANSWERING QUESTIONS:
 const LIVE_AGENT_SECTION = `\n\nIF THE CUSTOMER ASKS FOR A HUMAN:
 1. Collect any missing contact info immediately.
 2. Create the lead with [CREATE_LEAD].
-3. Say: "I've forwarded your request. Someone will contact you shortly."
-4. Keep the conversation open — they may have more questions.`;
+3. If the customer explicitly asks for a human, is frustrated, or has an issue you can't resolve:
+   Emit [ESCALATE]::reason (e.g. [ESCALATE]::customer requested human, [ESCALATE]::billing dispute).
+4. Say: "I've forwarded your request. Someone will contact you shortly."
+5. Keep the conversation open — they may have more questions.`;
 
 const APPOINTMENT_SECTION = `\n\nAPPOINTMENT REQUESTS:
 1. Ask for preferred date and time.
@@ -278,20 +280,25 @@ export async function buildAiContext(businessId: string): Promise<AiContext> {
   sections.push(NOTIFICATIONS_SECTION);
   sections.push(REFERRALS_SECTION);
 
-  // 27. Response templates (now static import — no dynamic import overhead)
-  sections.push(buildTemplateSection({
-    businessName: name,
-    services: servicesList,
-    hours: hoursStr,
-    areas: areasStr,
-    pricing: config?.pricingGuidance || "",
-    policies: config?.companyPolicies || "",
-    faqs: faqsStr,
-    todayDate: today.toLocaleDateString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric" }),
-    businessPhone: biz?.phone || "",
-    businessEmail: biz?.email || "",
-    appointments: upcomingAppts.length > 0 ? upcomingAppts.map(a => `${a.date}: ${a.startTime}-${a.endTime} ${a.service}`).join(", ") : "None",
-  }));
+  // 27. Response templates — per-business editable override, or static default
+  const editableTemplates = (config?.replyTemplates || "").trim();
+  if (editableTemplates) {
+    sections.push(`\n\nRESPONSE TEMPLATES — Use these exact scripts for common scenarios. If the customer's question matches, use the template. If not, improvise while staying helpful.\n${editableTemplates}`);
+  } else {
+    sections.push(buildTemplateSection({
+      businessName: name,
+      services: servicesList,
+      hours: hoursStr,
+      areas: areasStr,
+      pricing: config?.pricingGuidance || "",
+      policies: config?.companyPolicies || "",
+      faqs: faqsStr,
+      todayDate: today.toLocaleDateString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric" }),
+      businessPhone: biz?.phone || "",
+      businessEmail: biz?.email || "",
+      appointments: upcomingAppts.length > 0 ? upcomingAppts.map(a => `${a.date}: ${a.startTime}-${a.endTime} ${a.service}`).join(", ") : "None",
+    }));
+  }
 
   const systemPrompt = sections.join("");
 

@@ -39,6 +39,7 @@ import { business, phoneNumber, aiBrainConfig, subscription } from "@/db/schema"
 import { eq, and } from "drizzle-orm";
 import { generateId } from "@/lib/utils";
 import { buildAiContext } from "@/lib/ai-context";
+import { recordTimelineEvent } from "@/lib/timeline";
 import {
   buyPhoneNumber,
   createAssistant,
@@ -211,6 +212,14 @@ export async function provisionVapiVoice(
     return { success: false, error: "Provisioning already in progress or already complete" };
   }
 
+  await recordTimelineEvent({
+    businessId,
+    scope: "provisioning",
+    event: "provisioning_started",
+    detail: "Starting automated voice provisioning",
+    status: "pending",
+  });
+
   const businessName = biz.name || "My Business";
 
   try {
@@ -238,6 +247,13 @@ export async function provisionVapiVoice(
         vapiNumberId = vapiNumber.id;
         vapiNumberValue = vapiNumber.number;
         console.log(`[vapi-provisioning] Bought number: ${vapiNumberValue} (id=${vapiNumberId})`);
+        await recordTimelineEvent({
+          businessId,
+          scope: "provisioning",
+          event: "phone_number_bought",
+          detail: `AI phone number ${vapiNumberValue} purchased`,
+          status: "success",
+        });
 
         // Persist incrementally so retries don't re-buy
         const existingPn = await db
@@ -292,6 +308,13 @@ export async function provisionVapiVoice(
         });
         vapiAssistantId = vapiAssistant.id;
         console.log(`[vapi-provisioning] Created assistant: ${vapiAssistantId}`);
+        await recordTimelineEvent({
+          businessId,
+          scope: "provisioning",
+          event: "assistant_created",
+          detail: `AI voice assistant created (${vapiAssistantId})`,
+          status: "success",
+        });
 
         // Persist incrementally
         await db.update(business).set({ vapiAssistantId }).where(eq(business.id, businessId));
@@ -336,6 +359,14 @@ export async function provisionVapiVoice(
       provider: "vapi",
     }).where(eq(phoneNumber.businessId, businessId));
 
+    await recordTimelineEvent({
+      businessId,
+      scope: "provisioning",
+      event: "provisioning_completed",
+      detail: `Voice provisioning complete — ${vapiNumberValue} is live`,
+      status: "success",
+    });
+
     console.log(`[vapi-provisioning] SUCCESS — business ${businessId} fully provisioned`);
     console.log(`  Number: ${vapiNumberValue}`);
     console.log(`  Assistant: ${vapiAssistantId}`);
@@ -371,6 +402,13 @@ async function recordError(businessId: string, error: string): Promise<void> {
   } catch (dbErr) {
     console.error(`[vapi-provisioning] Failed to record error:`, dbErr);
   }
+  await recordTimelineEvent({
+    businessId,
+    scope: "provisioning",
+    event: "provisioning_failed",
+    detail: error.substring(0, 500),
+    status: "failed",
+  });
 }
 
 // ─── Provisioning gate ─────────────────────────────────────

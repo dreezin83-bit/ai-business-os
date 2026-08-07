@@ -7,6 +7,12 @@ import { buildAiContext } from "@/lib/ai-context";
 import { createLlmCompletion } from "@/lib/llm";
 import { notifyContractorOfNewLead, sendCustomerConfirmation } from "@/lib/notifications";
 import { extractLeadFromConversation, isValidLead } from "@/lib/lead-extractor";
+import {
+  createHandoff,
+  parseEscalateMarker,
+  cleanEscalateMarker,
+  buildConversationSummary,
+} from "@/lib/escalation";
 
 /** Parse [CONFIRM_APPOINTMENT]::date::startTime::endTime::service::name::phone::email */
 function parseAppointmentMarker(text: string): {
@@ -280,7 +286,27 @@ export async function POST(request: Request) {
     }
 
     // Clean markers from response
-    const cleanReply = cleanResponse(reply);
+    let cleanReply = cleanResponse(reply);
+    cleanReply = cleanEscalateMarker(cleanReply);
+
+    // Handle [ESCALATE] — human handoff
+    const escalateData = parseEscalateMarker(reply);
+    if (escalateData) {
+      const summary = escalateData.summary || buildConversationSummary(history);
+      await createHandoff({
+        businessId,
+        conversationId: convId,
+        leadId: createdLeadId,
+        customerName: customerName || "",
+        customerPhone: customerPhone || "",
+        customerEmail: customerEmail || "",
+        reason: escalateData.reason,
+        summary,
+      });
+      if (!cleanReply) {
+        cleanReply = "I've forwarded your request. Someone will contact you shortly.";
+      }
+    }
 
     // Save AI response
     await db.insert(message).values({

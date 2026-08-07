@@ -26,6 +26,7 @@ import {
   type SignupMetadata,
 } from "@/lib/paystack";
 import { canProvisionVoice, provisionVapiVoice } from "@/lib/vapi-provisioning";
+import { recordTimelineEvent } from "@/lib/timeline";
 
 const PAYSTACK_SECRET = process.env.PAYSTACK_SECRET_KEY!;
 
@@ -175,6 +176,15 @@ export async function POST(request: Request) {
     const planCode = data.metadata?.planCode;
     const authorizationCode = data.authorization?.authorization_code;
 
+    // Record the setup payment on the timeline (billing milestone).
+    await recordTimelineEvent({
+      businessId,
+      scope: "billing",
+      event: "setup_payment_received",
+      detail: `${(data.amount / 100).toFixed(2)} setup payment captured (ref: ${data.reference})`,
+      status: "success",
+    });
+
     if (planCode && authorizationCode) {
       try {
         const sub = await createPaystackSubscription(
@@ -186,11 +196,25 @@ export async function POST(request: Request) {
         console.log(
           `[paystack-webhook] Paystack subscription created: ${paystackSubscriptionCode} for business ${businessId}`,
         );
+        await recordTimelineEvent({
+          businessId,
+          scope: "billing",
+          event: "subscription_created",
+          detail: `Paystack recurring subscription $199/month created (${paystackSubscriptionCode})`,
+          status: "success",
+        });
       } catch (err: any) {
         console.error(
           `[paystack-webhook] Failed to create Paystack subscription: ${err?.message}`,
         );
         subscriptionFailed = true;
+        await recordTimelineEvent({
+          businessId,
+          scope: "billing",
+          event: "subscription_creation_failed",
+          detail: `Setup payment captured but recurring subscription failed: ${(err as any)?.message || "unknown error"}`,
+          status: "failed",
+        });
         // One-time $399 succeeded but recurring subscription setup failed.
         // Return 202 to flag the partial state — Paystack won't retry,
         // but the business is marked as "pending_subscription" for manual/retry.
