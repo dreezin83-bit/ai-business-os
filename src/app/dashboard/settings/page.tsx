@@ -256,7 +256,7 @@ export default function SettingsPage() {
                   className="mt-4 bg-white hover:bg-white/90 text-black font-semibold text-xs h-9 px-5 rounded-full"
                 >
                   <CreditCard className="h-3.5 w-3.5 mr-1.5" />
-                  Subscribe Now — $199/mo
+                  Subscribe Now — $399 first month
                 </Button>
               </div>
             ) : aiNumber ? (

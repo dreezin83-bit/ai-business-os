@@ -224,11 +224,6 @@ export default function LandingPage() {
                 <Button size="lg" onClick={() => setSubscribeOpen(true)} className="bg-white hover:bg-white/90 text-black font-semibold text-[15px] h-12 px-8 rounded-full">
                   Subscribe Now <ArrowRight className="h-4 w-4 ml-1.5" />
                 </Button>
-                <Link href="/sign-up">
-                  <Button variant="outline" size="lg" className="btn-outline text-[15px] h-12 px-8 rounded-full">
-                    Free Trial
-                  </Button>
-                </Link>
               </motion.div>
             </div>
 
@@ -420,13 +415,6 @@ export default function LandingPage() {
                   </span>
                 </Button>
               </motion.div>
-              <Link href="/sign-up">
-                <motion.div whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.98 }}>
-                  <Button variant="outline" size="lg" className="btn-outline text-[15px] h-12 px-8 rounded-full">
-                    14-Day Free Trial
-                  </Button>
-                </motion.div>
-              </Link>
             </div>
           </Reveal>
         </div>
