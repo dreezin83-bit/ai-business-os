@@ -31,7 +31,7 @@ Counts are distinct canonical event IDs unless stated; ledger first once populat
 | Delivery | sent/delivered/failed/bounced; delivered ÷ sent; dedupe status transitions |
 | Follow-up rate | sent ÷ scheduled; failures separate |
 | Active business | tenant with qualifying event in window; admin-only |
-| MRR/ARR | normalized recurring amount for active paid subscriptions; ARR=M RR*12; group currency, no invented FX |
+| MRR/ARR | normalized recurring amount for active paid subscriptions; ARR=MRR*12; group currency, no invented FX |
 | Churn | cancelled/expired in period ÷ active at period start; billing lifecycle source required |
 
 Revenue is actual only with verified payment state/provider webhook. Missing/unconfirmed billing data is `unavailable`, not zero. Targets/projections use separate `projection` namespace and never mix with actuals.
