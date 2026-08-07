@@ -136,7 +136,7 @@ export default function AppointmentsPage() {
                   onChange={(e) => setForm({ ...form, customerName: e.target.value })}
                 />
               </div>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="text-sm font-medium mb-1 block">Phone</label>
                   <Input
@@ -162,7 +162,7 @@ export default function AppointmentsPage() {
                   onChange={(e) => setForm({ ...form, service: e.target.value })}
                 />
               </div>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="text-sm font-medium mb-1 block">Date *</label>
                   <Input
