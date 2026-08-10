@@ -34,8 +34,8 @@ export async function POST(request: Request) {
     }
 
     // Try to find the business by matching the "to" email address
-    // The confirmation email is sent TO the customer FROM notifications@greatnesswebsolutions.com
-    // A reply goes FROM customer TO notifications@greatnesswebsolutions.com
+    // The confirmation email is sent TO the customer FROM notifications@sagenifyai.com
+    // A reply goes FROM customer TO notifications@sagenifyai.com
     // We need to find which business this customer belongs to by looking up their email in leads
     const leads = await db
       .select()
@@ -180,7 +180,7 @@ export async function POST(request: Request) {
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            from: process.env.EMAIL_FROM_ADDRESS || "notifications@greatnesswebsolutions.com",
+            from: process.env.EMAIL_FROM_ADDRESS || "notifications@sagenifyai.com",
             to: fromEmail,
             subject: `Re: ${subject || "Your inquiry"}`,
             text: aiResponse,
