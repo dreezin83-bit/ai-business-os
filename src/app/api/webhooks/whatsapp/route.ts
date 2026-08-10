@@ -13,7 +13,7 @@ import { notifyContractorOfNewLead, sendCustomerConfirmation } from "@/lib/notif
  * Handles both verification (GET) and incoming messages (POST).
  *
  * Setup in Meta Developer Console:
- * - Callback URL: https://ai-business-os-six.vercel.app/api/webhooks/whatsapp
+ * - Callback URL: https://www.sagenifyai.com/api/webhooks/whatsapp
  * - Verify token: same as META_VERIFY_TOKEN env var
  * - Subscribe to: messages
  */
