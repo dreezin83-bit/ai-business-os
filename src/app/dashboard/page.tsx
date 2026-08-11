@@ -32,7 +32,7 @@ export default function DashboardPage() {
 
   useEffect(() => {
     fetch("/api/dashboard/stats")
-      .then((r) => (r.ok ? r.json() : null))
+      .then((r) => r.json())
       .then((d) => { setStats(d); setLoading(false); })
       .catch(() => setLoading(false));
   }, []);
