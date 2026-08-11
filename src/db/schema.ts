@@ -195,7 +195,7 @@ export const phoneNumber = pgTable("phone_number", {
   vapiPhoneNumberId: text("vapi_phone_number_id").notNull(),
   number: text("number").notNull(),
   serverUrl: text("server_url"),
-  provider: text("provider").default("twilio"),
+  provider: text("provider").default("vapi"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
