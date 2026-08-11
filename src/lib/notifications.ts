@@ -67,7 +67,7 @@ export async function sendEmail(to: string, subject: string, body: string): Prom
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        from: process.env.EMAIL_FROM_ADDRESS || "notifications@aibusinessos.com",
+        from: process.env.EMAIL_FROM_ADDRESS || "notifications@sagenifyai.com",
         to,
         subject,
         text: body,

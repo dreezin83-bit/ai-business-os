@@ -165,7 +165,7 @@ export default function LandingPage() {
         <div className="max-w-7xl mx-auto px-6 lg:px-8 flex items-center justify-between h-16">
           <div className="flex items-center gap-2.5">
             <div className="h-7 w-7 rounded-lg bg-white flex items-center justify-center text-[10px] font-bold text-black">AI</div>
-            <span className="font-semibold text-[15px] tracking-tight">Business OS</span>
+            <span className="font-semibold text-[15px] tracking-tight">Sagenify AI</span>
           </div>
           <div className="flex items-center gap-2">
             <a href="https://wa.me/13057071059" target="_blank" className="hidden md:flex items-center gap-1.5 text-[13px] text-white/40 hover:text-white transition-colors px-3 py-1.5 rounded-full hover:bg-white/5">
@@ -427,7 +427,7 @@ export default function LandingPage() {
             <div>
               <div className="flex items-center gap-2 mb-4">
                 <div className="h-6 w-6 rounded-md bg-white flex items-center justify-center text-[10px] font-bold text-black">AI</div>
-                <span className="font-semibold text-sm">Business OS</span>
+                <span className="font-semibold text-sm">Sagenify AI</span>
               </div>
               <p className="text-xs text-white/25 leading-relaxed">AI-powered operating system for service businesses.</p>
             </div>
@@ -446,7 +446,7 @@ export default function LandingPage() {
               </div>
             </div>
           </div>
-          <div className="pt-8 border-t border-white/[0.04] text-center text-[11px] text-white/20">© 2026 AI Business OS</div>
+          <div className="pt-8 border-t border-white/[0.04] text-center text-[11px] text-white/20">© 2026 Sagenify AI</div>
         </div>
       </footer>
     </div>
