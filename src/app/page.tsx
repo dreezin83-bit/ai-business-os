@@ -435,14 +435,14 @@ export default function LandingPage() {
               <h4 className="text-xs font-semibold text-white/50 mb-3">Contact</h4>
               <div className="space-y-2 text-xs text-white/30">
                 <a href="https://wa.me/13057071059" className="flex items-center gap-2 hover:text-white/60 transition-colors"><MessageCircle className="h-3 w-3" /> WhatsApp</a>
-                <span className="flex items-center gap-2"><Mail className="h-3 w-3" /> Email Support</span>
+                <a href="mailto:notifications@sagenifyai.com" className="flex items-center gap-2 hover:text-white/60 transition-colors"><Mail className="h-3 w-3" /> Email Support</a>
               </div>
             </div>
             <div>
               <h4 className="text-xs font-semibold text-white/50 mb-3">Legal</h4>
               <div className="space-y-2 text-xs text-white/30">
-                <span className="cursor-pointer hover:text-white/60 transition-colors">Privacy Policy</span>
-                <span className="cursor-pointer hover:text-white/60 transition-colors">Terms of Service</span>
+                <Link href="/privacy" className="cursor-pointer hover:text-white/60 transition-colors">Privacy Policy</Link>
+                <Link href="/terms" className="cursor-pointer hover:text-white/60 transition-colors">Terms of Service</Link>
               </div>
             </div>
           </div>
