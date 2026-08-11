@@ -166,14 +166,14 @@ export default function SubscribeModal({ open, onClose }: SubscribeModalProps) {
             ) : (
               <CreditCard className="h-4 w-4 mr-1.5" />
             )}
-            {submitting ? "Redirecting to Paystack..." : "Subscribe with Paystack"}
+            {submitting ? "Redirecting to checkout..." : "Activate Subscription"}
             {!submitting && <ArrowRight className="h-4 w-4 ml-1.5" />}
           </Button>
 
           {/* Footer */}
           <div className="flex items-center justify-center gap-1.5 text-[11px] text-white/20">
             <ShieldCheck className="h-3 w-3" />
-            Secure payment via Paystack
+            Secure Card Payment
           </div>
         </form>
       </DialogContent>

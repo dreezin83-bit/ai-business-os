@@ -21,6 +21,8 @@ import {
   Sparkles,
   Terminal,
   TrendingUp,
+  Zap,
+  MessageCircle,
 } from "lucide-react";
 import { useState } from "react";
 import { useClerk } from "@clerk/nextjs";
@@ -36,7 +38,9 @@ const navigation = [
   { name: "Knowledge Base", href: "/dashboard/knowledge-base", icon: BookOpen },
   { name: "Chatbot", href: "/dashboard/chatbot", icon: MessageSquare },
   { name: "Messages", href: "/dashboard/messages", icon: Mail },
+  { name: "Communication", href: "/dashboard/settings/communication", icon: MessageCircle },
   { name: "Missed Calls", href: "/dashboard/missed-calls", icon: PhoneMissed },
+  { name: "Automation", href: "/dashboard/automation", icon: Zap },
   { name: "Contact Support", href: "https://wa.me/13057071059", icon: Phone, external: true },
   { name: "Settings", href: "/dashboard/settings", icon: Settings },
 ];
@@ -75,9 +79,9 @@ export function Sidebar() {
           {/* Logo */}
           <div className="flex items-center gap-3 px-5 py-4 border-b border-slate-800">
             <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-sm font-bold text-white shadow-lg shadow-purple-500/25">
-              AI
+              S
             </div>
-            <span className="font-semibold text-sm tracking-tight text-white">AI Business OS</span>
+            <span className="font-semibold text-sm tracking-tight text-white">Sagenify AI</span>
           </div>
 
           {/* Navigation */}
