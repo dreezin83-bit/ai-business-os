@@ -8,7 +8,7 @@ import { Toaster } from "@/components/toaster";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "AI Business OS",
+  title: "Sagenify AI",
   description: "AI-powered operating system for your service business",
 };
 

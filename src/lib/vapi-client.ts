@@ -137,7 +137,7 @@ export async function createPhoneNumber(
   return vapiFetch<VapiPhoneNumber>("/phone-number", {
     method: "POST",
     body: JSON.stringify({
-      name: input.name || input.number || "AI Business OS Number",
+      name: input.name || input.number || "Sagenify AI Number",
       number: input.number,
       ...(input.serverUrl ? { serverUrl: input.serverUrl } : {}),
       ...(input.serverUrlSecret

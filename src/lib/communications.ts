@@ -24,7 +24,7 @@ export async function sendEmail(
     const resend = new Resend(RESEND_API_KEY);
 
     const { data, error } = await resend.emails.send({
-      from: "AI Business OS <onboarding@resend.dev>",
+      from: "Sagenify AI <onboarding@resend.dev>",
       to: [to],
       subject,
       html: body.replace(/\n/g, "<br/>"),
