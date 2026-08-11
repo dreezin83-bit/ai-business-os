@@ -86,9 +86,9 @@ export function Sidebar() {
           {/* Logo */}
           <div className="flex items-center gap-3 px-5 py-4 border-b border-slate-800">
             <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-sm font-bold text-white shadow-lg shadow-purple-500/25">
-              AI
+              S
             </div>
-            <span className="font-semibold text-sm tracking-tight text-white">AI Business OS</span>
+            <span className="font-semibold text-sm tracking-tight text-white">Sagenify AI</span>
           </div>
 
           {/* Navigation */}

@@ -1,4 +1,4 @@
-// AI Business OS Chatbot Widget — v2
+// Sagenify AI Chatbot Widget — v2
 // Embed: <script src="https://www.sagenifyai.com/api/public/chatbot/widget" data-business-id="YOUR_ID"></script>
 (function () {
   'use strict';
