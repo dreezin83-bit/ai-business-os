@@ -134,12 +134,12 @@ export default function CommunicationSettingsPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="flex items-center gap-3">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-3">
             <Select
               value={settings?.primaryMethod || "email"}
               onValueChange={(v) => setSettings((s) => s ? { ...s, primaryMethod: v } : s)}
             >
-              <SelectTrigger className="w-[200px]">
+              <SelectTrigger className="w-full sm:w-[200px]">
                 <SelectValue placeholder="Select method" />
               </SelectTrigger>
               <SelectContent>
