@@ -209,7 +209,7 @@ export async function notifyContractorOfNewLead(
     `Service Request: ${lead.serviceRequest || "Not specified"}`,
     summaryLine,
     `━━━━━━━━━━━━━━━━━━━━━`,
-    `View all leads: https://ai-business-os-six.vercel.app/dashboard/leads`,
+    `View all leads: https://www.sagenifyai.com/dashboard/leads`,
   ].filter(Boolean).join("\n");
 
   console.log(`[notifications] Notifying contractor about lead ${leadId} for business ${businessId}`);
@@ -417,7 +417,7 @@ export async function notifyContractorOfNewAppointment(
     `Date: ${appt.date}`,
     `Time: ${appt.startTime}${appt.endTime ? ` - ${appt.endTime}` : ""}`,
     `━━━━━━━━━━━━━━━━━━━━━`,
-    `View all appointments: https://ai-business-os-six.vercel.app/dashboard/appointments`,
+    `View all appointments: https://www.sagenifyai.com/dashboard/appointments`,
   ].join("\n");
 
   console.log(`[notifications] Notifying contractor about appointment ${appointmentId} for business ${businessId}`);
