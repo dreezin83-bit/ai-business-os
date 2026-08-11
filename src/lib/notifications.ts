@@ -27,7 +27,7 @@ interface NotificationContext {
 export async function logCommunication(params: {
   businessId: string;
   leadId: string | null;
-  type: "email" | "whatsapp";
+  type: "email";
   toAddress: string;
   subject: string;
   body: string;
@@ -86,46 +86,7 @@ export async function sendEmail(to: string, subject: string, body: string): Prom
   }
 }
 
-/**
- * Send a WhatsApp message using Meta Cloud API (free tier).
- * Requires META_ACCESS_TOKEN and META_PHONE_NUMBER_ID in environment.
- */
-async function sendWhatsApp(to: string, body: string): Promise<{ success: boolean; messageId?: string; error?: string }> {
-  const accessToken = process.env.META_ACCESS_TOKEN;
-  const phoneNumberId = process.env.META_PHONE_NUMBER_ID;
 
-  if (!accessToken || !phoneNumberId) {
-    return { success: false, error: "WhatsApp not configured (META_ACCESS_TOKEN and META_PHONE_NUMBER_ID required)." };
-  }
-
-  try {
-    const res = await fetch(
-      `https://graph.facebook.com/v21.0/${phoneNumberId}/messages`,
-      {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          messaging_product: "whatsapp",
-          to: to.startsWith("whatsapp:") ? to.replace("whatsapp:", "") : to,
-          type: "text",
-          text: { body: body.substring(0, 1600) },
-        }),
-      }
-    );
-
-    const data = await res.json();
-    if (!res.ok) {
-      return { success: false, error: `Meta API error ${res.status}: ${JSON.stringify(data).substring(0, 200)}` };
-    }
-
-    return { success: true, messageId: data.messages?.[0]?.id };
-  } catch (error: any) {
-    return { success: false, error: error?.message || "Unknown WhatsApp error" };
-  }
-}
 
 /**
  * Build the full notification context by loading business and lead data.
@@ -173,7 +134,6 @@ export async function notifyContractorOfNewLead(
 
   // Default to email enabled if no settings exist yet
   const emailEnabled = settings ? settings.emailEnabled : true;
-  const whatsappEnabled = settings ? settings.whatsappEnabled : false;
 
   if (!ctx) {
     // Log failure to build context
@@ -245,23 +205,6 @@ export async function notifyContractorOfNewLead(
     }
   }
 
-  // WhatsApp notification to contractor
-  if (whatsappEnabled && ctx.businessPhone) {
-    const waBody = `📋 *New Lead*\n\n*Name:* ${lead.name}\n*Phone:* ${lead.phone || "N/A"}\n*Email:* ${lead.email || "N/A"}\n*Service:* ${lead.serviceRequest || "Not specified"}`;
-    console.log(`[notifications] Sending WhatsApp to contractor at ${ctx.businessPhone}`);
-    const result = await sendWhatsApp(ctx.businessPhone, waBody);
-    await logCommunication({
-      businessId,
-      leadId,
-      type: "whatsapp",
-      toAddress: ctx.businessPhone,
-      subject: "New Lead Notification",
-      body: waBody,
-      status: result.success ? "sent" : "failed",
-      errorMessage: result.error,
-      externalId: result.messageId,
-    });
-  }
 }
 
 /**
@@ -290,24 +233,10 @@ export async function sendCustomerConfirmation(businessId: string, leadId: strin
     `The ${businessName} Team`,
   ].join("\n");
 
-  console.log(`[notifications] Sending confirmation to customer ${leadId} via ${lead.preferredMethod || "email"}`);
+  console.log(`[notifications] Sending confirmation to customer ${leadId} via email`);
 
-  // Send via the customer's preferred method (or fall back to email)
-  if (lead.preferredMethod === "whatsapp" && lead.phone) {
-    const result = await sendWhatsApp(lead.phone, body);
-    await logCommunication({
-      businessId,
-      leadId,
-      type: "whatsapp",
-      toAddress: lead.phone,
-      subject: "Lead Confirmation",
-      body,
-      status: result.success ? "sent" : "failed",
-      errorMessage: result.error,
-      externalId: result.messageId,
-    });
-  } else if (lead.email) {
-    // Default to email
+  // Send via email
+  if (lead.email) {
     const result = await sendEmail(lead.email, subject, body);
     await logCommunication({
       businessId,
