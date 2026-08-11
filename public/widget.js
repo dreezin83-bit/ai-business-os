@@ -1,11 +1,11 @@
 // Sagenify AI Chatbot Widget — v2
-// Embed: <script src="https://ai-business-os-six.vercel.app/api/public/chatbot/widget" data-business-id="YOUR_ID"></script>
+// Embed: <script src="https://www.sagenifyai.com/api/public/chatbot/widget" data-business-id="YOUR_ID"></script>
 (function () {
   'use strict';
 
   var SCRIPT = document.currentScript;
   var BUSINESS_ID = SCRIPT?.getAttribute('data-business-id') || '';
-  var PLATFORM_URL = 'https://ai-business-os-six.vercel.app';
+  var PLATFORM_URL = 'https://www.sagenifyai.com';
   var WIDGET_URL = PLATFORM_URL + '/api/public/chatbot';
 
   if (!BUSINESS_ID) {

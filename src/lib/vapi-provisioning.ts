@@ -69,7 +69,7 @@ function generateWebhookToken(): string {
 }
 
 function buildWebhookUrl(token: string): string {
-  const base = process.env.NEXT_PUBLIC_APP_URL || "https://ai-business-os-six.vercel.app";
+  const base = process.env.NEXT_PUBLIC_APP_URL || "https://www.sagenifyai.com";
   return `${base}/api/voice/vapi/${token}`;
 }
 
