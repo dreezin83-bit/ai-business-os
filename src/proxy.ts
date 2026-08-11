@@ -6,7 +6,10 @@ const isPublicRoute = createRouteMatcher([
   "/",
   "/sign-in(.*)",
   "/sign-up(.*)",
-  "/onboarding(.*)",
+  // NOTE: /onboarding is intentionally NOT public — signed-out visitors
+  // hitting /onboarding must be redirected to /sign-in (QA issue 004).
+  // Signed-in users are handled by the onboarding DB check below, and the
+  // redirect loop-guard prevents bouncing them away from /onboarding.
   "/api/public(.*)",
   "/api/webhooks(.*)",
   "/api/voice(.*)",
@@ -78,7 +81,16 @@ export default clerkMiddleware(
       // Don't block navigation on DB errors — let them through
     }
   },
-  { publishableKey: process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }
+  {
+    publishableKey: process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY,
+    // Explicit sign-in/up URLs so auth.protect() redirects signed-out
+    // visitors to the app's own pages (QA issue 004: /dashboard and
+    // /onboarding rendered the app shell instead of redirecting).
+    // protect() only inherits ClerkProvider props client-side; the
+    // middleware needs these set here to build the correct redirect.
+    signInUrl: "/sign-in",
+    signUpUrl: "/sign-up",
+  }
 );
 
 export const config = {
