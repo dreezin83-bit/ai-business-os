@@ -13,7 +13,10 @@ export async function GET() {
   try {
     const businessId = await ensureBusiness();
     if (!businessId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return NextResponse.json(
+        { error: { code: "UNAUTHORIZED", message: "Unauthorized" } },
+        { status: 401 }
+      );
     }
 
     const today = new Date();
@@ -146,8 +149,21 @@ export async function GET() {
       weeklyLeads,
       weeklyChange,
     });
-  } catch (error: any) {
-    console.error("[dashboard/stats] Error:", error?.message);
-    return NextResponse.json({ error: "Failed to load dashboard stats" }, { status: 500 });
+  } catch (error: unknown) {
+    // Structured server-side logging: full error context so production DB failures
+    // are diagnosable from function logs without exposing internals to clients.
+    const err = error instanceof Error ? error : new Error(String(error));
+    console.error("[dashboard/stats] Failed to load dashboard stats", {
+      businessId,
+      errorName: err.name,
+      errorMessage: err.message,
+      stack: err.stack,
+    });
+    // Structured error body so clients can distinguish transport vs. data errors
+    // (the dashboard renders its fallback state instead of crashing on malformed data).
+    return NextResponse.json(
+      { error: { code: "STATS_LOAD_FAILED", message: "Failed to load dashboard stats" } },
+      { status: 500 }
+    );
   }
 }
