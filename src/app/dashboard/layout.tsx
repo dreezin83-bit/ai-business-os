@@ -1,10 +1,36 @@
+"use client";
+
 import { Sidebar } from "@/components/sidebar";
+import { useAuth } from "@clerk/nextjs";
+import { useRouter } from "next/navigation";
+import { useEffect } from "react";
 
 export default function DashboardLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const { isLoaded, isSignedIn } = useAuth();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (isLoaded && !isSignedIn) {
+      router.replace("/sign-in");
+    }
+  }, [isLoaded, isSignedIn, router]);
+
+  // Hold the shell until Clerk has loaded auth state. This prevents the
+  // signed-out "app shell + error boundary" flash: unauthenticated visitors
+  // are redirected to /sign-in instead of rendering the dashboard chrome
+  // (which would then 401 on /api/dashboard/stats).
+  if (!isLoaded || !isSignedIn) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-blue-950 flex items-center justify-center">
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-white/20 border-t-white/80" />
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-blue-950">
       {/* Ambient glow */}
