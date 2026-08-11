@@ -1,5 +1,4 @@
 "use client";
-
 import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -8,28 +7,20 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { useToast } from "@/components/toaster";
-import { Loader2, Mail, MessageSquare, Smartphone, Save, Check } from "lucide-react";
-
+import { Loader2, Mail, Save } from "lucide-react";
 interface CommSettings {
   id?: string;
   emailEnabled: boolean;
-  whatsappEnabled: boolean;
-  smsEnabled: boolean;
   primaryMethod: string;
 }
-
 const methods = [
   { value: "email", label: "Email", icon: Mail, color: "blue" },
-  { value: "whatsapp", label: "WhatsApp", icon: MessageSquare, color: "green" },
-  { value: "sms", label: "SMS", icon: Smartphone, color: "purple" },
 ];
-
 export default function CommunicationSettingsPage() {
   const [settings, setSettings] = useState<CommSettings | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const { toast } = useToast();
-
   useEffect(() => {
     fetch("/api/communication-settings")
       .then((r) => r.json())
@@ -39,13 +30,11 @@ export default function CommunicationSettingsPage() {
       })
       .catch(() => setLoading(false));
   }, []);
-
-  const toggle = (key: "emailEnabled" | "whatsappEnabled" | "smsEnabled") => {
+  const toggle = (key: "emailEnabled") => {
     if (!settings) return;
     const updated = { ...settings, [key]: !settings[key] };
     setSettings(updated);
   };
-
   const save = async () => {
     if (!settings) return;
     setSaving(true);
@@ -65,9 +54,7 @@ export default function CommunicationSettingsPage() {
     }
     setSaving(false);
   };
-
-  const enabledCount = [settings?.emailEnabled, settings?.whatsappEnabled, settings?.smsEnabled].filter(Boolean).length;
-
+  const enabledCount = settings?.emailEnabled ? 1 : 0;
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[40vh]">
@@ -75,7 +62,6 @@ export default function CommunicationSettingsPage() {
       </div>
     );
   }
-
   return (
     <div className="space-y-6 max-w-2xl">
       <div>
@@ -84,7 +70,6 @@ export default function CommunicationSettingsPage() {
           Configure how your business communicates with customers
         </p>
       </div>
-
       {/* Channel toggles */}
       <Card>
         <CardHeader>
@@ -124,7 +109,6 @@ export default function CommunicationSettingsPage() {
           })}
         </CardContent>
       </Card>
-
       {/* Primary method */}
       <Card>
         <CardHeader>
@@ -164,7 +148,6 @@ export default function CommunicationSettingsPage() {
           </div>
         </CardContent>
       </Card>
-
       {/* Preview */}
       <Card>
         <CardHeader>
@@ -173,27 +156,13 @@ export default function CommunicationSettingsPage() {
         </CardHeader>
         <CardContent>
           <div className="rounded-lg bg-muted p-4 text-sm space-y-2">
-            {!settings?.emailEnabled && !settings?.whatsappEnabled && !settings?.smsEnabled ? (
+            {!settings?.emailEnabled ? (
               <p className="text-red-500">No channels enabled. Enable at least one.</p>
-            ) : enabledCount === 1 ? (
-              <p>
-                AI will ask for{" "}
-                <strong>
-                  {settings?.emailEnabled ? "email address" : ""}
-                  {settings?.whatsappEnabled ? "WhatsApp number" : ""}
-                  {settings?.smsEnabled ? "phone number" : ""}
-                </strong>{" "}
-                only.
-              </p>
             ) : (
               <p>
-                AI will ask: <em>"Would you like updates through{" "}
-                {[
-                  settings?.emailEnabled && "Email",
-                  settings?.whatsappEnabled && "WhatsApp",
-                  settings?.smsEnabled && "SMS",
-                ].filter(Boolean).join(" or ")}
-                ?"</em>
+                AI will ask for{" "}
+                <strong>email address</strong>{" "}
+                only.
               </p>
             )}
             {settings?.primaryMethod && (
@@ -204,7 +173,6 @@ export default function CommunicationSettingsPage() {
           </div>
         </CardContent>
       </Card>
-
       <Button onClick={save} disabled={saving || !settings}>
         {saving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
         Save Settings

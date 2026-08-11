@@ -179,8 +179,6 @@ export async function buildAiContext(businessId: string): Promise<AiContext> {
   })();
 
   const emailOn = commSettings?.emailEnabled !== false;
-  const whatsappOn = commSettings?.whatsappEnabled === true;
-  const primary = commSettings?.primaryMethod || "email";
 
   // ─── BUILD SECTIONS (trimmed & consolidated from 28 → ~18 sections) ───
   const sections: string[] = [];
@@ -219,24 +217,17 @@ export async function buildAiContext(businessId: string): Promise<AiContext> {
   if (knowledgeText) sections.push(`\n\nKNOWLEDGE BASE:\n${knowledgeText}`);
 
   // 11. Communication prefs
-  sections.push(`\n\nCOMMUNICATION: Email ${emailOn ? "ON" : "OFF"}, WhatsApp ${whatsappOn ? "ON" : "OFF"}, Primary: ${primary}`);
+  sections.push(`\n\nCOMMUNICATION: Email ${emailOn ? "ON" : "OFF"}`);
 
   // 12. Lead collection rules
   if (config?.leadCollectionRules) {
     sections.push(`\n\nLEAD COLLECTION: ${config.leadCollectionRules}`);
   } else {
-    const enabledMethods: string[] = [];
-    if (emailOn) enabledMethods.push("Email");
-    if (whatsappOn) enabledMethods.push("WhatsApp");
-    const primaryMethod = primary === "email" ? "Email" : primary === "whatsapp" ? "WhatsApp" : "Email";
     let leadRules: string;
-    if (enabledMethods.length === 0) {
-      leadRules = "No contact methods enabled. Help conversationally without asking for contact info.";
-    } else if (enabledMethods.length === 1) {
-      const m = enabledMethods[0];
-      leadRules = `Only collect ${m === "Email" ? "email" : "phone"}. Primary: ${m}.`;
+    if (emailOn) {
+      leadRules = "Only collect email. Primary: Email.";
     } else {
-      leadRules = `Methods: ${enabledMethods.join(", ")}. Primary: ${primaryMethod}. Only one contact method needed.`;
+      leadRules = "No contact methods enabled. Help conversationally without asking for contact info.";
     }
     sections.push(`\n\nLEAD COLLECTION: ${leadRules}`);
   }

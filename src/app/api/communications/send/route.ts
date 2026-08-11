@@ -1,56 +1,37 @@
 import { NextResponse } from "next/server";
 import { db } from "@/db";
 import { communicationLog } from "@/db/schema";
-import { eq, desc, and } from "drizzle-orm";
 import { ensureBusiness } from "@/lib/business";
 import { generateId } from "@/lib/utils";
-import { sendEmail, sendSms, sendWhatsApp } from "@/lib/communications";
+import { sendEmail } from "@/lib/communications";
 
-const validTypes = ["email", "sms", "whatsapp"] as const;
+const validTypes = ["email"] as const;
 type CommType = (typeof validTypes)[number];
 
 export async function POST(request: Request) {
   try {
     const businessId = await ensureBusiness();
     if (!businessId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-
     const body = await request.json();
     const { type, to, subject, body: messageBody, leadId } = body;
-
-    // Validate type
+    // Validate type (email only — SMS/WhatsApp are out of scope)
     if (!type || !validTypes.includes(type)) {
-      return NextResponse.json({ error: "Invalid type. Must be email, sms, or whatsapp" }, { status: 400 });
+      return NextResponse.json({ error: "Invalid type. Only email is supported" }, { status: 400 });
     }
-
     // Validate recipient
     if (!to || typeof to !== "string") {
       return NextResponse.json({ error: "Recipient (to) is required" }, { status: 400 });
     }
-
     // Validate body
     if (!messageBody || typeof messageBody !== "string") {
       return NextResponse.json({ error: "Body is required" }, { status: 400 });
     }
-
     // Validate subject for email
-    if (type === "email" && !subject) {
+    if (!subject) {
       return NextResponse.json({ error: "Subject is required for email" }, { status: 400 });
     }
-
-    // Send the communication
-    let sendResult;
-    switch (type as CommType) {
-      case "email":
-        sendResult = await sendEmail(to, subject || "", messageBody);
-        break;
-      case "sms":
-        sendResult = await sendSms(to, messageBody);
-        break;
-      case "whatsapp":
-        sendResult = await sendWhatsApp(to, messageBody);
-        break;
-    }
-
+    // Send the email
+    const sendResult = await sendEmail(to, subject, messageBody);
     // Generate log entry
     const logEntry = {
       id: generateId(),
@@ -64,9 +45,7 @@ export async function POST(request: Request) {
       errorMessage: sendResult.error || "",
       externalId: sendResult.externalId || "",
     };
-
     await db.insert(communicationLog).values(logEntry);
-
     return NextResponse.json(logEntry, { status: sendResult.success ? 201 : 500 });
   } catch (error) {
     console.error("Failed to send communication:", error);

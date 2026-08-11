@@ -1,5 +1,4 @@
 "use client";
-
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -10,88 +9,54 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import {
-  Send, Mail, Smartphone, MessageSquare, Loader2, ArrowLeft,
+  Send, Mail, Loader2, ArrowLeft,
 } from "lucide-react";
 import { useToast } from "@/components/toaster";
-
-type Channel = "email" | "sms" | "whatsapp";
-
 interface Lead {
   id: string;
   name: string;
   phone: string;
   email: string;
 }
-
-const CHANNELS: { key: Channel; label: string; icon: React.ElementType }[] = [
-  { key: "email", label: "Email", icon: Mail },
-  { key: "sms", label: "SMS", icon: Smartphone },
-  { key: "whatsapp", label: "WhatsApp", icon: MessageSquare },
-];
-
 export default function ComposePage() {
   const router = useRouter();
   const { toast } = useToast();
-  const [channel, setChannel] = useState<Channel>("email");
   const [to, setTo] = useState("");
   const [subject, setSubject] = useState("");
   const [body, setBody] = useState("");
   const [leads, setLeads] = useState<Lead[]>([]);
   const [selectedLeadId, setSelectedLeadId] = useState<string>("");
   const [sending, setSending] = useState(false);
-
   useEffect(() => {
     fetch("/api/leads")
       .then((r) => r.ok ? r.json() : [])
       .then((data) => setLeads(data))
       .catch(() => {});
   }, []);
-
   const handleLeadSelect = (leadId: string) => {
     setSelectedLeadId(leadId);
     const lead = leads.find((l) => l.id === leadId);
     if (lead) {
-      if (channel === "email") {
-        setTo(lead.email || "");
-      } else {
-        setTo(lead.phone || "");
-      }
+      setTo(lead.email || "");
     }
   };
-
-  const handleChannelChange = (newChannel: Channel) => {
-    setChannel(newChannel);
-    if (selectedLeadId) {
-      const lead = leads.find((l) => l.id === selectedLeadId);
-      if (lead) {
-        setTo(newChannel === "email" ? lead.email || "" : lead.phone || "");
-      }
-    }
-    if (newChannel !== "email") {
-      setSubject("");
-    }
-  };
-
   const handleSubmit = async () => {
     if (!to.trim() || !body.trim()) return;
-    if (channel === "email" && !subject.trim()) return;
-
+    if (!subject.trim()) return;
     setSending(true);
     try {
       const res = await fetch("/api/communications/send", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          type: channel,
+          type: "email",
           to: to.trim(),
-          ...(channel === "email" ? { subject: subject.trim() } : {}),
+          subject: subject.trim(),
           body: body.trim(),
           leadId: selectedLeadId || undefined,
         }),
       });
-
       if (!res.ok) throw new Error("Failed to send");
-
       toast("Message sent successfully!", "success");
       router.push("/dashboard/messages");
     } catch {
@@ -100,13 +65,11 @@ export default function ComposePage() {
       setSending(false);
     }
   };
-
   const isValid = () => {
     if (!to.trim() || !body.trim()) return false;
-    if (channel === "email" && !subject.trim()) return false;
+    if (!subject.trim()) return false;
     return true;
   };
-
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -118,7 +81,7 @@ export default function ComposePage() {
           <div>
             <h1 className="text-2xl font-bold tracking-tight">Compose Message</h1>
             <p className="text-sm text-muted-foreground mt-1">
-              Send an email, SMS, or WhatsApp message
+              Send an email message
             </p>
           </div>
         </div>
@@ -131,7 +94,6 @@ export default function ComposePage() {
           Send
         </Button>
       </div>
-
       <div className="grid gap-6 lg:grid-cols-3">
         {/* Main form */}
         <div className="lg:col-span-2 space-y-6">
@@ -140,29 +102,6 @@ export default function ComposePage() {
               <CardTitle className="text-sm">Message Details</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              {/* Channel selector */}
-              <div>
-                <label className="text-xs font-medium text-muted-foreground mb-1.5 block">
-                  Channel
-                </label>
-                <div className="flex gap-2">
-                  {CHANNELS.map((ch) => (
-                    <button
-                      key={ch.key}
-                      onClick={() => handleChannelChange(ch.key)}
-                      className={`flex items-center gap-2 px-4 py-2.5 rounded-lg border text-sm transition-colors flex-1 ${
-                        channel === ch.key
-                          ? "border-primary bg-primary/5 text-primary font-medium"
-                          : "border-border hover:bg-muted text-muted-foreground"
-                      }`}
-                    >
-                      <ch.icon className="h-4 w-4" />
-                      {ch.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
               {/* Lead selector (optional) */}
               <div>
                 <label className="text-xs font-medium text-muted-foreground mb-1 block">
@@ -182,45 +121,36 @@ export default function ComposePage() {
                   </SelectContent>
                 </Select>
               </div>
-
               {/* To */}
               <div>
                 <label className="text-xs font-medium text-muted-foreground mb-1 block">
-                  To {channel === "email" ? "(email address)" : "(phone number)"} *
+                  To (email address) *
                 </label>
                 <Input
-                  type={channel === "email" ? "email" : "tel"}
-                  placeholder={channel === "email" ? "john@example.com" : "+1 (555) 123-4567"}
+                  type="email"
+                  placeholder="john@example.com"
                   value={to}
                   onChange={(e) => setTo(e.target.value)}
                 />
               </div>
-
-              {/* Subject (email only) */}
-              {channel === "email" && (
-                <div>
-                  <label className="text-xs font-medium text-muted-foreground mb-1 block">
-                    Subject *
-                  </label>
-                  <Input
-                    placeholder="Message subject"
-                    value={subject}
-                    onChange={(e) => setSubject(e.target.value)}
-                  />
-                </div>
-              )}
-
+              {/* Subject */}
+              <div>
+                <label className="text-xs font-medium text-muted-foreground mb-1 block">
+                  Subject *
+                </label>
+                <Input
+                  placeholder="Message subject"
+                  value={subject}
+                  onChange={(e) => setSubject(e.target.value)}
+                />
+              </div>
               {/* Body */}
               <div>
                 <label className="text-xs font-medium text-muted-foreground mb-1 block">
                   Message Body *
                 </label>
                 <Textarea
-                  placeholder={
-                    channel === "email"
-                      ? "Write your email message..."
-                      : "Type your message..."
-                  }
+                  placeholder="Write your email message..."
                   value={body}
                   onChange={(e) => setBody(e.target.value)}
                   rows={8}
@@ -229,7 +159,6 @@ export default function ComposePage() {
             </CardContent>
           </Card>
         </div>
-
         {/* Sidebar */}
         <div className="space-y-4">
           <Card>
@@ -241,26 +170,11 @@ export default function ComposePage() {
                 <Mail className="h-4 w-4 mt-0.5 text-blue-500 shrink-0" />
                 <div>
                   <p className="font-medium text-foreground">Email</p>
-                  <p className="text-xs">Best for detailed messages, newsletters, and formal communication.</p>
-                </div>
-              </div>
-              <div className="flex items-start gap-2">
-                <Smartphone className="h-4 w-4 mt-0.5 text-green-500 shrink-0" />
-                <div>
-                  <p className="font-medium text-foreground">SMS</p>
-                  <p className="text-xs">Best for appointment reminders, short notifications, and urgent alerts.</p>
-                </div>
-              </div>
-              <div className="flex items-start gap-2">
-                <MessageSquare className="h-4 w-4 mt-0.5 text-purple-500 shrink-0" />
-                <div>
-                  <p className="font-medium text-foreground">WhatsApp</p>
-                  <p className="text-xs">Best for rich media, conversational support, and international clients.</p>
+                  <p className="text-xs">Best for detailed messages, follow-ups, and formal communication.</p>
                 </div>
               </div>
             </CardContent>
           </Card>
-
           <Card>
             <CardHeader>
               <CardTitle className="text-sm">Recipient Preview</CardTitle>
@@ -273,7 +187,7 @@ export default function ComposePage() {
               )}
               {selectedLeadId && (
                 <p className="text-xs text-muted-foreground mt-1">
-                  via {channel === "email" ? "Email" : channel === "sms" ? "SMS" : "WhatsApp"}
+                  via Email
                 </p>
               )}
             </CardContent>
