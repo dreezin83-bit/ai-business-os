@@ -185,8 +185,10 @@ export async function listAvailableNumbers(
 export async function buyPhoneNumber(
   input: BuyPhoneNumberInput = {}
 ): Promise<VapiPhoneNumber> {
+  // Vapi-only scope (no Twilio/vonage). Every current caller passes provider
+  // explicitly; this fallback must not silently revert to a legacy carrier.
   const body: Record<string, unknown> = {
-    provider: input.provider || "twilio",
+    provider: input.provider || "vapi",
   };
   if (input.areaCode) body.areaCode = input.areaCode;
   if (input.number) body.number = input.number;
