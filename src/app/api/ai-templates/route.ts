@@ -24,7 +24,7 @@ import { eq } from "drizzle-orm";
 import { ensureBusiness } from "@/lib/business";
 import { generateId } from "@/lib/utils";
 import { invalidateAiContextCache } from "@/lib/ai-context-cache";
-import { TEMPLATE_LIST } from "@/lib/ai-templates";
+import { TEMPLATE_LIST } from "@/lib/ai-templates/index";
 
 export async function GET(request: Request) {
   try {
