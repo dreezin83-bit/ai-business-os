@@ -53,9 +53,40 @@ export default function DashboardLayout({
   // are redirected to /sign-in instead of rendering the dashboard chrome
   // (which would then 401 on /api/dashboard/stats).
   if (!isLoaded || !isSignedIn) {
+    // Auth is still resolving — show a shell-shaped skeleton (sidebar +
+    // content) instead of a blank full-screen spinner so the navigation
+    // feels instant once the session is confirmed.
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-blue-950 flex items-center justify-center">
-        <div className="h-8 w-8 animate-spin rounded-full border-2 border-white/20 border-t-white/80" />
+      <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-blue-950">
+        {/* Sidebar skeleton */}
+        <div className="hidden md:flex fixed top-0 left-0 z-40 h-full w-64 flex-col border-r border-slate-800 bg-slate-950/90 p-4">
+          <div className="h-8 w-24 bg-slate-800 rounded-lg animate-pulse" />
+          <div className="space-y-2 mt-6">
+            {[...Array(8)].map((_, i) => (
+              <div
+                key={i}
+                className="h-9 bg-slate-800/60 rounded-lg animate-pulse"
+                style={{ animationDelay: `${i * 60}ms` }}
+              />
+            ))}
+          </div>
+        </div>
+        {/* Content skeleton */}
+        <main className="md:pl-64 min-h-screen">
+          <div className="p-4 md:p-8 max-w-7xl mx-auto pt-16 md:pt-8 space-y-6">
+            <div className="h-7 w-40 bg-slate-800 rounded-lg animate-pulse" />
+            <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-4">
+              {[...Array(4)].map((_, i) => (
+                <div
+                  key={i}
+                  className="h-28 bg-slate-800/60 rounded-xl border border-slate-700/30 animate-pulse"
+                  style={{ animationDelay: `${i * 80}ms` }}
+                />
+              ))}
+            </div>
+            <div className="h-64 bg-slate-800/40 rounded-xl border border-slate-700/30 animate-pulse" />
+          </div>
+        </main>
       </div>
     );
   }
