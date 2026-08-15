@@ -22,7 +22,7 @@ const nextConfig: NextConfig = {
       // Do NOT extend this to /dashboard, /api/*, auth routes, or anything
       // user-specific — those must never be cached publicly.
       {
-        source: "/:path((privacy|terms)?)",
+        source: "/:path((?:privacy|terms)?)",
         headers: [
           {
             key: "Cache-Control",
