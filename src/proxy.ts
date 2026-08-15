@@ -11,6 +11,7 @@ const isPublicRoute = createRouteMatcher([
   // Signed-in users are handled by the onboarding DB check below, and the
   // redirect loop-guard prevents bouncing them away from /onboarding.
   "/api/public(.*)",
+  "/api/health(.*)",
   "/api/webhooks(.*)",
   "/api/voice(.*)",
   "/api/onboarding(.*)",
