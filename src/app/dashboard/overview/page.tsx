@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -20,15 +21,19 @@ import {
   PhoneMissed,
 } from "lucide-react";
 import { getStatusColor, getStatusLabel } from "@/lib/utils";
-import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-} from "recharts";
+
+// Recharts is the heaviest client dependency on this page; load it on demand
+// (after stats arrive) instead of blocking first paint with the full bundle.
+const WeeklyLeadsChart = dynamic(
+  () => import("@/components/dashboard/weekly-leads-chart"),
+  {
+    loading: () => (
+      <div className="h-52 rounded-2xl bg-white/[0.02] border border-white/[0.06] animate-pulse" />
+    ),
+    ssr: false,
+  }
+);
+
 
 interface DashboardStats {
   totalLeads: number;
@@ -314,48 +319,7 @@ export default function OverviewPage() {
             </div>
           </CardHeader>
           <CardContent>
-            {chartData.every((d) => d.leads === 0) ? (
-              <div className="flex flex-col items-center justify-center py-10 text-center">
-                <BarChart3 className="h-8 w-8 text-white/10 mb-2" />
-                <p className="text-xs text-white/30">No lead activity this week</p>
-              </div>
-            ) : (
-              <div className="h-52">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={chartData} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(0 0% 100% / 0.04)" vertical={false} />
-                    <XAxis
-                      dataKey="day"
-                      axisLine={false}
-                      tickLine={false}
-                      tick={{ fill: "hsl(0 0% 100% / 0.25)", fontSize: 11 }}
-                    />
-                    <YAxis
-                      axisLine={false}
-                      tickLine={false}
-                      tick={{ fill: "hsl(0 0% 100% / 0.2)", fontSize: 10 }}
-                      allowDecimals={false}
-                    />
-                    <Tooltip
-                      contentStyle={{
-                        backgroundColor: "hsl(0 0% 3%)",
-                        border: "1px solid hsl(0 0% 100% / 0.08)",
-                        borderRadius: "12px",
-                        fontSize: "12px",
-                        color: "hsl(0 0% 93%)",
-                      }}
-                      cursor={{ fill: "hsl(0 0% 100% / 0.03)" }}
-                    />
-                    <Bar
-                      dataKey="leads"
-                      fill="hsl(217 91% 60%)"
-                      radius={[4, 4, 0, 0]}
-                      maxBarSize={36}
-                    />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            )}
+            <WeeklyLeadsChart data={chartData} />
           </CardContent>
         </Card>
 

@@ -122,6 +122,7 @@ export function Sidebar() {
                 <Link
                   key={item.href}
                   href={item.href}
+                  prefetch
                   onClick={() => setMobileOpen(false)}
                   className={linkClass}
                 >
