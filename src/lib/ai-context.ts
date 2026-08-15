@@ -142,7 +142,16 @@ export async function buildAiContext(businessId: string): Promise<AiContext> {
       try {
         const s = JSON.parse(config.services);
         if (Array.isArray(s) && s.length > 0) return s;
-      } catch {}
+      } catch {
+        // Not JSON — fall back to plain-text (newline-separated) services so a
+        // business that saved services as plain text still gets them in the
+        // prompt (mirrors the forgiving isConfigured gate in /api/ai/chat).
+        const plain = config.services
+          .split("\n")
+          .map((x: string) => x.trim())
+          .filter(Boolean);
+        if (plain.length > 0) return plain;
+      }
     }
     return [] as string[];
   })();

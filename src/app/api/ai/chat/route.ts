@@ -138,13 +138,21 @@ async function saveOnboardingData(businessId: string, markers: Record<string, st
   }
 }
 
-/** Check if business has essential info configured */
+/** Check if business has essential info configured (services set). */
 function isConfigured(config: any): boolean {
-  if (!config?.services) return false;
+  const raw = config?.services;
+  if (typeof raw !== "string" || !raw.trim()) return false;
   try {
-    const s = JSON.parse(config.services);
-    return Array.isArray(s) && s.length > 0 && s[0] !== "";
-  } catch { return false; }
+    const s = JSON.parse(raw);
+    // Accept a non-empty JSON array where at least one item is non-empty.
+    return Array.isArray(s) && s.some((item) => typeof item === "string" && item.trim() !== "");
+  } catch {
+    // Not JSON — treat non-empty plain-text services as configured so a
+    // partially-configured business (e.g. services saved as plain text, or a
+    // business with everything else set but services "[]") isn't stuck in
+    // onboarding mode forever. Truly empty businesses still get setup help.
+    return raw.trim().length > 0;
+  }
 }
 
 export async function POST(request: Request) {
