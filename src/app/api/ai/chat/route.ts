@@ -5,6 +5,7 @@ import { eq, desc, and } from "drizzle-orm";
 import { generateId, timeToMinutes, computeDefaultEndTime } from "@/lib/utils";
 import { ensureBusiness } from "@/lib/business";
 import { buildAiContext } from "@/lib/ai-context";
+import { isServicesConfigured } from "@/lib/ai-services";
 import { createLlmCompletion } from "@/lib/llm";
 import { notifyContractorOfNewLead, sendCustomerConfirmation, notifyContractorOfNewAppointment, sendCustomerAppointmentConfirmation } from "@/lib/notifications";
 import { extractLeadFromConversation, isValidLead } from "@/lib/lead-extractor";
@@ -140,19 +141,10 @@ async function saveOnboardingData(businessId: string, markers: Record<string, st
 
 /** Check if business has essential info configured (services set). */
 function isConfigured(config: any): boolean {
-  const raw = config?.services;
-  if (typeof raw !== "string" || !raw.trim()) return false;
-  try {
-    const s = JSON.parse(raw);
-    // Accept a non-empty JSON array where at least one item is non-empty.
-    return Array.isArray(s) && s.some((item) => typeof item === "string" && item.trim() !== "");
-  } catch {
-    // Not JSON — treat non-empty plain-text services as configured so a
-    // partially-configured business (e.g. services saved as plain text, or a
-    // business with everything else set but services "[]") isn't stuck in
-    // onboarding mode forever. Truly empty businesses still get setup help.
-    return raw.trim().length > 0;
-  }
+  // Accepts JSON arrays (any non-empty item) and non-empty plain text so a
+  // partially-configured business isn't stuck in onboarding mode forever.
+  // Truly empty businesses still get setup help. See src/lib/ai-services.ts.
+  return isServicesConfigured(config?.services);
 }
 
 export async function POST(request: Request) {
