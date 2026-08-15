@@ -10,6 +10,7 @@ import {
 import { eq, gte, and } from "drizzle-orm";
 import { buildTemplateSection } from "@/lib/ai-templates";
 import { getCachedAiContext, setCachedAiContext } from "@/lib/ai-context-cache";
+import { parseServices } from "@/lib/ai-services";
 
 export interface AiContext {
   systemPrompt: string;
@@ -137,24 +138,7 @@ export async function buildAiContext(businessId: string): Promise<AiContext> {
 
   // ─── PARSE JSON FIELDS ONCE (was re-parsed in multiple sections) ───
   const name = biz?.name || "the business";
-  const servicesList = (() => {
-    if (config?.services) {
-      try {
-        const s = JSON.parse(config.services);
-        if (Array.isArray(s) && s.length > 0) return s;
-      } catch {
-        // Not JSON — fall back to plain-text (newline-separated) services so a
-        // business that saved services as plain text still gets them in the
-        // prompt (mirrors the forgiving isConfigured gate in /api/ai/chat).
-        const plain = config.services
-          .split("\n")
-          .map((x: string) => x.trim())
-          .filter(Boolean);
-        if (plain.length > 0) return plain;
-      }
-    }
-    return [] as string[];
-  })();
+  const servicesList = parseServices(config?.services);
   const servicesStr = servicesList.join(", ");
 
   const hoursStr = (() => {

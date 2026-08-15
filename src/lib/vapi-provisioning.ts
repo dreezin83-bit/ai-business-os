@@ -39,6 +39,7 @@ import { business, phoneNumber, aiBrainConfig, subscription } from "@/db/schema"
 import { eq, and } from "drizzle-orm";
 import { generateId } from "@/lib/utils";
 import { buildAiContext } from "@/lib/ai-context";
+import { parseServices } from "@/lib/ai-services";
 import { recordTimelineEvent } from "@/lib/timeline";
 import {
   buyPhoneNumber,
@@ -80,10 +81,7 @@ async function buildVoicePrompt(businessId: string, businessName: string): Promi
     .from(aiBrainConfig)
     .where(eq(aiBrainConfig.businessId, businessId));
 
-  const services = (() => {
-    try { const s = JSON.parse(config?.services || "[]"); return Array.isArray(s) ? s.join(", ") : ""; }
-    catch { return ""; }
-  })();
+  const services = parseServices(config?.services).join(", ");
 
   return [
     ctx.systemPrompt,

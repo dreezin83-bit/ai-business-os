@@ -4,6 +4,7 @@ import { business, aiBrainConfig, conversation, message, lead } from "@/db/schem
 import { eq, and } from "drizzle-orm";
 import { generateId } from "@/lib/utils";
 import { buildAiContext } from "@/lib/ai-context";
+import { parseServices } from "@/lib/ai-services";
 import { extractLeadFromConversation, isValidLead } from "@/lib/lead-extractor";
 import { notifyContractorOfNewLead, sendCustomerConfirmation } from "@/lib/notifications";
 import { upsertAiCall, updateCallOutcome, buildCallSummary } from "@/lib/ai-calls";
@@ -95,10 +96,7 @@ async function buildAssistant(businessId: string): Promise<VapiAssistantResponse
     ].join("\n");
 
     // Build first message
-    const services = (() => {
-      try { const s = JSON.parse(config?.services || "[]"); return Array.isArray(s) ? s.join(", ") : ""; }
-      catch { return ""; }
-    })();
+    const services = parseServices(config?.services).join(", ");
 
     const firstMessage = config?.greetingMessage ||
       `Hello, this is ${businessName}.${services ? ` We specialize in ${services}.` : ""} How can I help you today?`;
