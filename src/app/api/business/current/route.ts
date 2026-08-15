@@ -1,8 +1,34 @@
 import { NextResponse } from "next/server";
 import { db } from "@/db";
-import { business } from "@/db/schema";
+import { business, aiBrainConfig } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { ensureBusiness } from "@/lib/business";
+
+/**
+ * Mirrors the chat route's isConfigured gate (a business counts as
+ * "setup complete" once its AI brain has a non-empty services list), but
+ * tolerant of both storage formats that exist today:
+ * - JSON array string ("[\"AC repair\",\"Heating\"]") — written by the
+ *   chat-route onboarding flow and the AI Brain editor.
+ * - Raw non-JSON text ("AC repair\nHeating repair") — written by the
+ *   /api/onboarding wizard, which stores the textarea value as-is.
+ * Either format with real content counts as configured.
+ */
+function servicesConfigured(raw: string | null | undefined): boolean {
+  if (!raw) return false;
+  const trimmed = String(raw).trim();
+  if (!trimmed) return false;
+  if (trimmed.startsWith("[")) {
+    try {
+      const s = JSON.parse(trimmed);
+      return Array.isArray(s) && s.length > 0 && s[0] !== "";
+    } catch {
+      return false;
+    }
+  }
+  // Non-JSON list (wizard path) — non-empty means real services were entered.
+  return true;
+}
 
 /**
  * GET /api/business/current
@@ -12,6 +38,7 @@ import { ensureBusiness } from "@/lib/business";
  *
  * Consumers:
  * - /dashboard/ai-brain (uses name, phone, email, website)
+ * - /dashboard layout (uses servicesConfigured for the "Complete your setup" banner)
  */
 export const dynamic = "force-dynamic";
 
@@ -25,7 +52,14 @@ export async function GET() {
       );
     }
 
-    const [biz] = await db.select().from(business).where(eq(business.id, businessId)).limit(1);
+    const [[biz], [config]] = await Promise.all([
+      db.select().from(business).where(eq(business.id, businessId)).limit(1),
+      db
+        .select({ services: aiBrainConfig.services })
+        .from(aiBrainConfig)
+        .where(eq(aiBrainConfig.businessId, businessId))
+        .limit(1),
+    ]);
     if (!biz) {
       return NextResponse.json(
         { error: { code: "BUSINESS_NOT_FOUND", message: "Business not found" } },
@@ -42,6 +76,9 @@ export async function GET() {
       address: biz.address ?? "",
       category: biz.category ?? "",
       onboardingComplete: biz.onboardingComplete,
+      // True once the AI brain has real services — the same gate the chat
+      // route uses to decide "needs setup help".
+      servicesConfigured: servicesConfigured(config?.services),
     });
   } catch (error: unknown) {
     const err = error instanceof Error ? error : new Error(String(error));
