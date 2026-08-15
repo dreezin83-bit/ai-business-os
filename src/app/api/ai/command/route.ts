@@ -3,6 +3,7 @@ import { db } from "@/db";
 import { lead, business, aiBrainConfig, appointment, conversation } from "@/db/schema";
 import { eq, desc, and, sql } from "drizzle-orm";
 import { ensureBusiness } from "@/lib/business";
+import { parseServices } from "@/lib/ai-services";
 import { createLlmCompletion } from "@/lib/llm";
 import { sendEmail } from "@/lib/notifications";
 
@@ -85,24 +86,20 @@ export async function POST(request: Request) {
     const businessName = biz?.name || "your business";
     const businessEmail = biz?.email || "";
 
-    // Parse services for industry awareness
-    let services: string[] = [];
+    // Parse services for industry awareness (JSON array or plain text)
+    const services = parseServices(config?.services);
     let industry = "service";
-    try { 
-      const s = JSON.parse(config?.services || "[]"); 
-      if (Array.isArray(s)) services = s;
-      const svc = services.join(" ").toLowerCase();
-      if (svc.includes("hvac") || svc.includes("heating") || svc.includes("cooling") || svc.includes("air condition")) industry = "HVAC";
-      else if (svc.includes("plumb")) industry = "plumbing";
-      else if (svc.includes("roof")) industry = "roofing";
-      else if (svc.includes("electric")) industry = "electrical";
-      else if (svc.includes("clean") || svc.includes("maid")) industry = "cleaning";
-      else if (svc.includes("landscap") || svc.includes("lawn")) industry = "landscaping";
-      else if (svc.includes("pest")) industry = "pest control";
-      else if (svc.includes("paint")) industry = "painting";
-      else if (svc.includes("dental") || svc.includes("teeth")) industry = "dental";
-      else if (svc.includes("law") || svc.includes("legal")) industry = "legal";
-    } catch {}
+    const svc = services.join(" ").toLowerCase();
+    if (svc.includes("hvac") || svc.includes("heating") || svc.includes("cooling") || svc.includes("air condition")) industry = "HVAC";
+    else if (svc.includes("plumb")) industry = "plumbing";
+    else if (svc.includes("roof")) industry = "roofing";
+    else if (svc.includes("electric")) industry = "electrical";
+    else if (svc.includes("clean") || svc.includes("maid")) industry = "cleaning";
+    else if (svc.includes("landscap") || svc.includes("lawn")) industry = "landscaping";
+    else if (svc.includes("pest")) industry = "pest control";
+    else if (svc.includes("paint")) industry = "painting";
+    else if (svc.includes("dental") || svc.includes("teeth")) industry = "dental";
+    else if (svc.includes("law") || svc.includes("legal")) industry = "legal";
 
     // Compute lead stats from DB-grouped counts — no JS iteration
     const statusMap = new Map(leadCounts.map(r => [r.status, Number(r.count)]));
