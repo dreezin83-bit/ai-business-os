@@ -2,11 +2,14 @@
  * GET /api/ai-templates — industry AI Brain templates + the business's
  * editable reply templates.
  *
- *   ?category=hvac  (industry templates are currently built dynamically;
- *                    kept for API compatibility — returns [] like before)
+ *   ?category=hvac  (optional — filter templates to one category)
  *
  * Response includes:
- *   templates               — industry templates (see lib/ai-templates)
+ *   templates               — real industry templates from lib/ai-templates,
+ *                             shaped for the AI Brain page Template interface
+ *                             { category, label, services, emergencyService,
+ *                               greetingMessage, serviceCount, faqCount }
+ *   total                   — number of templates returned
  *   businessReplyTemplates  — the business's editable reply template text
  *   usingDefaults           — true when no custom reply templates saved yet
  *
@@ -21,6 +24,7 @@ import { eq } from "drizzle-orm";
 import { ensureBusiness } from "@/lib/business";
 import { generateId } from "@/lib/utils";
 import { invalidateAiContextCache } from "@/lib/ai-context-cache";
+import { TEMPLATE_LIST } from "@/lib/ai-templates";
 
 export async function GET(request: Request) {
   try {
@@ -35,9 +39,25 @@ export async function GET(request: Request) {
 
     const businessReplyTemplates = config?.replyTemplates || "";
 
+    // Real industry templates from lib/ai-templates, shaped to the AI Brain
+    // page's Template interface (serviceCount/faqCount derived from data).
+    const url = new URL(request.url);
+    const category = url.searchParams.get("category");
+    const templates = TEMPLATE_LIST.filter(
+      (t) => !category || t.category === category,
+    ).map((t) => ({
+      category: t.category,
+      label: t.label,
+      services: t.services,
+      emergencyService: t.emergencyService,
+      greetingMessage: t.greetingMessage,
+      serviceCount: t.services.length,
+      faqCount: t.faqs.length,
+    }));
+
     return NextResponse.json({
-      templates: [], // industry templates are applied via /api/ai-brain/apply-template
-      total: 0,
+      templates,
+      total: templates.length,
       businessReplyTemplates,
       usingDefaults: !businessReplyTemplates.trim(),
     });
