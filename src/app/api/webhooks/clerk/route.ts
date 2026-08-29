@@ -4,6 +4,7 @@ import { db } from "@/db";
 import { business, aiBrainConfig } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { generateId } from "@/lib/utils";
+import { userFields, businessName, resolveBusinessName, isDefaultName } from "@/lib/clerk-webhook";
 
 /**
  * POST /api/webhooks/clerk — production Clerk webhook handler.
@@ -14,57 +15,30 @@ import { generateId } from "@/lib/utils";
  *   2. Route by event type:
  *      - user.created  → idempotent find-or-create of the tenant business row
  *                        (plus a default AI Brain config) for the new owner.
- *      - user.updated  → sync the owner's profile (name/email/phone/website)
- *                        onto their business row(s).
+ *                        Business name resolves from unsafeMetadata.businessName
+ *                        (set by onboarding), falling back to the user's name.
+ *      - user.updated  → sync the owner's profile (name/email/phone) onto their
+ *                        business row(s) WITHOUT clobbering values the user set
+ *                        during onboarding (empty/default fields only).
  *      - user.deleted  → cleanup: delete the owner's business row(s) (all
- *                        child records cascade).
+ *                        child records cascade via schema FK ON DELETE CASCADE).
+ *      - all other events are acknowledged (200).
  *
  * This route must stay PUBLIC (no auth) — /api/webhooks(.*) is whitelisted in
  * src/proxy.ts. Security comes from Svix signature verification, not a session.
  *
  * Required env: CLERK_WEBHOOK_SIGNING_SECRET (set in Vercel from
- * Clerk → Webhooks → Settings → Signing secret).
+ * Clerk → Webhooks → Settings → Signing secret). Without it the route rejects
+ * all events (fail-closed 500).
  *
  * Requires the Node.js runtime so the Web Crypto key import used by
  * standardwebhooks (Clerk's verification lib) is available.
  */
 export const runtime = "nodejs";
 
-/** Pull the verified user data into the shape the business row stores. */
-function userFields(data: any) {
-  const name =
-    [data?.first_name, data?.last_name].filter(Boolean).join(" ") ||
-    data?.email_addresses?.[0]?.email_address ||
-    "Business Owner";
+/** Default AI Brain config seeded alongside every new tenant business. */
+function defaultBrainConfig(businessId: string) {
   return {
-    name,
-    email: data?.email_addresses?.[0]?.email_address || "",
-    phone: data?.phone_numbers?.[0]?.phone_number || "",
-  };
-}
-
-/** Idempotently ensure a business + default AI Brain config exist for an owner. */
-async function ensureBusinessForOwner(ownerId: string, data: any) {
-  const [existing] = await db
-    .select()
-    .from(business)
-    .where(eq(business.ownerId, ownerId));
-  if (existing) return existing;
-
-  const { name, email, phone } = userFields(data);
-  const businessId = generateId();
-  const newBusiness = {
-    id: businessId,
-    name: name + "'s Business",
-    ownerId,
-    phone,
-    email,
-    website: "",
-    address: "",
-  };
-  await db.insert(business).values(newBusiness);
-
-  await db.insert(aiBrainConfig).values({
     id: generateId(),
     businessId,
     systemPrompt:
@@ -75,32 +49,74 @@ async function ensureBusinessForOwner(ownerId: string, data: any) {
     pricingGuidance: "",
     companyPolicies: "",
     serviceAreas: "[]",
-    businessHours: "{}",
+    businessHours: JSON.stringify([
+      { day: "Monday", open: "09:00", close: "17:00", closed: false },
+      { day: "Tuesday", open: "09:00", close: "17:00", closed: false },
+      { day: "Wednesday", open: "09:00", close: "17:00", closed: false },
+      { day: "Thursday", open: "09:00", close: "17:00", closed: false },
+      { day: "Friday", open: "09:00", close: "17:00", closed: false },
+      { day: "Saturday", open: "10:00", close: "15:00", closed: false },
+      { day: "Sunday", open: "", close: "", closed: true },
+    ]),
     greetingMessage: "Hello! How can I help you today?",
-  });
+  };
+}
 
+/** Idempotently ensure a business + default AI Brain config exist for an owner. */
+async function ensureBusinessForOwner(ownerId: string, data: any) {
+  const [existing] = await db
+    .select()
+    .from(business)
+    .where(eq(business.ownerId, ownerId))
+    .limit(1);
+  if (existing) return existing;
+
+  const { email, phone } = userFields(data);
+  const businessId = generateId();
+  const newBusiness = {
+    id: businessId,
+    name: businessName(resolveBusinessName(data)),
+    ownerId,
+    phone,
+    email,
+    website: "",
+    address: "",
+  };
+  await db.insert(business).values(newBusiness);
+  await db.insert(aiBrainConfig).values(defaultBrainConfig(businessId));
   return newBusiness;
 }
 
-/** Keep the owner's business profile in sync with Clerk on user.updated. */
+/**
+ * Keep the owner's business profile in sync with Clerk on user.updated.
+ * Never clobbers data the user set during onboarding:
+ *  - name is only overwritten while the row still holds a placeholder/default
+ *    and onboarding is not yet complete;
+ *  - email/phone are only filled in if currently empty.
+ */
 async function syncBusinessProfile(ownerId: string, data: any) {
-  const { name, email, phone } = userFields(data);
-  const businesses = await db
-    .update(business)
-    .set({
-      name: name + "'s Business",
-      email,
-      phone,
-      updatedAt: new Date(),
-    })
-    .where(eq(business.ownerId, ownerId))
-    .returning();
+  const { email, phone } = userFields(data);
+  const rows = await db
+    .select()
+    .from(business)
+    .where(eq(business.ownerId, ownerId));
 
   // No local business yet (e.g. event arrived out of order) — backfill one.
-  if (businesses.length === 0) {
+  if (rows.length === 0) {
     return ensureBusinessForOwner(ownerId, data);
   }
-  return businesses[0];
+
+  const profileName = businessName(resolveBusinessName(data));
+  for (const b of rows) {
+    const patch: Record<string, unknown> = { updatedAt: new Date() };
+    if (!b.onboardingComplete && isDefaultName(b.name)) {
+      patch.name = profileName;
+    }
+    if (!b.email) patch.email = email;
+    if (!b.phone) patch.phone = phone;
+    await db.update(business).set(patch).where(eq(business.id, b.id));
+  }
+  return rows[0];
 }
 
 /** Remove the owner's tenant rows (children cascade). */
@@ -130,16 +146,12 @@ export async function POST(request: Request) {
       evt = await verifyWebhook(request, { signingSecret });
     } catch (err) {
       console.error("[clerk] Signature verification failed:", err);
-      return NextResponse.json(
-        { error: "Invalid signature" },
-        { status: 403 }
-      );
+      return NextResponse.json({ error: "Invalid signature" }, { status: 403 });
     }
 
     const type = evt.type as string;
     const data = (evt.data ?? {}) as any;
     const userId = data.id;
-
     if (!userId) {
       return NextResponse.json(
         { error: "Missing user id in event data" },
