@@ -1,123 +1,173 @@
 import { NextResponse } from "next/server";
+import { verifyWebhook } from "@clerk/nextjs/webhooks";
 import { db } from "@/db";
 import { business, aiBrainConfig } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { generateId } from "@/lib/utils";
 
 /**
- * Clerk webhook (user.created).
+ * POST /api/webhooks/clerk — production Clerk webhook handler.
  *
- * Requests are verified with Svix HMAC-SHA256 before any processing and the
- * handler FAILS CLOSED: if CLERK_WEBHOOK_SECRET is not configured or the
- * signature/timestamp is invalid, the webhook is rejected (403). This prevents
- * forged user.created events from creating businesses for arbitrary users.
+ * Flow:
+ *   1. Verify the Svix signature with Clerk's official verifyWebhook() (which
+ *      reads CLERK_WEBHOOK_SIGNING_SECRET or the explicit signingSecret).
+ *   2. Route by event type:
+ *      - user.created  → idempotent find-or-create of the tenant business row
+ *                        (plus a default AI Brain config) for the new owner.
+ *      - user.updated  → sync the owner's profile (name/email/phone/website)
+ *                        onto their business row(s).
+ *      - user.deleted  → cleanup: delete the owner's business row(s) (all
+ *                        child records cascade).
  *
- * Env: CLERK_WEBHOOK_SECRET must be set in Vercel (from Clerk → Webhooks →
- * signing secret) for the webhook to process events.
+ * This route must stay PUBLIC (no auth) — /api/webhooks(.*) is whitelisted in
+ * src/proxy.ts. Security comes from Svix signature verification, not a session.
+ *
+ * Required env: CLERK_WEBHOOK_SIGNING_SECRET (set in Vercel from
+ * Clerk → Webhooks → Settings → Signing secret).
+ *
+ * Requires the Node.js runtime so the Web Crypto key import used by
+ * standardwebhooks (Clerk's verification lib) is available.
  */
-const SVIX_TOLERANCE_MS = 5 * 60 * 1000; // 5 minutes, matching Svix's default
+export const runtime = "nodejs";
 
-async function verifySvix(request: Request, rawBody: string): Promise<boolean> {
-  const secret = process.env.CLERK_WEBHOOK_SECRET;
-  if (!secret) {
-    console.error("[clerk] CLERK_WEBHOOK_SECRET is not set — rejecting all webhooks");
-    return false;
+/** Pull the verified user data into the shape the business row stores. */
+function userFields(data: any) {
+  const name =
+    [data?.first_name, data?.last_name].filter(Boolean).join(" ") ||
+    data?.email_addresses?.[0]?.email_address ||
+    "Business Owner";
+  return {
+    name,
+    email: data?.email_addresses?.[0]?.email_address || "",
+    phone: data?.phone_numbers?.[0]?.phone_number || "",
+  };
+}
+
+/** Idempotently ensure a business + default AI Brain config exist for an owner. */
+async function ensureBusinessForOwner(ownerId: string, data: any) {
+  const [existing] = await db
+    .select()
+    .from(business)
+    .where(eq(business.ownerId, ownerId));
+  if (existing) return existing;
+
+  const { name, email, phone } = userFields(data);
+  const businessId = generateId();
+  const newBusiness = {
+    id: businessId,
+    name: name + "'s Business",
+    ownerId,
+    phone,
+    email,
+    website: "",
+    address: "",
+  };
+  await db.insert(business).values(newBusiness);
+
+  await db.insert(aiBrainConfig).values({
+    id: generateId(),
+    businessId,
+    systemPrompt:
+      "You are a helpful assistant for a service business. Answer questions about services, pricing, and scheduling.",
+    businessInfo: "",
+    services: "[]",
+    faqs: "[]",
+    pricingGuidance: "",
+    companyPolicies: "",
+    serviceAreas: "[]",
+    businessHours: "{}",
+    greetingMessage: "Hello! How can I help you today?",
+  });
+
+  return newBusiness;
+}
+
+/** Keep the owner's business profile in sync with Clerk on user.updated. */
+async function syncBusinessProfile(ownerId: string, data: any) {
+  const { name, email, phone } = userFields(data);
+  const businesses = await db
+    .update(business)
+    .set({
+      name: name + "'s Business",
+      email,
+      phone,
+      updatedAt: new Date(),
+    })
+    .where(eq(business.ownerId, ownerId))
+    .returning();
+
+  // No local business yet (e.g. event arrived out of order) — backfill one.
+  if (businesses.length === 0) {
+    return ensureBusinessForOwner(ownerId, data);
   }
-  const svixId = request.headers.get("svix-id");
-  const tsHeader = request.headers.get("svix-timestamp");
-  const sig = request.headers.get("svix-signature");
-  if (!svixId || !tsHeader || !sig) {
-    console.error("[clerk] Missing Svix headers");
-    return false;
-  }
-  // Reject stale timestamps to prevent replay attacks
-  const ts = Number(tsHeader);
-  if (!Number.isFinite(ts) || Math.abs(Date.now() - ts * 1000) > SVIX_TOLERANCE_MS) {
-    console.error("[clerk] Svix timestamp outside tolerance — rejecting");
-    return false;
-  }
-  try {
-    const signed = `${svixId}.${tsHeader}.${rawBody}`;
-    const enc = new TextEncoder();
-    const rawSecret = secret.startsWith("whsec_") ? secret.slice(6) : secret;
-    const key = await crypto.subtle.importKey(
-      "raw",
-      enc.encode(rawSecret),
-      { name: "HMAC", hash: "SHA-256" },
-      false,
-      ["verify"]
-    );
-    // Svix signatures are space-separated: "v1,<base64> v1,<base64>..."
-    for (const part of sig.split(" ")) {
-      const [, b64] = part.split(",");
-      if (!b64) continue;
-      const sigBytes = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
-      if (await crypto.subtle.verify("HMAC", key, sigBytes, enc.encode(signed))) {
-        return true;
-      }
-    }
-    return false;
-  } catch (err) {
-    console.error("[clerk] Svix verification error:", err);
-    return false;
-  }
+  return businesses[0];
+}
+
+/** Remove the owner's tenant rows (children cascade). */
+async function cleanupBusiness(ownerId: string) {
+  const deleted = await db
+    .delete(business)
+    .where(eq(business.ownerId, ownerId))
+    .returning({ id: business.id });
+  return deleted;
 }
 
 export async function POST(request: Request) {
   try {
-    const rawBody = await request.text();
-    if (!(await verifySvix(request, rawBody))) {
-      return NextResponse.json({ error: "Invalid signature" }, { status: 403 });
-    }
-    const body = JSON.parse(rawBody);
-    // Only user.created is handled; other events are acknowledged
-    if (body.type !== "user.created") {
-      return NextResponse.json({ received: true });
-    }
-    const { id, email_addresses, phone_numbers, first_name, last_name } = body.data || {};
-    if (!id) {
-      return NextResponse.json({ error: "Missing user ID" }, { status: 400 });
-    }
-    const name = [first_name, last_name].filter(Boolean).join(" ") || email_addresses?.[0]?.email_address || "Business Owner";
-    const email = email_addresses?.[0]?.email_address || "";
-    const phone = phone_numbers?.[0]?.phone_number || "";
-
-    // Check if business already exists for this user
-    const [existing] = await db.select().from(business).where(eq(business.ownerId, id));
-    if (existing) {
-      return NextResponse.json({ business: existing });
+    const signingSecret = process.env.CLERK_WEBHOOK_SIGNING_SECRET;
+    if (!signingSecret) {
+      console.error(
+        "[clerk] CLERK_WEBHOOK_SIGNING_SECRET is not set — rejecting webhook"
+      );
+      return NextResponse.json(
+        { error: "Webhook signing secret not configured" },
+        { status: 500 }
+      );
     }
 
-    // Create business
-    const businessId = generateId();
-    const newBusiness = {
-      id: businessId,
-      name: name + "'s Business",
-      ownerId: id,
-      phone,
-      email,
-      website: "",
-      address: "",
-    };
-    await db.insert(business).values(newBusiness);
+    let evt;
+    try {
+      evt = await verifyWebhook(request, { signingSecret });
+    } catch (err) {
+      console.error("[clerk] Signature verification failed:", err);
+      return NextResponse.json(
+        { error: "Invalid signature" },
+        { status: 403 }
+      );
+    }
 
-    // Create default AI brain config
-    await db.insert(aiBrainConfig).values({
-      id: generateId(),
-      businessId,
-      systemPrompt: "You are a helpful assistant for a service business. Answer questions about services, pricing, and scheduling.",
-      businessInfo: "",
-      services: "[]",
-      faqs: "[]",
-      pricingGuidance: "",
-      companyPolicies: "",
-      serviceAreas: "[]",
-      businessHours: "{}",
-      greetingMessage: "Hello! How can I help you today?",
-    });
-    return NextResponse.json({ business: newBusiness });
+    const type = evt.type as string;
+    const data = (evt.data ?? {}) as any;
+    const userId = data.id;
+
+    if (!userId) {
+      return NextResponse.json(
+        { error: "Missing user id in event data" },
+        { status: 400 }
+      );
+    }
+
+    switch (type) {
+      case "user.created":
+        await ensureBusinessForOwner(userId, data);
+        break;
+      case "user.updated":
+        await syncBusinessProfile(userId, data);
+        break;
+      case "user.deleted":
+        await cleanupBusiness(userId);
+        break;
+      default:
+        // Acknowledge all other events (session.created, organization.*, etc.)
+        break;
+    }
+
+    return NextResponse.json({ received: true, type });
   } catch (error) {
     console.error("[clerk] Webhook error:", error);
-    return NextResponse.json({ error: "Webhook processing failed" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Webhook processing failed" },
+      { status: 500 }
+    );
   }
 }
