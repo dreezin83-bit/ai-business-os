@@ -1,4 +1,5 @@
 import Link from "next/link";
+import dynamic from "next/dynamic";
 import {
   ArrowRight,
   MessageCircle,
@@ -9,10 +10,17 @@ import {
 } from "lucide-react";
 import ChatSimulator from "@/components/landing/chat-simulator";
 import SubscribeCta from "@/components/landing/subscribe-cta";
-import RoiCalculator from "@/components/landing/roi-calculator";
-import BentoGrid from "@/components/landing/bento-grid";
-import PricingCard from "@/components/landing/pricing-card";
-import FaqAccordion from "@/components/landing/faq-accordion";
+import LazySection from "@/components/landing/lazy-section";
+
+// Below-the-fold interactive islands — code-split into deferred chunks and
+// mounted only when scrolled into view (see LazySection), so the initial
+// eager JS payload stays small and never blocks first paint. LazySection
+// renders nothing until visible, so these imports are never fetched during
+// SSR or first paint, even without ssr:false.
+const RoiCalculator = dynamic(() => import("@/components/landing/roi-calculator"));
+const BentoGrid = dynamic(() => import("@/components/landing/bento-grid"));
+const PricingCard = dynamic(() => import("@/components/landing/pricing-card"));
+const FaqAccordion = dynamic(() => import("@/components/landing/faq-accordion"));
 
 /**
  * Landing page — React Server Component. All interactivity lives in the
@@ -172,7 +180,9 @@ export default function HomePage() {
               ))}
             </ul>
           </div>
-          <RoiCalculator />
+          <LazySection minHeight={380}>
+            <RoiCalculator />
+          </LazySection>
         </div>
       </section>
 
@@ -191,7 +201,9 @@ export default function HomePage() {
               follow-ups — no scattered tools.
             </p>
           </div>
-          <BentoGrid />
+          <LazySection minHeight={280}>
+            <BentoGrid />
+          </LazySection>
         </div>
       </section>
 
@@ -262,7 +274,9 @@ export default function HomePage() {
               recurring — cancel anytime.
             </p>
           </div>
-          <PricingCard />
+          <LazySection minHeight={520}>
+            <PricingCard />
+          </LazySection>
         </div>
       </section>
 
@@ -277,7 +291,9 @@ export default function HomePage() {
               Questions, answered
             </h2>
           </div>
-          <FaqAccordion />
+          <LazySection minHeight={400}>
+            <FaqAccordion />
+          </LazySection>
         </div>
       </section>
 
