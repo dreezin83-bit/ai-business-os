@@ -70,12 +70,12 @@ export default function HomePage() {
             >
               Sign In
             </Link>
-            <SubscribeCta
-              size="sm"
-              className="bg-white hover:bg-white/90 text-black font-semibold text-xs h-9 px-5 rounded-full"
+            <Link
+              href="/sign-up"
+              className="bg-indigo-500 hover:bg-indigo-400 text-white font-semibold text-xs h-9 px-5 rounded-full inline-flex items-center justify-center transition-colors"
             >
-              Subscribe Now
-            </SubscribeCta>
+              Get Started
+            </Link>
           </div>
         </div>
       </header>
@@ -122,12 +122,18 @@ export default function HomePage() {
             </p>
 
             <div className="flex flex-col sm:flex-row items-center justify-center gap-3 mt-9 animate-fade-up delay-200">
+              <Link
+                href="/sign-up"
+                className="inline-flex items-center gap-1.5 h-12 px-8 rounded-full bg-indigo-500 hover:bg-indigo-400 text-white font-semibold text-[15px] transition-colors"
+              >
+                Get Started
+                <ArrowRight className="h-4 w-4 ml-1.5" />
+              </Link>
               <SubscribeCta
                 size="lg"
                 className="bg-white hover:bg-white/90 text-black font-semibold text-[15px] h-12 px-8 rounded-full"
               >
                 Subscribe Now
-                <ArrowRight className="h-4 w-4 ml-1.5" />
               </SubscribeCta>
               <a
                 href="#features"
