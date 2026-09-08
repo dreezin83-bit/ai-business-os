@@ -1,12 +1,16 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
-import { ClerkProvider } from "@clerk/nextjs";
-import { ThemeProvider } from "@/components/theme-provider";
-import { Toaster } from "@/components/toaster";
-import { Analytics } from "@vercel/analytics/next";
-import { SpeedInsights } from "@vercel/speed-insights/next";
 
+/**
+ * Root layout — minimal shell shared by every route.
+ *
+ * This deliberately does NOT include ClerkProvider, ThemeProvider, Toaster or
+ * the Vercel Analytics/SpeedInsights scripts. Those are provided only to
+ * authenticated/auth routes via the `(app)` route-group layout, so the public
+ * marketing page (/, /privacy, /terms) does not download the Clerk browser
+ * SDK or analytics SDK. This is the core of the landing-page load-perf fix.
+ */
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
@@ -21,27 +25,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" className="dark" suppressHydrationWarning>
-      <body className={inter.className}>
-        <ClerkProvider
-          signInUrl="/sign-in"
-          signUpUrl="/sign-up"
-          signInFallbackRedirectUrl="/dashboard"
-          signUpFallbackRedirectUrl="/dashboard"
-        >
-          <ThemeProvider
-            attribute="class"
-            defaultTheme="dark"
-            enableSystem={false}
-            disableTransitionOnChange
-          >
-            <Toaster>
-              {children}
-            </Toaster>
-            <Analytics />
-            <SpeedInsights />
-          </ThemeProvider>
-        </ClerkProvider>
-      </body>
+      <body className={inter.className}>{children}</body>
     </html>
   );
 }
