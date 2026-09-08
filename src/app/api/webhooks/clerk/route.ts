@@ -130,10 +130,12 @@ async function cleanupBusiness(ownerId: string) {
 
 export async function POST(request: Request) {
   try {
-    const signingSecret = process.env.CLERK_WEBHOOK_SIGNING_SECRET;
+    const signingSecret =
+      process.env.CLERK_WEBHOOK_SIGNING_SECRET ??
+      process.env.CLERK_WEBHOOK_SECRET;
     if (!signingSecret) {
       console.error(
-        "[clerk] CLERK_WEBHOOK_SIGNING_SECRET is not set — rejecting webhook"
+        "[clerk] CLERK_WEBHOOK_SIGNING_SECRET / CLERK_WEBHOOK_SECRET is not set — rejecting webhook"
       );
       return NextResponse.json(
         { error: "Webhook signing secret not configured" },
