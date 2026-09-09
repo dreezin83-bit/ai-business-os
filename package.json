@@ -8,7 +8,9 @@
     "start": "next start",
     "lint": "eslint",
     "test": "bun test",
-    "db:migrate": "bun run scripts/migrate.ts"
+    "db:migrate": "bun run scripts/migrate.ts",
+    "db:verify": "bun run scripts/verify_migrations.ts",
+    "db:check": "drizzle-kit check"
   },
   "dependencies": {
     "@clerk/nextjs": "^7.5.14",

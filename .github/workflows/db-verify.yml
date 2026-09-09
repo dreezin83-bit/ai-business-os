@@ -1,0 +1,48 @@
+name: db-verify
+
+# CI-only migration drift gate. Never deploys, never touches production
+# services — it only runs `db:verify` (and drizzle-kit schema check) against
+# the DATABASE_URL secret so a PR that expects an unapplied migration fails
+# loudly at review time instead of drifting silently in production.
+#
+# NOTE: This job is intentionally dormant until the repo has a `DATABASE_URL`
+# secret (GitHub repo -> Settings -> Secrets and variables -> Actions).
+# The `if:` guard below skips the job when the secret is absent so the
+# pipeline is green while the secret is being provisioned. Once the secret is
+# added, this becomes a required gate: any pending migration fails the PR.
+#
+# Why not run migrations in the build? Building (Vercel) or postinstall
+# hooks would run migrations on every deploy and could block/roll back
+# production builds if a migration is slow or fails. Migrations stay an
+# explicit, human-invoked step (see docs/ops/db-migrations.md); this job only
+# verifies they were done.
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+jobs:
+  verify-schema:
+    name: Verify DB in sync with drizzle/
+    runs-on: ubuntu-latest
+    if: ${{ secrets.DATABASE_URL != '' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@v2
+
+      - name: Install dependencies
+        run: bun install
+
+      - name: Check migration files are all applied (db:verify)
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: bun run db:verify
+
+      - name: Check schema.ts matches database (drizzle-kit check)
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: bunx drizzle-kit check
