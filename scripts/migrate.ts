@@ -1,5 +1,5 @@
 /**
- * db:migrate — apply Drizzle SQL migrations (drizzle/0000–0004) to the target database.
+ * db:migrate — apply Drizzle SQL migrations (drizzle/0000–0005) to the target database.
  *
  * Usage:
  *   DATABASE_URL="postgresql://..." bun run db:migrate
@@ -9,11 +9,14 @@
  *   - Run:       `DATABASE_URL="$(grep DATABASE_URL .env.production.local | cut -d= -f2-)" bun run db:migrate`
  *
  * Behavior:
- *   - Applies every `drizzle/*.sql` migration in filename order (0000, 0002, 0003, 0004).
+ *   - Applies every `drizzle/*.sql` migration in filename order (0000, 0002, 0003, 0004, 0005;
+ *     there is no 0001 file — the gap is historical and harmless).
  *   - Tracks applied files in a `schema_migrations` table, so re-runs are no-ops for
  *     already-applied migrations.
  *   - The migration files themselves are idempotent (IF NOT EXISTS), so even a
  *     partially-failed run can be safely re-applied.
+ *
+ * To CHECK for drift without applying, use `bun run db:verify` (scripts/verify_migrations.ts).
  */
 import { neon } from "@neondatabase/serverless";
 import { readdir, readFile } from "node:fs/promises";
