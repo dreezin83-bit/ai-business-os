@@ -5,6 +5,7 @@ import {
   boolean,
   integer,
   json,
+  jsonb,
 } from "drizzle-orm/pg-core";
 
 export const business = pgTable("business", {
@@ -289,3 +290,93 @@ export const handoff = pgTable("handoff", {
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
   resolvedAt: timestamp("resolved_at"),
 });
+
+// ── AI credit system (Phase 2, owner-ratified 2026-09-19) ────────────────────
+export const creditAccount = pgTable(
+  "credit_account",
+  {
+    id: text("id").primaryKey(),
+    businessId: text("business_id")
+      .notNull()
+      .references(() => business.id, { onDelete: "cascade" }),
+    periodStartAt: timestamp("period_start_at", { withTimezone: true }).notNull(),
+    periodEndAt: timestamp("period_end_at", { withTimezone: true }).notNull(),
+    allocated: integer("allocated").notNull().default(10000),
+    consumed: integer("consumed").notNull().default(0),
+    remaining: integer("remaining").notNull().default(10000),
+    status: text("status").notNull().default("active"), // active | low | exhausted
+    exhaustedAt: timestamp("exhausted_at", { withTimezone: true }),
+    graceUntil: timestamp("grace_until", { withTimezone: true }),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (t) => [
+    // one wallet row per business per billing period — matches migration 0006; makes open/ensure idempotent
+    { name: "credit_account_business_period_idx", unique: true, columns: [t.businessId, t.periodStartAt] },
+  ]
+);
+
+export const usageEvent = pgTable(
+  "usage_event",
+  {
+    id: text("id").primaryKey(),
+    businessId: text("business_id")
+      .notNull()
+      .references(() => business.id, { onDelete: "cascade" }),
+    occurredAt: timestamp("occurred_at", { withTimezone: true }).notNull(),
+    ingestedAt: timestamp("ingested_at").defaultNow().notNull(),
+    eventType: text("event_type").notNull(),
+    source: text("source").notNull(),
+    quantity: integer("quantity").notNull().default(1),
+    unit: text("unit").notNull(),
+    credits: integer("credits").notNull().default(0),
+    provider: text("provider").notNull(),
+    model: text("model"),
+    correlationId: text("correlation_id").notNull().default(""),
+    idempotencyKey: text("idempotency_key").notNull(),
+    metadata: jsonb("metadata"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (t) => [
+    { name: "usage_event_business_idempotency_idx", unique: true, columns: [t.businessId, t.idempotencyKey] },
+    { name: "idx_usage_biz_time_type", columns: [t.businessId, t.occurredAt, t.eventType] },
+  ]
+);
+
+export const creditGrant = pgTable(
+  "credit_grant",
+  {
+    id: text("id").primaryKey(),
+    businessId: text("business_id")
+      .notNull()
+      .references(() => business.id, { onDelete: "cascade" }),
+    amount: integer("amount").notNull(),
+    reason: text("reason").notNull(),
+    externalReference: text("external_reference"),
+    periodStartAt: timestamp("period_start_at", { withTimezone: true }).notNull(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (t) => [{ name: "credit_grant_reason_ref_idx", unique: true, columns: [t.reason, t.externalReference] }]
+);
+
+export const periodSnapshot = pgTable(
+  "period_snapshot",
+  {
+    id: text("id").primaryKey(),
+    businessId: text("business_id")
+      .notNull()
+      .references(() => business.id, { onDelete: "cascade" }),
+    periodStartAt: timestamp("period_start_at", { withTimezone: true }).notNull(),
+    periodEndAt: timestamp("period_end_at", { withTimezone: true }).notNull(),
+    ledgerHighWatermark: text("ledger_high_watermark"),
+    includedCredits: integer("included_credits").notNull().default(0),
+    grantedCredits: integer("granted_credits").notNull().default(0),
+    consumedCredits: integer("consumed_credits").notNull().default(0),
+    remainingCredits: integer("remaining_credits").notNull().default(0),
+    calculationVersion: text("calculation_version").notNull().default("v1"),
+    generatedAt: timestamp("generated_at").defaultNow().notNull(),
+  },
+  (t) => [
+    { name: "period_snapshot_period_idx", unique: true, columns: [t.businessId, t.periodStartAt, t.periodEndAt] },
+  ]
+);

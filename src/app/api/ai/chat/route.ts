@@ -9,6 +9,7 @@ import { isServicesConfigured } from "@/lib/ai-services";
 import { createLlmCompletion } from "@/lib/llm";
 import { notifyContractorOfNewLead, sendCustomerConfirmation, notifyContractorOfNewAppointment, sendCustomerAppointmentConfirmation } from "@/lib/notifications";
 import { extractLeadFromConversation, isValidLead } from "@/lib/lead-extractor";
+import { consumeCredits, creditsExhaustedError, isHardStopped } from "@/lib/credits";
 import {
   createHandoff,
   parseEscalateMarker,
@@ -151,6 +152,10 @@ export async function POST(request: Request) {
   try {
     const businessId = await ensureBusiness();
     if (!businessId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    // ── Per-period enforcement: 402 on hard-stop (after grace). Non-AI APIs are never affected. ──
+    if (await isHardStopped(businessId)) {
+      return NextResponse.json(creditsExhaustedError(), { status: 402 });
+    }
 
     const body = await request.json();
     const { message: userMessage, conversationId, source } = body;
@@ -243,6 +248,20 @@ Start by asking: "Great, let's get your business set up! First, what's your busi
         { role: "system", content: onboardingPrompt },
         { role: "user", content: userMessage },
       ]);
+      // Meter the onboarding completion (idempotent per turn).
+      if (completion) {
+        await consumeCredits({
+          businessId,
+          correlationId: convId,
+          idempotencyKey: `chat:${convId}:onboarding:ai.completion`,
+          eventType: "ai.completion",
+          source: "chat",
+          provider: "openai",
+          model: process.env.AI_MODEL || "gpt-4o-mini",
+          quantity: 500,
+          unit: "token",
+        }).catch(() => {});
+      }
 
       const reply = completion?.content || "I'm having trouble right now. Please try again.";
 
@@ -283,13 +302,26 @@ Start by asking: "Great, let's get your business set up! First, what's your busi
       systemPrompt = `NOTE: You are currently in TEST MODE — the contractor is testing you from their dashboard, NOT a real customer. Respond naturally as you would to a customer so they can see how you'll perform. Treat this test conversation as if a customer is reaching out. Do NOT mention that this is a test or ask if they're a contractor.\n\n${systemPrompt}`;
     }
 
-    const { completion, error: llmError } = await createLlmCompletion([
+    const { completion, error: llmError, usage } = await createLlmCompletion([
       { role: "system", content: systemPrompt },
       ...history,
     ]);
     if (!completion) {
       return NextResponse.json({ error: "AI not configured", detail: llmError || "Missing API key" }, { status: 503 });
     }
+    // Meter the completion against the tenant wallet (idempotent per turn; real token usage).
+    await consumeCredits({
+      businessId,
+      correlationId: convId,
+      idempotencyKey: `chat:${convId}:ai.completion`,
+      eventType: "ai.completion",
+      source: "chat",
+      provider: "openai",
+      model: usage?.model || process.env.AI_MODEL || "gpt-4o-mini",
+      quantity: usage?.totalTokens ?? 1000,
+      unit: "token",
+      metadata: { conversationId: convId },
+    }).catch(() => {});
 
     let reply = completion.content;
     let createdAppointmentId: string | null = null;
@@ -344,7 +376,7 @@ Start by asking: "Great, let's get your business set up! First, what's your busi
     // Server-side lead extraction fallback
     if (!createdLeadId) {
       try {
-        const extracted = await extractLeadFromConversation([...history, { role: "assistant", content: reply }]);
+        const extracted = await extractLeadFromConversation([...history, { role: "assistant", content: reply }], { businessId, correlationId: convId, source: "chat" });
         if (extracted && isValidLead(extracted)) {
           const [existing] = await db.select().from(lead).where(and(eq(lead.businessId, businessId), eq(lead.name, extracted.name!))).limit(1);
           if (!existing) {

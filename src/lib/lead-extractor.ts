@@ -89,9 +89,12 @@ export function isValidLead(lead: ExtractedLead): boolean {
 /**
  * Use an LLM call to extract lead information from a conversation.
  * Returns null if insufficient or placeholder data is found.
+ * `meta` (businessId/correlationId) enables secondary credit metering (ai.lead_extraction);
+ * the call site must pass it when running inside a tenant context.
  */
 export async function extractLeadFromConversation(
-  history: Array<{ role: "user" | "assistant" | "system"; content: string }>
+  history: Array<{ role: "user" | "assistant" | "system"; content: string }>,
+  meta?: { businessId: string; correlationId: string; source?: "chat" | "chatbot" | "email" | "voice" }
 ): Promise<ExtractedLead | null> {
   const recentHistory = history.slice(-6);
 
@@ -113,7 +116,7 @@ Conversation:
 ${recentHistory.map((m) => `${m.role.toUpperCase()}: ${m.content}`).join("\n")}`;
 
   try {
-    const { completion, error } = await createLlmCompletion([
+    const { completion, error, usage } = await createLlmCompletion([
       { role: "system", content: "You are a data extraction tool. Only return valid JSON with null for unknown fields. Never use placeholder text." },
       { role: "user", content: extractionPrompt },
     ]);
@@ -121,6 +124,28 @@ ${recentHistory.map((m) => `${m.role.toUpperCase()}: ${m.content}`).join("\n")}`
     if (error || !completion) {
       console.log("[lead-extractor] LLM call failed:", error);
       return null;
+    }
+
+    // ── Secondary credit metering (ai.lead_extraction) — only when called inside a tenant context. ──
+    // This is its OWN consumption (the extraction call costs tokens); idempotent per correlation id
+    // so retries can't double-charge. Never blocks extraction.
+    if (meta?.businessId) {
+      try {
+        const { consumeCredits } = await import("@/lib/credits");
+        consumeCredits({
+          businessId: meta.businessId,
+          correlationId: meta.correlationId,
+          idempotencyKey: `${meta.correlationId}:ai.lead_extraction`,
+          eventType: "ai.lead_extraction",
+          source: meta.source || "lead_extractor",
+          provider: "openai",
+          model: usage?.model || process.env.AI_MODEL || "gpt-4o-mini",
+          quantity: usage?.totalTokens ?? 500,
+          unit: "token",
+        }).catch(() => {});
+      } catch (meterErr) {
+        console.error("[lead-extractor] Credit metering failed:", meterErr);
+      }
     }
 
     const text = completion.content.trim();
