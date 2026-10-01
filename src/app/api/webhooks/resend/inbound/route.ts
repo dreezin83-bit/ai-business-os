@@ -30,6 +30,7 @@ import { eq, and, desc } from "drizzle-orm";
 import { generateId, timeToMinutes, computeDefaultEndTime } from "@/lib/utils";
 import { buildAiContext } from "@/lib/ai-context";
 import { createLlmCompletion } from "@/lib/llm";
+import { consumeCredits, isHardStopped } from "@/lib/credits";
 import { extractLeadFromConversation, isValidLead } from "@/lib/lead-extractor";
 import { notifyContractorOfNewLead, sendCustomerConfirmation, logCommunication, sendEmail } from "@/lib/notifications";
 
@@ -304,20 +305,43 @@ export async function POST(request: Request) {
     // ── Build AI prompt ──
     const emailPrompt = await buildEmailPrompt(businessId, biz);
 
+    // ── Per-period enforcement ── hard stop = no NEW billable AI; still ack + graceful fallback.
+    const hardStopped = await isHardStopped(businessId);
+
     // ── Call AI ──
-    const { completion, error: llmError } = await createLlmCompletion([
-      { role: "system", content: emailPrompt },
-      ...history,
-    ]);
+    const { completion, error: llmError, usage } = hardStopped
+      ? { completion: null, error: "AI_CREDITS_EXHAUSTED", usage: undefined }
+      : await createLlmCompletion([
+          { role: "system", content: emailPrompt },
+          ...history,
+        ]);
 
     let aiResponse: string;
     let createdLeadId: string | null = null;
 
     if (!completion) {
       aiResponse = `Hi there,\n\nThank you for reaching out to ${biz.name || "us"}. We received your message and our team will get back to you as soon as possible.\n\nBest regards,\n${biz.name || "The Team"}`;
-      console.error(`[resend-inbound] LLM error: ${llmError}`);
+      if (hardStopped) {
+        console.log(`[resend-inbound] AI paused (credits exhausted) for ${businessId} — sent manual acknowledgment`);
+      } else {
+        console.error(`[resend-inbound] LLM error: ${llmError}`);
+      }
     } else {
       aiResponse = completion.content.substring(0, MAX_REPLY_LENGTH);
+
+      // ── Meter the auto-reply AI usage — idempotent per inbound email event; never blocks the ack. ──
+      consumeCredits({
+        businessId,
+        correlationId: `inbound:${businessId}:${fromAddress}:${subject?.slice(0, 64) || ""}`,
+        idempotencyKey: `resend-inbound:${payload.data.id}:ai.email_auto_reply`,
+        eventType: "ai.completion",
+        source: "email",
+        provider: "openai",
+        model: usage?.model || process.env.AI_MODEL || "gpt-4o-mini",
+        quantity: usage?.totalTokens ?? 1000,
+        unit: "token",
+        metadata: { conversationId, subject: subject?.slice(0, 200), resendEventId: payload.data.id },
+      }).catch(() => {});
 
       // ── Parse markers (lead & appointment) ──
       const apptMarker = parseAppointmentMarker(aiResponse);
@@ -440,7 +464,7 @@ export async function POST(request: Request) {
           const extracted = await extractLeadFromConversation([
             ...history,
             { role: "assistant" as const, content: aiResponse },
-          ]);
+          ], { businessId, correlationId: `inbound:${payload.data.id}`, source: "email" });
           if (extracted && isValidLead(extracted)) {
             const [existingLead] = await db
               .select({ id: lead.id })

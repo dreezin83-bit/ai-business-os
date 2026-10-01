@@ -5,6 +5,7 @@ import { eq, desc, and, sql } from "drizzle-orm";
 import { ensureBusiness } from "@/lib/business";
 import { parseServices } from "@/lib/ai-services";
 import { createLlmCompletion } from "@/lib/llm";
+import { consumeCredits, creditsExhaustedError, isHardStopped } from "@/lib/credits";
 import { sendEmail } from "@/lib/notifications";
 
 /** Search the web using DuckDuckGo HTML (no API key needed) */
@@ -44,6 +45,10 @@ export async function POST(request: Request) {
   try {
     const businessId = await ensureBusiness();
     if (!businessId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    // ── Per-period enforcement: 402 on hard-stop (after grace). Non-AI APIs are never affected. ──
+    if (await isHardStopped(businessId)) {
+      return NextResponse.json(creditsExhaustedError(), { status: 402 });
+    }
 
     const { userMessage, history } = await request.json();
     const msg = userMessage || "";
@@ -180,7 +185,7 @@ Today: ${new Date().toLocaleDateString("en-US", { weekday: "long", year: "numeri
       content: h.content,
     }));
 
-    const { completion, error } = await createLlmCompletion([
+    const { completion, error, usage } = await createLlmCompletion([
       { role: "system", content: systemPrompt },
       ...historyMessages,
       { role: "user", content: msg },
@@ -192,6 +197,20 @@ Today: ${new Date().toLocaleDateString("en-US", { weekday: "long", year: "numeri
 
     let reply = completion.content;
     let emailResult: any = null;
+
+    // ── Meter AI usage (idempotent per command turn; real token usage) ──
+    consumeCredits({
+      businessId,
+      correlationId: `commander:${businessId}:${msg.slice(0, 64)}`,
+      idempotencyKey: `commander:${businessId}:${msg.slice(0, 64)}:ai.completion`,
+      eventType: "ai.completion",
+      source: "commander",
+      provider: "openai",
+      model: usage?.model || process.env.AI_MODEL || "gpt-4o-mini",
+      quantity: usage?.totalTokens ?? 1000,
+      unit: "token",
+      metadata: { messagePreview: msg.slice(0, 64) },
+    }).catch(() => {});
 
     // Process [SEND_EMAIL] marker
     const emailData = parseSendEmailMarker(reply);

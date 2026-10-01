@@ -19,6 +19,7 @@ import { db } from "@/db";
 import { business, subscription } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { generateId } from "@/lib/utils";
+import { openCreditPeriod } from "@/lib/credits";
 import {
   verifyPaystackTransaction,
   createPaystackSubscription,
@@ -278,6 +279,11 @@ export async function POST(request: Request) {
     console.log(
       `[paystack-webhook] Local subscription saved for ${businessId} (status: ${subStatus})`,
     );
+    // ── Open/refresh the tenant credit period (auto-grants monthly_included, idempotent) ──
+    // Fire-and-forget: never blocks the Paystack ack. openCreditPeriod dedupes on (reason, external_reference).
+    openCreditPeriod(businessId, now, periodEnd).catch((err) => {
+      console.error(`[paystack-webhook] openCreditPeriod error for ${businessId}:`, err?.message);
+    });
 
     // ── On subscription failure, return 202 Accepted ──
     if (subscriptionFailed) {

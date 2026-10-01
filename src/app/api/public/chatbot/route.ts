@@ -5,6 +5,7 @@ import { eq, desc, and } from "drizzle-orm";
 import { generateId } from "@/lib/utils";
 import { buildAiContext } from "@/lib/ai-context";
 import { createLlmCompletion } from "@/lib/llm";
+import { consumeCredits, verifyChatbotToken, isLegacyRateLimited, creditsExhaustedError, isHardStopped } from "@/lib/credits";
 import { notifyContractorOfNewLead, sendCustomerConfirmation } from "@/lib/notifications";
 import { extractLeadFromConversation, isValidLead } from "@/lib/lead-extractor";
 import {
@@ -107,16 +108,40 @@ export async function OPTIONS() {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { businessId, message: userMessage, conversationId, customerName, customerPhone, customerEmail } = body;
+    const { businessId, message: userMessage, conversationId, customerName, customerPhone, customerEmail, token } = body;
 
     if (!businessId || !userMessage) {
       return corsResponse({ error: "businessId and message are required" }, 400);
     }
 
-    // Verify business exists
+    // ── Chatbot security (owner decision #6) ──
+    // NEVER trust a client-supplied businessId to authorize AI spend. Newly generated embeds
+    // carry a tenant-specific signed token (HMAC over businessId+expiry). Verified tokens pass;
+    // legacy embeds (no token) keep working through a transition window but are server-side
+    // rate-limited and still require the business to exist and be active.
+    if (token) {
+      const verifiedBusinessId = verifyChatbotToken(String(token));
+      if (!verifiedBusinessId || verifiedBusinessId !== businessId) {
+        console.warn(`[chatbot] Rejected embed request: invalid or mismatched token (businessId=${businessId})`);
+        return corsResponse({ error: "Forbidden: invalid embed token" }, 403);
+      }
+    } else {
+      // Legacy embed — backward-compatible transition path, rate-limited server-side.
+      console.warn(`[chatbot] Legacy embed (no token) for businessId=${businessId} — rate-limited transition path`);
+      if (isLegacyRateLimited(businessId)) {
+        console.warn(`[chatbot] Legacy embed rate-limited for businessId=${businessId}`);
+        return corsResponse({ error: "Too many requests. Please regenerate your widget code." }, 429);
+      }
+    }
+    // Verify business exists AND is active — applies to both token and legacy paths.
     const [biz] = await db.select().from(business).where(eq(business.id, businessId));
-    if (!biz) {
+    if (!biz || biz.status !== "active") {
+      console.warn(`[chatbot] Rejected request for missing/inactive businessId=${businessId}`);
       return corsResponse({ error: "Business not found" }, 404);
+    }
+    // ── Per-period enforcement: 402 on hard-stop (after grace). Non-AI work is never blocked. ──
+    if (await isHardStopped(businessId)) {
+      return corsResponse(creditsExhaustedError(), 402);
     }
 
     // Block AI until business has configured their AI Brain
@@ -192,7 +217,7 @@ export async function POST(request: Request) {
     }));
 
     // Call LLM (supports OpenAI, OpenAI-compatible, and Gemini)
-    const { completion, error: llmError } = await createLlmCompletion([
+    const { completion, error: llmError, usage } = await createLlmCompletion([
       { role: "system", content: ctx.systemPrompt },
       ...history,
     ]);
@@ -202,6 +227,19 @@ export async function POST(request: Request) {
         error: llmError,
       });
     }
+    // Meter the public bot completion against the tenant wallet (idempotent per turn; never trusts client spend).
+    await consumeCredits({
+      businessId,
+      correlationId: convId,
+      idempotencyKey: `chatbot:${convId}:ai.completion`,
+      eventType: "ai.completion",
+      source: "chatbot",
+      provider: "openai",
+      model: usage?.model || process.env.AI_MODEL || "gpt-4o-mini",
+      quantity: usage?.totalTokens ?? 1000,
+      unit: "token",
+      metadata: { conversationId: convId },
+    }).catch(() => {});
 
     let reply = completion.content;
 
@@ -322,7 +360,7 @@ export async function POST(request: Request) {
         const extracted = await extractLeadFromConversation([
           ...history,
           { role: "assistant", content: cleanReply },
-        ]);
+        ], { businessId, correlationId: convId, source: "chatbot" });
         if (extracted) {
           // Check for existing lead with same name
           const [existingLead] = await db

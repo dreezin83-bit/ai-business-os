@@ -7,15 +7,30 @@ export interface LlmCompletion {
   content: string;
 }
 
+/**
+ * Real per-call usage from the AI provider — the ONLY input to credit metering
+ * (owner decision #1: credits are weighted from actual consumption, never per-HTTP-request).
+ */
+export interface LlmUsage {
+  promptTokens: number;
+  completionTokens: number;
+  totalTokens: number;
+  model: string;
+  externalId?: string | null; // provider-side request id when available
+}
+
 export interface LlmResult {
   completion: LlmCompletion | null;
   error: string | null;
+  /** Additive, backwards-compatible: existing callers that ignore it keep working. */
+  usage?: LlmUsage;
 }
 
 /**
  * Create an LLM completion using OpenAI.
  *
  * Returns { completion: null, error: "reason" } if the API key is missing or any error occurs.
+ * When the provider returns token usage, it is surfaced on `result.usage` for credit metering.
  */
 export async function createLlmCompletion(
   messages: LlmMessage[]
@@ -33,7 +48,7 @@ export async function createLlmCompletion(
     }
 
     console.log("[LLM] Routing to OpenAI");
-    return await callOpenAI(messages);
+    return await callOpenAI(messages, model);
   } catch (error: any) {
     const status = error?.status || error?.statusCode;
     const message = error?.message || error?.toString() || "Unknown LLM error";
@@ -46,7 +61,7 @@ export async function createLlmCompletion(
 /**
  * Call OpenAI using the OpenAI SDK.
  */
-async function callOpenAI(messages: LlmMessage[]): Promise<LlmResult> {
+async function callOpenAI(messages: LlmMessage[], model: string): Promise<LlmResult> {
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) {
     return { completion: null, error: "OPENAI_API_KEY is not configured in environment variables." };
@@ -56,16 +71,26 @@ async function callOpenAI(messages: LlmMessage[]): Promise<LlmResult> {
   const openai = new OpenAI({ apiKey });
 
   const completion = await openai.chat.completions.create({
-    model: process.env.AI_MODEL || "gpt-4o-mini",
+    model,
     messages,
     max_tokens: 500,
     temperature: 0.7,
   });
 
   const content = completion.choices[0]?.message?.content;
+  const usage: LlmUsage | undefined = completion.usage
+    ? {
+        promptTokens: completion.usage.prompt_tokens ?? 0,
+        completionTokens: completion.usage.completion_tokens ?? 0,
+        totalTokens: completion.usage.total_tokens ?? 0,
+        model: completion.model || model,
+        externalId: completion.id ?? null,
+      }
+    : undefined;
+
   if (!content) {
-    return { completion: null, error: "AI returned an empty response." };
+    return { completion: null, error: "AI returned an empty response.", usage };
   }
 
-  return { completion: { content }, error: null };
+  return { completion: { content }, error: null, usage };
 }
