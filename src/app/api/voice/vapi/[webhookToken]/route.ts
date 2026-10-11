@@ -8,13 +8,21 @@ import { parseServices } from "@/lib/ai-services";
 import { extractLeadFromConversation, isValidLead } from "@/lib/lead-extractor";
 import { notifyContractorOfNewLead, sendCustomerConfirmation } from "@/lib/notifications";
 import { upsertAiCall, updateCallOutcome, buildCallSummary } from "@/lib/ai-calls";
+import { consumeCredits, canStartNewVoiceCall } from "@/lib/credits";
 
 // ─── Types ──────────────────────────────────────────────────
 
 /** Vapi wraps all events: { message: { type: "...", call, transcript, ... } } */
 interface VapiMessageEnvelope {
   type: string;
-  call?: { id: string; status?: string; customer?: { number: string; name?: string }; phoneCallProviderId?: string };
+  call?: {
+    id: string;
+    status?: string;
+    customer?: { number: string; name?: string };
+    phoneCallProviderId?: string;
+    startedAt?: string;
+    endedAt?: string;
+  };
   transcript?: string;
   transcriptRole?: "assistant" | "user";
   status?: string;
@@ -24,6 +32,16 @@ interface VapiMessageEnvelope {
   messages?: Array<{ role: "assistant" | "user" | "system"; content: string; time?: number }>;
   artifact?: Record<string, unknown>;
   [key: string]: unknown;
+}
+
+/** Best-effort call duration in whole seconds from the end-of-call report. */
+function callDurationSeconds(msg: VapiMessageEnvelope): number {
+  if (msg.call?.startedAt && msg.call?.endedAt) {
+    const ms = new Date(msg.call.endedAt).getTime() - new Date(msg.call.startedAt).getTime();
+    if (Number.isFinite(ms) && ms > 0) return Math.round(ms / 1000);
+  }
+  if (typeof msg.durationSeconds === "number" && msg.durationSeconds > 0) return msg.durationSeconds;
+  return 0;
 }
 
 interface VapiRequestBody {
@@ -144,7 +162,28 @@ async function handleEndOfCall(businessId: string, msg: VapiMessageEnvelope): Pr
     ),
     recordingUrl: msg.recordingUrl || "",
     messageCount: allMessages.length,
+    durationSeconds: callDurationSeconds(msg),
   });
+
+  // ── Meter AI cost (owner decisions #1/#5; calibration spec §5 voice rule) — ONE charge per
+  // call: voice.call.minutes only. The per-minute weight already contains the voice LLM,
+  // transcriber, and TTS — never also meter token events for a call (double-charge guard).
+  // Idempotent per callId; fire-and-forget so metering never blocks the webhook or drops a call.
+  const vapiModel = process.env.VAPI_MODEL_NAME || process.env.AI_MODEL || "gpt-4o";
+  const durationSecs = callDurationSeconds(msg);
+  const minutes = durationSecs > 0 ? Math.ceil(durationSecs / 60) : 1; // never under-charge; min 1 minute
+  consumeCredits({
+    businessId,
+    correlationId: callId,
+    idempotencyKey: `voice:${callId}:voice.call.minutes`,
+    eventType: "voice.call.minutes",
+    source: "voice",
+    provider: "vapi",
+    model: vapiModel,
+    minutes,
+    externalId: callId,
+    metadata: { callId, customerNumber, durationSeconds: durationSecs },
+  }).catch(() => {});
 
   if (allMessages.length === 0) {
     // No transcript — mark outcome as no_action.
@@ -171,7 +210,7 @@ async function handleEndOfCall(businessId: string, msg: VapiMessageEnvelope): Pr
   // Extract lead
   try {
     const history = allMessages.map(m => ({ role: m.role as "user" | "assistant" | "system", content: m.content }));
-    const extracted = await extractLeadFromConversation(history);
+    const extracted = await extractLeadFromConversation(history, { businessId, correlationId: callId, source: "voice" });
     if (!extracted || !isValidLead(extracted)) {
       await updateCallOutcome(callId, "no_action");
       return;
@@ -261,6 +300,17 @@ export async function POST(
 
     // 1. assistant-request — return transient assistant (Option A)
     if (eventType === "assistant-request") {
+      // Owner decision #3: never drop an ACTIVE call, but no NEW expensive AI work when exhausted.
+      // assistant-request fires at call setup — blocking here stops new calls without touching live ones.
+      if (!(await canStartNewVoiceCall(businessId))) {
+        logEvent(webhookToken, eventType, "denied — credits exhausted");
+        return NextResponse.json({
+          assistant: {
+            firstMessage: "We're unable to take new calls right now. Please try again later or reach out to us directly. Thank you!",
+            model: { provider: "openai", model: "gpt-4o-mini", messages: [] },
+          },
+        });
+      }
       const config = await buildAssistant(businessId);
       return NextResponse.json(config);
     }

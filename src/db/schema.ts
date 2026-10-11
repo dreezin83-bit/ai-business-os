@@ -5,6 +5,7 @@ import {
   boolean,
   integer,
   json,
+  jsonb,
 } from "drizzle-orm/pg-core";
 
 export const business = pgTable("business", {
@@ -289,3 +290,99 @@ export const handoff = pgTable("handoff", {
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
   resolvedAt: timestamp("resolved_at"),
 });
+
+// ── AI credit system (Phase 2, owner-ratified 2026-09-19; weights/scale per CREDIT-CALIBRATION.md
+//    2026-10-07 — balances are INTEGER milli-credits, 1 credit = 1,000 milli) ────────────────────
+export const creditAccount = pgTable(
+  "credit_account",
+  {
+    id: text("id").primaryKey(),
+    businessId: text("business_id")
+      .notNull()
+      .references(() => business.id, { onDelete: "cascade" }),
+    periodStartAt: timestamp("period_start_at", { withTimezone: true }).notNull(),
+    periodEndAt: timestamp("period_end_at", { withTimezone: true }).notNull(),
+    allocated: integer("allocated").notNull().default(10000000), // milli-credits: 10,000 credits × 1000
+    consumed: integer("consumed").notNull().default(0), // milli-credits consumed this period
+    remaining: integer("remaining").notNull().default(10000000), // milli-credits remaining (floored at -500,000 overdraft)
+    status: text("status").notNull().default("active"), // active | low | exhausted_grace | exhausted
+    exhaustedAt: timestamp("exhausted_at", { withTimezone: true }), // when remaining first hit 0 (grace anchor)
+    graceUntil: timestamp("grace_until", { withTimezone: true }), // 24h grace end; hard stop after
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (t) => [
+    // one wallet row per business per billing period — matches migration 0006; makes open/ensure idempotent
+    { name: "credit_account_business_period_idx", unique: true, columns: [t.businessId, t.periodStartAt] },
+  ]
+);
+
+export const usageEvent = pgTable(
+  "usage_event",
+  {
+    id: text("id").primaryKey(),
+    businessId: text("business_id")
+      .notNull()
+      .references(() => business.id, { onDelete: "cascade" }),
+    occurredAt: timestamp("occurred_at", { withTimezone: true }).notNull(),
+    ingestedAt: timestamp("ingested_at").defaultNow().notNull(),
+    eventType: text("event_type").notNull(), // ai.completion | ai.lead_extraction | voice.call.minutes
+    source: text("source").notNull(), // chat | chatbot | commander | email | lead_extractor | voice
+    quantity: integer("quantity").notNull().default(1), // text: tokens_in + tokens_out; voice: minutes (ceil seconds/60)
+    unit: text("unit").notNull(), // token | minute
+    creditsMilli: integer("credits_milli").notNull().default(0), // milli-credits charged (1 credit = 1000 milli)
+    provider: text("provider").notNull(), // openai | vapi
+    model: text("model"), // as billed (gpt-4o-mini | gpt-4o | ...)
+    tokensIn: integer("tokens_in").notNull().default(0), // actual input tokens (0 for voice events)
+    tokensOut: integer("tokens_out").notNull().default(0), // actual output tokens (0 for voice events)
+    periodStartAt: timestamp("period_start_at", { withTimezone: true }).notNull(), // locked period start copy
+    weightsVersion: text("weights_version").notNull().default("2026-09-cal-v1"), // cost-weight provenance
+    externalId: text("external_id"), // OpenAI response id / Vapi call id
+    correlationId: text("correlation_id").notNull().default(""),
+    idempotencyKey: text("idempotency_key").notNull(),
+    metadata: jsonb("metadata"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (t) => [
+    { name: "usage_event_business_idempotency_idx", unique: true, columns: [t.businessId, t.idempotencyKey] },
+    { name: "idx_usage_biz_time_type", columns: [t.businessId, t.occurredAt, t.eventType] },
+  ]
+);
+
+export const creditGrant = pgTable(
+  "credit_grant",
+  {
+    id: text("id").primaryKey(),
+    businessId: text("business_id")
+      .notNull()
+      .references(() => business.id, { onDelete: "cascade" }),
+    amount: integer("amount").notNull(),
+    reason: text("reason").notNull(),
+    externalReference: text("external_reference"),
+    periodStartAt: timestamp("period_start_at", { withTimezone: true }).notNull(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (t) => [{ name: "credit_grant_reason_ref_idx", unique: true, columns: [t.reason, t.externalReference] }]
+);
+
+export const periodSnapshot = pgTable(
+  "period_snapshot",
+  {
+    id: text("id").primaryKey(),
+    businessId: text("business_id")
+      .notNull()
+      .references(() => business.id, { onDelete: "cascade" }),
+    periodStartAt: timestamp("period_start_at", { withTimezone: true }).notNull(),
+    periodEndAt: timestamp("period_end_at", { withTimezone: true }).notNull(),
+    ledgerHighWatermark: text("ledger_high_watermark"),
+    includedCredits: integer("included_credits").notNull().default(0),
+    grantedCredits: integer("granted_credits").notNull().default(0),
+    consumedCredits: integer("consumed_credits").notNull().default(0),
+    remainingCredits: integer("remaining_credits").notNull().default(0),
+    calculationVersion: text("calculation_version").notNull().default("v1"),
+    generatedAt: timestamp("generated_at").defaultNow().notNull(),
+  },
+  (t) => [
+    { name: "period_snapshot_period_idx", unique: true, columns: [t.businessId, t.periodStartAt, t.periodEndAt] },
+  ]
+);

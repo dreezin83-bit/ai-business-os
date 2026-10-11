@@ -4,7 +4,9 @@
   'use strict';
 
   var SCRIPT = document.currentScript;
-  var BUSINESS_ID = SCRIPT?.getAttribute('data-business-id') || '';
+  var CFG = (typeof window !== 'undefined' && window.AIWidgetConfig) || {};
+  var BUSINESS_ID = SCRIPT?.getAttribute('data-business-id') || CFG.businessId || '';
+  var CHATBOT_TOKEN = SCRIPT?.getAttribute('data-chatbot-token') || CFG.token || '';
   var PLATFORM_URL = 'https://www.sagenifyai.com';
   var WIDGET_URL = PLATFORM_URL + '/api/public/chatbot';
 
@@ -177,6 +179,7 @@
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           businessId: BUSINESS_ID,
+          token: CHATBOT_TOKEN || undefined,
           message: text,
           conversationId: state.conversationId,
         }),

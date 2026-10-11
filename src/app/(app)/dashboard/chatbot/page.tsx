@@ -16,6 +16,7 @@ export default function ChatbotPage() {
   const [copiedAsync, setCopiedAsync] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
   const [businessId, setBusinessId] = useState<string>("YOUR_BUSINESS_ID");
+  const [embedToken, setEmbedToken] = useState<string>("");
   const [loading, setLoading] = useState(true);
   const [chatMessages, setChatMessages] = useState<{ role: string; content: string }[]>([
     { role: "assistant", content: "Hello! 👋 How can I help you today?" },
@@ -23,18 +24,19 @@ export default function ChatbotPage() {
   const { toast } = useToast();
 
   useEffect(() => {
-    fetch("/api/settings")
-      .then((r) => r.ok ? r.json() : Promise.reject("No settings"))
-      .then((data) => {
-        if (data?.id) {
-          setBusinessId(data.id);
-        }
+    Promise.all([
+      fetch("/api/settings").then((r) => (r.ok ? r.json() : Promise.reject("No settings"))),
+      fetch("/api/chatbot/embed-token").then((r) => (r.ok ? r.json() : Promise.reject("No token"))),
+    ])
+      .then(([settings, token]) => {
+        if (settings?.id) setBusinessId(settings.id);
+        if (token?.token) setEmbedToken(token.token);
         setLoading(false);
       })
       .catch(() => setLoading(false));
   }, []);
 
-  const simpleEmbed = `<script src="https://www.sagenifyai.com/api/public/chatbot/widget" data-business-id="${businessId}"></script>`;
+  const simpleEmbed = `<script src="https://www.sagenifyai.com/api/public/chatbot/widget" data-business-id="${businessId}" data-chatbot-token="${embedToken}"></script>`;
 
   const asyncEmbed = `<script>
   (function(w,d,s,o,f,js,fjs){
@@ -42,7 +44,7 @@ export default function ChatbotPage() {
     js=d.createElement(s),fjs=d.getElementsByTagName(s)[0];
     js.id=o;js.src=f;js.async=1;fjs.parentNode.insertBefore(js,fjs);
   })(window,document,'script','aiChatbot','https://www.sagenifyai.com/api/public/chatbot/widget');
-  aiChatbot('init', { businessId: '${businessId}' });
+  aiChatbot('init', { businessId: '${businessId}', token: '${embedToken}' });
 </script>`;
 
   const copyToClipboard = async (text: string, type: "simple" | "async") => {
@@ -348,7 +350,7 @@ export default function ChatbotPage() {
                                     const res = await fetch("/api/public/chatbot", {
                                       method: "POST",
                                       headers: { "Content-Type": "application/json" },
-                                      body: JSON.stringify({ businessId, message: val }),
+                                      body: JSON.stringify({ businessId, message: val, token: embedToken || undefined }),
                                     });
                                     const data = await res.json();
                                     setChatMessages(prev => [...prev, {

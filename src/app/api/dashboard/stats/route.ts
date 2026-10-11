@@ -3,6 +3,7 @@ import { db } from "@/db";
 import { lead, appointment, conversation, communicationLog } from "@/db/schema";
 import { eq, and, gte, lte, sql, desc } from "drizzle-orm";
 import { ensureBusiness } from "@/lib/business";
+import { getCreditStatus } from "@/lib/credits";
 
 /**
  * GET /api/dashboard/stats
@@ -123,6 +124,19 @@ export async function GET() {
       ? Math.round(((thisWeekTotal - lastWeekTotal) / lastWeekTotal) * 100)
       : thisWeekTotal > 0 ? 100 : 0;
 
+    // ─── AI credit balance (owner decision #1 — one simple number: credits used / credits included) ───
+    // Read defensively: before migration 0006 lands in an environment, the credit tables may not
+    // exist yet. A missing balance must never take the core dashboard down.
+    let aiCredits: Awaited<ReturnType<typeof getCreditStatus>> | null = null;
+    try {
+      aiCredits = await getCreditStatus(businessId);
+    } catch (err) {
+      console.error("[dashboard/stats] Failed to read AI credit status", {
+        businessId,
+        error: err instanceof Error ? err.message : String(err),
+      });
+    }
+
     return NextResponse.json({
       totalLeads: Number(totalLeadsResult[0]?.count ?? 0),
       todayAppointments: Number(todayAppts[0]?.count ?? 0),
@@ -148,6 +162,15 @@ export async function GET() {
       })),
       weeklyLeads,
       weeklyChange,
+      aiCredits: aiCredits
+        ? {
+            allocated: aiCredits.allocated,
+            consumed: aiCredits.consumed,
+            remaining: aiCredits.remaining,
+            status: aiCredits.status,
+            periodEnd: aiCredits.periodEnd.toISOString(),
+          }
+        : null,
     });
   } catch (error: unknown) {
     // Structured server-side logging: full error context so production DB failures
