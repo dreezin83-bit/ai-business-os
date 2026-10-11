@@ -1,13 +1,22 @@
 /**
- * credits.ts — Central AI credit metering + enforcement (Phase 2, owner-ratified 2026-09-19).
+ * credits.ts — Central AI credit metering + enforcement (Phase 2, owner-ratified 2026-09-19;
+ * weights reconciled to CREDIT-CALIBRATION.md v2026-09-cal-v1, owner-ratified 2026-10-07).
+ *
+ * CALIBRATED ANCHOR: 1 credit ≙ $0.005 of blended provider list-price cost. 10,000 credits
+ * included per $199/month → ≈ $50 provider ceiling at full burn (74.9% gross margin).
+ * Balances are stored as INTEGER milli-credits (1 credit = 1,000 milli) so fractional weights
+ * are auditable; the UI/dashboard divides by 1,000 (GET /api/dashboard/stats returns credit units).
  *
  * Owner product decisions implemented here:
- *  1. Single internal credit weighted by ACTUAL AI consumption (tokens/minutes), never per-HTTP-request.
- *  2. 10,000 credits included per $199/month subscription (env AI_CREDITS_PER_PERIOD, default 10000).
- *  3. Voice: never drop an active call; no NEW expensive AI work starts when exhausted.
- *  4. Top-ups: data model supports purchased credits; grants only via authorized owner/admin mechanism.
- *  5. Grace: warn at <=15% remaining; mark exhausted at 0; no silent refill, no negative balance,
- *     24h grace window for active workflows where technically safe, then hard stop.
+ *  1. Single internal credit weighted by ACTUAL per-model/provider AI consumption (tokens/minutes),
+ *     never per-HTTP-request. Weight table per CREDIT-CALIBRATION.md §3; unknown models fail closed
+ *     to the most expensive listed weight so an env typo can never under-meter spend.
+ *  2. 10,000 credits included per $199/month subscription (env CREDITS_INCLUDED_PER_PERIOD, default 10000).
+ *  3. Voice: never drop an active call; no NEW expensive AI work starts when hard-stopped.
+ *  4. Top-ups: data model supports purchased credits; grants only via an authorized owner/admin mechanism.
+ *  5. Grace: warn at <=15% remaining; at 0 mark exhausted_grace with a 24h window AND a bounded
+ *     500-credit overdraft (≈ $2.50 exposure); hard-stop after grace/overdraft; no silent refill,
+ *     no unbounded negative balance (floor = -overdraft).
  *  6. Chatbot embed tokens: HMAC-signed per-tenant tokens (CHATBOT_EMBED_SECRET over businessId+expiry);
  *     legacy embeds keep working via rate-limited + business-exists/active backend check.
  *
@@ -20,45 +29,91 @@ import { eq, and, lt, sql } from "drizzle-orm";
 import { generateId } from "@/lib/utils";
 import { createHmac, timingSafeEqual } from "node:crypto";
 
-// ── Config (single place costs change) ───────────────────────────────────────
-export const CREDITS_PER_PERIOD = Number(process.env.AI_CREDITS_PER_PERIOD ?? 10000);
-export const WARN_RATIO = Number(process.env.AI_CREDIT_WARN_RATIO ?? 0.15); // <=15% remaining → warn
-export const GRACE_MS = Number(process.env.AI_CREDIT_GRACE_MS ?? 24 * 60 * 60 * 1000); // 24h grace
+// ── Config (spec §6 — single place costs/limits change) ───────────────────────
+export const CREDITS_INCLUDED_PER_PERIOD = Number(process.env.CREDITS_INCLUDED_PER_PERIOD ?? 10000);
+export const CREDITS_WARN_REMAINING_PCT = Number(process.env.CREDITS_WARN_REMAINING_PCT ?? 15);
+export const CREDITS_GRACE_HOURS = Number(process.env.CREDITS_GRACE_HOURS ?? 24);
+export const CREDITS_GRACE_OVERDRAFT_CREDITS = Number(process.env.CREDITS_GRACE_OVERDRAFT_CREDITS ?? 500);
+export const CREDITS_WEIGHTS_VERSION = process.env.CREDITS_WEIGHTS_VERSION ?? "2026-09-cal-v1";
 export const ENFORCEMENT_ON = String(process.env.AI_CREDITS_ENFORCEMENT ?? "off").toLowerCase() === "on";
 
-/** Model weight multipliers — config-driven with conservative defaults until CREDIT-CALIBRATION.md lands. */
-const MODEL_WEIGHTS: Record<string, number> = {
-  "gpt-4o-mini": 1,
-  "gpt-4o": 4,
-};
-export function modelWeight(model: string | null | undefined): number {
-  if (!model) return Number(process.env.AI_MODEL_WEIGHT_DEFAULT ?? 2);
-  if (model in MODEL_WEIGHTS) return MODEL_WEIGHTS[model];
-  // Unknown models are conservatively weighted (higher = safer margin).
-  return Number(process.env.AI_MODEL_WEIGHT_DEFAULT ?? 2);
+const MILLI = 1000; // milli-credits per credit
+export const ALLOCATED_MILLI = Math.round(CREDITS_INCLUDED_PER_PERIOD * MILLI);
+export const OVERDRAFT_MILLI = Math.round(CREDITS_GRACE_OVERDRAFT_CREDITS * MILLI);
+export const GRACE_MS = CREDITS_GRACE_HOURS * 3600 * 1000;
+
+function parseJsonEnv<T>(key: string): T | null {
+  const raw = process.env[key];
+  if (!raw) return null;
+  try {
+    return JSON.parse(raw) as T;
+  } catch {
+    console.warn(`[credits] Invalid JSON in ${key} — ignoring override`);
+    return null;
+  }
 }
 
-/** Cost surface → credits. THE single place that computes credit amounts. */
-export function computeCredits(op: {
-  eventType: "ai.completion" | "ai.lead_extraction" | "voice.call.minutes" | "ai.call.completed";
+// ── Weight table (CREDIT-CALIBRATION.md §3 — SOURCE OF TRUTH; env-overridable) ──
+interface ModelWeights {
+  in: number;  // credits per 1K input tokens
+  out: number; // credits per 1K output tokens
+}
+
+/** Credits per 1K tokens; price ÷ $0.005 anchor. Unknown model → gpt-4o (fail closed, most expensive). */
+const MODEL_WEIGHTS_DEFAULT: Record<string, ModelWeights> = {
+  "openai:gpt-4o-mini": { in: 0.030, out: 0.120 }, // $0.15/$0.60 per 1M (app default)
+  "openai:gpt-4o": { in: 0.500, out: 2.000 },      // $2.50/$10.00 per 1M (fail-closed fallback)
+  "openai:gpt-4.1-mini": { in: 0.080, out: 0.320 },// $0.40/$1.60 per 1M
+  "openai:gpt-4.1-nano": { in: 0.020, out: 0.080 },// $0.10/$0.40 per 1M
+  "openai:gpt-6-luna": { in: 0.020, out: 0.100 },  // $0.10/$0.50 per 1M
+};
+export function modelWeights(model: string | null | undefined): ModelWeights {
+  const overrides = parseJsonEnv<Record<string, ModelWeights>>("CREDIT_MODEL_WEIGHTS");
+  const key = `openai:${model || ""}`;
+  const o = overrides?.[key];
+  if (o && typeof o.in === "number" && typeof o.out === "number" && o.in >= 0 && o.out >= 0) return o;
+  const def = model ? MODEL_WEIGHTS_DEFAULT[key] : undefined;
+  if (def) return def;
+  return MODEL_WEIGHTS_DEFAULT["openai:gpt-4o"]; // fail closed: most expensive listed model
+}
+
+/** Credits per call-minute; worst-case all-in Vapi minute ÷ $0.005. Unknown stack → 26 (fail closed). */
+const VOICE_WEIGHTS_DEFAULT: Record<string, number> = {
+  "vapi:openai:gpt-4o": 26,      // $0.1289/min worst case → ceil 25.78 = 26
+  "vapi:openai:gpt-4o-mini": 19, // $0.0914/min → ceil 18.28 = 19
+};
+export function voiceWeight(model: string | null | undefined): number {
+  const overrides = parseJsonEnv<Record<string, number>>("CREDIT_VOICE_WEIGHTS");
+  const key = `vapi:openai:${model || ""}`;
+  const o = overrides?.[key];
+  if (typeof o === "number" && o > 0) return o;
+  if (model && VOICE_WEIGHTS_DEFAULT[key] !== undefined) return VOICE_WEIGHTS_DEFAULT[key];
+  return 26; // fail closed: most expensive stack
+}
+
+/**
+ * The ONLY place credit costs are computed (spec §2/§3). Returns INTEGER milli-credits.
+ *  text:  ceil((tokens_in/1000 × w_in + tokens_out/1000 × w_out) × 1000)
+ *  voice: ceil(minutes × w_voice × 1000)   (minutes = ceil(seconds/60), floored at 1)
+ * Ceil → never under-charge; milli scale keeps rounding drift < 0.001 credit/event.
+ */
+export function computeCreditsMilli(op: {
   provider: "openai" | "vapi";
   model?: string | null;
-  quantity: number; // tokens (input+output) | seconds for voice
-  unit: "token" | "second" | "call";
+  tokensIn?: number;
+  tokensOut?: number;
+  minutes?: number; // voice: billable minutes (ceil of seconds/60)
 }): number {
-  if (op.eventType === "voice.call.minutes" || op.eventType === "ai.call.completed") {
-    // Voice: weighted per minute of billed duration. Default 20 credits/min on the base tier.
-    // Config AI_CREDIT_VOICE_PER_MINUTE. Conservative default keeps provider cost well below $199.
-    const perMinute = Number(process.env.AI_CREDIT_VOICE_PER_MINUTE ?? 20);
-    const minutes = Math.max(1, Math.ceil((op.quantity || 0) / 60));
-    const weight = op.provider === "vapi" ? modelWeight(op.model) : 1;
-    return Math.max(1, Math.ceil(minutes * perMinute * weight));
+  if (op.provider === "vapi") {
+    const perMinute = voiceWeight(op.model);
+    const minutes = Math.max(1, Math.ceil(op.minutes ?? 0));
+    return Math.max(1, Math.ceil(minutes * perMinute * MILLI));
   }
-  // Token surfaces: 1 credit per 1,000 tokens on the base model, weighted per model.
-  const tokensPerCredit = Number(process.env.AI_CREDIT_TOKENS_PER_CREDIT ?? 1000);
-  const weight = modelWeight(op.model);
-  const base = Math.max(1, Math.ceil((op.quantity || 0) / tokensPerCredit));
-  return Math.max(1, Math.ceil(base * weight));
+  const w = modelWeights(op.model);
+  const tin = Math.max(0, op.tokensIn ?? 0);
+  const tout = Math.max(0, op.tokensOut ?? 0);
+  const milli = Math.ceil((tin / 1000 * w.in + tout / 1000 * w.out) * MILLI);
+  return Math.max(1, milli);
 }
 
 // ── Embed token helpers (owner decision #6) ──────────────────────────────────
@@ -125,6 +180,7 @@ export async function getPeriodWindow(businessId: string): Promise<{ start: Date
  * Open (or refresh) the credit period for a business — called from the Paystack webhook
  * with the authoritative subscription window. Idempotent: closing an already-closed period
  * is a no-op; the new period row is created once; monthly_included grant is deduped.
+ * Balances are milli-credits: allocated = CREDITS_INCLUDED_PER_PERIOD × 1000.
  */
 export async function openCreditPeriod(businessId: string, start: Date, end: Date): Promise<void> {
   // Close/snapshot any prior period row that ends before the new window (idempotent).
@@ -142,9 +198,9 @@ export async function openCreditPeriod(businessId: string, start: Date, end: Dat
       businessId,
       periodStartAt: start,
       periodEndAt: end,
-      allocated: CREDITS_PER_PERIOD,
+      allocated: ALLOCATED_MILLI,
       consumed: 0,
-      remaining: CREDITS_PER_PERIOD,
+      remaining: ALLOCATED_MILLI,
       status: "active",
     })
     .onConflictDoNothing();
@@ -156,7 +212,7 @@ export async function openCreditPeriod(businessId: string, start: Date, end: Dat
     .values({
       id: generateId(),
       businessId,
-      amount: CREDITS_PER_PERIOD,
+      amount: ALLOCATED_MILLI, // milli-credits
       reason: "monthly_included",
       externalReference: ref,
       periodStartAt: start,
@@ -166,6 +222,13 @@ export async function openCreditPeriod(businessId: string, start: Date, end: Dat
 
 /** Close the old period as an idempotent snapshot (never overwrites previous snapshots). */
 export async function closePeriodSnapshot(acct: typeof creditAccount.$inferSelect): Promise<void> {
+  // Real granted total for the period (milli-credits; = 10,000,000 for a standard monthly refill) —
+  // the snapshot is the per-tenant provider-cost KPI source, so it must carry true grant values.
+  const grants = await db
+    .select({ total: sql<number>`coalesce(sum(${creditGrant.amount}), 0)` })
+    .from(creditGrant)
+    .where(and(eq(creditGrant.businessId, acct.businessId), eq(creditGrant.periodStartAt, acct.periodStartAt)));
+  const grantedMilli = grants[0]?.total ?? acct.consumed; // fallback: consumed (pre-grant-scale safety)
   await db
     .insert(periodSnapshot)
     .values({
@@ -174,10 +237,10 @@ export async function closePeriodSnapshot(acct: typeof creditAccount.$inferSelec
       periodStartAt: acct.periodStartAt,
       periodEndAt: acct.periodEndAt,
       ledgerHighWatermark: acct.id,
-      includedCredits: acct.allocated,
-      grantedCredits: acct.consumed,
-      consumedCredits: acct.consumed,
-      remainingCredits: Math.max(0, acct.remaining),
+      includedCredits: acct.allocated,   // milli-credits
+      grantedCredits: grantedMilli,      // milli-credits
+      consumedCredits: acct.consumed,    // milli-credits
+      remainingCredits: Math.max(0, acct.remaining), // milli-credits
       calculationVersion: "v1",
     })
     .onConflictDoNothing();
@@ -200,9 +263,9 @@ export async function ensureCreditAccount(businessId: string): Promise<typeof cr
       businessId,
       periodStartAt: start,
       periodEndAt: end,
-      allocated: CREDITS_PER_PERIOD,
+      allocated: ALLOCATED_MILLI,
       consumed: 0,
-      remaining: CREDITS_PER_PERIOD,
+      remaining: ALLOCATED_MILLI,
       status: "active",
     })
     .onConflictDoNothing();
@@ -216,10 +279,10 @@ export async function ensureCreditAccount(businessId: string): Promise<typeof cr
 
 // ── Public API ────────────────────────────────────────────────────────────────
 export interface CreditStatus {
-  allocated: number;
-  consumed: number;
-  remaining: number;
-  status: "active" | "low" | "exhausted";
+  allocated: number; // credits (human units — milli ÷ 1000)
+  consumed: number;  // credits
+  remaining: number; // credits, floored at 0 for display
+  status: "active" | "low" | "exhausted_grace" | "exhausted";
   periodStart: Date;
   periodEnd: Date;
   exhaustedAt: Date | null;
@@ -230,9 +293,9 @@ export interface CreditStatus {
 export async function getCreditStatus(businessId: string): Promise<CreditStatus> {
   const acct = await ensureCreditAccount(businessId);
   return {
-    allocated: acct.allocated,
-    consumed: acct.consumed,
-    remaining: Math.max(0, acct.remaining),
+    allocated: Math.round(acct.allocated / MILLI),
+    consumed: Math.round(acct.consumed / MILLI),
+    remaining: Math.max(0, Math.round(acct.remaining / MILLI)),
     status: (acct.status as CreditStatus["status"]) || "active",
     periodStart: acct.periodStartAt,
     periodEnd: acct.periodEndAt,
@@ -242,35 +305,62 @@ export async function getCreditStatus(businessId: string): Promise<CreditStatus>
   };
 }
 
+export type ConsumeEventType = "ai.completion" | "ai.lead_extraction" | "voice.call.minutes";
+export type ConsumeSource = "chat" | "chatbot" | "commander" | "email" | "lead_extractor" | "voice";
+
 export interface ConsumeInput {
   businessId: string;
   correlationId: string;   // e.g. chat turn id / vapi call id — groups secondary costs
-  idempotencyKey: string;  // e.g. `${source}:${turnId}:${eventType}` — dedupe
-  eventType: "ai.completion" | "ai.lead_extraction" | "voice.call.minutes" | "ai.call.completed";
-  source: "chat" | "chatbot" | "commander" | "email" | "lead_extractor" | "voice";
+  idempotencyKey: string;  // e.g. `${source}:${turnId}:${eventType}` — dedupe (retries cannot double-charge)
+  eventType: ConsumeEventType;
+  source: ConsumeSource;
   provider: "openai" | "vapi";
   model?: string | null;
-  quantity: number;        // actual tokens (input+output) or seconds — REAL consumption, not request count
-  unit: "token" | "second" | "call";
+  /** Text: actual input tokens (real OpenAI usage — the ONLY metering input). */
+  tokensIn?: number;
+  /** Text: actual output tokens. */
+  tokensOut?: number;
+  /** Voice: billable minutes = ceil(durationSeconds/60). */
+  minutes?: number;
+  /** Provider reference: OpenAI response id / Vapi call id. */
+  externalId?: string | null;
+  /** Allowlisted, redacted metadata only (conversation/call ids) — no PII/body. */
   metadata?: Record<string, unknown>;
 }
 
 export type ConsumeResult =
-  | { ok: true; credits: number; remaining: number; status: CreditStatus["status"] }
-  | { ok: false; error: "AI_CREDITS_EXHAUSTED"; remaining: number; status: "exhausted" };
+  | { ok: true; creditsMilli: number; remainingMilli: number; status: CreditStatus["status"] }
+  | { ok: false; error: "AI_CREDITS_EXHAUSTED"; remainingMilli: number; status: "exhausted" };
 
 /**
- * Atomically consume credits for a completed AI operation.
+ * Atomically consume credits for a completed AI operation (spec §5/§7).
  * - Inserts the usage_event ledger row FIRST (append-only, idempotent via (business_id, idempotency_key)) —
  *   the canonical record; retries/double-delivery cannot double-charge.
- * - Then decrements the wallet with a guarded UPDATE ... WHERE remaining >= credits — never negative.
- * - Concurrency-safe: the guarded UPDATE is atomic; race losers simply re-read and report exhausted.
+ * - Then decrements the wallet with a guarded UPDATE ... WHERE remaining_milli >= credits_milli —
+ *   never below the bounded grace overdraft (-500 credits); hard-stop after grace expiry.
+ * - Grace: first time remaining hits 0 → status exhausted_grace + grace_until = now+24h;
+ *   during grace consumption may dip to -500 credits (overdraft, ≈ $2.50 exposure); after
+ *   grace_until or when the overdraft is consumed → no new billable AI (AI surfaces 402;
+ *   active voice calls are never dropped — they finish and are metered normally).
+ * - Concurrency-safe: the guarded UPDATE is atomic; race losers re-read and report exhausted.
  * - When enforcement is OFF, usage is still recorded but never blocks (metering-only phase).
  */
 export async function consumeCredits(input: ConsumeInput): Promise<ConsumeResult> {
-  const credits = computeCredits(input);
+  const creditsMilli = computeCreditsMilli({
+    provider: input.provider,
+    model: input.model,
+    tokensIn: input.tokensIn,
+    tokensOut: input.tokensOut,
+    minutes: input.minutes,
+  });
   const acct = await ensureCreditAccount(input.businessId);
   const now = new Date();
+
+  const isVoice = input.eventType === "voice.call.minutes";
+  const quantity = isVoice
+    ? Math.max(1, Math.ceil(input.minutes ?? 0))
+    : (input.tokensIn ?? 0) + (input.tokensOut ?? 0);
+  const unit = isVoice ? "minute" : "token";
 
   // Ledger row first (append-only, idempotent).
   await db
@@ -281,83 +371,94 @@ export async function consumeCredits(input: ConsumeInput): Promise<ConsumeResult
       occurredAt: now,
       eventType: input.eventType,
       source: input.source,
-      quantity: input.quantity,
-      unit: input.unit,
-      credits,
+      quantity,
+      unit,
+      creditsMilli,
       provider: input.provider,
       model: input.model ?? null,
+      tokensIn: input.tokensIn ?? 0,
+      tokensOut: input.tokensOut ?? 0,
+      periodStartAt: acct.periodStartAt,
+      weightsVersion: CREDITS_WEIGHTS_VERSION,
       correlationId: input.correlationId,
       idempotencyKey: input.idempotencyKey,
+      externalId: input.externalId ?? null,
       metadata: input.metadata ?? null,
     })
     .onConflictDoNothing();
 
   if (!ENFORCEMENT_ON) {
-    return { ok: true, credits, remaining: Math.max(0, acct.remaining), status: acct.status as CreditStatus["status"] };
+    return { ok: true, creditsMilli, remainingMilli: Math.max(0, acct.remaining), status: acct.status as CreditStatus["status"] };
   }
 
-  // Atomic guarded decrement — never negative, race-safe.
+  // Hard stop when grace has expired: no new billable AI (active calls already finished earlier).
+  if (acct.exhaustedAt && (acct.graceUntil == null || now.getTime() >= acct.graceUntil.getTime())) {
+    return {
+      ok: false,
+      error: "AI_CREDITS_EXHAUSTED",
+      remainingMilli: Math.max(0, acct.remaining),
+      status: "exhausted",
+    };
+  }
+
+  // Guard: never go below -overdraft (bounded grace overdraft; 0 outside grace is naturally
+  // impossible because hitting 0 enters exhausted_grace instead). Atomic, race-safe.
+  const warnMilli = Math.round(acct.allocated * (CREDITS_WARN_REMAINING_PCT / 100));
   const updated = await db
     .update(creditAccount)
     .set({
-      consumed: sql`${creditAccount.consumed} + ${credits}`,
-      remaining: sql`${creditAccount.remaining} - ${credits}`,
+      consumed: sql`${creditAccount.consumed} + ${creditsMilli}`,
+      remaining: sql`${creditAccount.remaining} - ${creditsMilli}`,
       updatedAt: now,
-      status: sql`CASE WHEN ${creditAccount.remaining} - ${credits} <= 0 THEN 'exhausted'
-                        WHEN ${creditAccount.remaining} - ${credits} < ${Math.round(acct.allocated * WARN_RATIO)} THEN 'low'
+      status: sql`CASE WHEN ${creditAccount.remaining} - ${creditsMilli} <= 0 THEN 'exhausted_grace'
+                        WHEN ${creditAccount.remaining} - ${creditsMilli} <= ${warnMilli} THEN 'low'
                         ELSE 'active' END`,
-      exhaustedAt: sql`CASE WHEN ${creditAccount.remaining} - ${credits} <= 0 THEN COALESCE(${creditAccount.exhaustedAt}, ${now})
+      exhaustedAt: sql`CASE WHEN ${creditAccount.remaining} - ${creditsMilli} <= 0 THEN COALESCE(${creditAccount.exhaustedAt}, ${now})
                             ELSE ${creditAccount.exhaustedAt} END`,
-      graceUntil: sql`CASE WHEN ${creditAccount.remaining} - ${credits} <= 0 THEN ${new Date(now.getTime() + GRACE_MS)}
+      graceUntil: sql`CASE WHEN ${creditAccount.remaining} - ${creditsMilli} <= 0 THEN COALESCE(${creditAccount.graceUntil}, ${new Date(now.getTime() + GRACE_MS)})
                             ELSE ${creditAccount.graceUntil} END`,
     })
-    .where(and(eq(creditAccount.id, acct.id), gteRemaining(credits)))
+    .where(and(eq(creditAccount.id, acct.id), sql`${creditAccount.remaining} + ${OVERDRAFT_MILLI} >= ${creditsMilli}`))
     .returning({ remaining: creditAccount.remaining, status: creditAccount.status });
 
   if (updated.length === 0) {
-    // Race loser or insufficient funds — re-read the truth and report exhausted at 0.
+    // Race loser or insufficient funds (whole balance + overdraft) — re-read the truth.
     const [truth] = await db.select().from(creditAccount).where(eq(creditAccount.id, acct.id)).limit(1);
     return {
       ok: false,
       error: "AI_CREDITS_EXHAUSTED",
-      remaining: Math.max(0, truth?.remaining ?? 0),
+      remainingMilli: Math.max(0, truth?.remaining ?? 0),
       status: (truth?.status as CreditStatus["status"]) || "exhausted",
     };
   }
 
-  const remaining = Math.max(0, updated[0].remaining);
+  const remainingMilli = Math.max(0, updated[0].remaining);
   const status = (updated[0].status as CreditStatus["status"]) || "active";
-  if (remaining <= 0) {
-    return { ok: false, error: "AI_CREDITS_EXHAUSTED", remaining: 0, status: "exhausted" };
-  }
-  return { ok: true, credits, remaining, status };
-}
-
-/** Guard helper — keeps the WHERE clause readable (remaining >= credits). */
-function gteRemaining(credits: number) {
-  return sql`${creditAccount.remaining} >= ${credits}`;
+  return { ok: true, creditsMilli, remainingMilli, status };
 }
 
 /**
  * Authorized grant mechanism (owner decision #4) — ONLY for an owner/admin flow.
  * Idempotent per (reason, external_reference). Adjusts the CURRENT period's wallet.
+ * `amount` is in whole credits (human units); stored as milli-credits.
  */
 export async function grantCredits(input: {
   businessId: string;
-  amount: number; // positive = grant, negative = clawback/refund
+  amount: number; // positive = grant, negative = clawback/refund (credits)
   reason: "monthly_included" | "topup" | "owner_adjustment" | "refund";
   externalReference?: string;
 }): Promise<void> {
   // monthly_included refills are handled by the period open/rollover; skip re-grant here.
   if (input.reason === "monthly_included") return;
 
+  const amountMilli = Math.round(input.amount * MILLI);
   const { start } = await getPeriodWindow(input.businessId);
   const inserted = await db
     .insert(creditGrant)
     .values({
       id: generateId(),
       businessId: input.businessId,
-      amount: input.amount,
+      amount: amountMilli,
       reason: input.reason,
       externalReference: input.externalReference ?? null,
       periodStartAt: start,
@@ -370,8 +471,8 @@ export async function grantCredits(input: {
   await db
     .update(creditAccount)
     .set({
-      allocated: sql`${creditAccount.allocated} + ${input.amount}`,
-      remaining: sql`greatest(${creditAccount.remaining} + ${input.amount}, 0)`,
+      allocated: sql`${creditAccount.allocated} + ${amountMilli}`,
+      remaining: sql`greatest(${creditAccount.remaining} + ${amountMilli}, -${OVERDRAFT_MILLI})`,
       updatedAt: new Date(),
     })
     .where(and(eq(creditAccount.businessId, input.businessId), eq(creditAccount.periodStartAt, start)));
@@ -386,26 +487,23 @@ export function creditsExhaustedError() {
   };
 }
 
-/** Voice guard: check credits BEFORE starting new expensive voice work, without dropping active calls. */
+/** Voice guard: NEW calls may start unless hard-stopped (never drops an ACTIVE call). */
 export async function canStartNewVoiceCall(businessId: string): Promise<boolean> {
   if (!ENFORCEMENT_ON) return true;
-  const st = await getCreditStatus(businessId);
-  if (st.remaining <= 0) return false;
-  // Grace: within 24h of exhaustion only in-flight exits are allowed, not new calls.
-  if (st.exhaustedAt && Date.now() - st.exhaustedAt.getTime() < GRACE_MS) return false;
-  return true;
+  return !(await isHardStopped(businessId));
 }
 
 /**
- * Hard-stop check for non-voice AI surfaces. True only when enforcement is ON and the wallet
- * is at 0 AND the 24h grace window has elapsed. Inside grace, active workflows may finish
- * (their usage is still recorded); after grace, no NEW billable AI starts until the next
- * billing period or an authorized grant. Non-AI APIs are never affected by this.
+ * Hard-stop check for non-voice AI surfaces (spec §7). True only when enforcement is ON and the
+ * wallet is at 0 AND the 24h grace window has elapsed (or its 500-credit overdraft was consumed).
+ * Inside grace, active workflows + new work within the bounded overdraft continue (usage recorded);
+ * after grace, no NEW billable AI starts until the next billing period or an authorized grant.
+ * Non-AI APIs are never affected by this.
  */
 export async function isHardStopped(businessId: string): Promise<boolean> {
   if (!ENFORCEMENT_ON) return false;
   const st = await getCreditStatus(businessId);
   if (st.remaining > 0) return false;
-  if (st.exhaustedAt && Date.now() - st.exhaustedAt.getTime() < GRACE_MS) return false;
+  if (st.exhaustedAt && st.graceUntil && Date.now() < st.graceUntil.getTime()) return false; // in grace
   return true;
 }

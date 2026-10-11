@@ -165,35 +165,24 @@ async function handleEndOfCall(businessId: string, msg: VapiMessageEnvelope): Pr
     durationSeconds: callDurationSeconds(msg),
   });
 
-  // ── Meter AI cost (owner decisions #1/#5) — voice minutes + per-call completion. ──
+  // ── Meter AI cost (owner decisions #1/#5; calibration spec §5 voice rule) — ONE charge per
+  // call: voice.call.minutes only. The per-minute weight already contains the voice LLM,
+  // transcriber, and TTS — never also meter token events for a call (double-charge guard).
   // Idempotent per callId; fire-and-forget so metering never blocks the webhook or drops a call.
   const vapiModel = process.env.VAPI_MODEL_NAME || process.env.AI_MODEL || "gpt-4o";
   const durationSecs = callDurationSeconds(msg);
-  if (durationSecs > 0) {
-    consumeCredits({
-      businessId,
-      correlationId: callId,
-      idempotencyKey: `voice:${callId}:voice.call.minutes`,
-      eventType: "voice.call.minutes",
-      source: "voice",
-      provider: "vapi",
-      model: vapiModel,
-      quantity: durationSecs,
-      unit: "second",
-      metadata: { callId, customerNumber },
-    }).catch(() => {});
-  }
+  const minutes = durationSecs > 0 ? Math.ceil(durationSecs / 60) : 1; // never under-charge; min 1 minute
   consumeCredits({
     businessId,
     correlationId: callId,
-    idempotencyKey: `voice:${callId}:ai.call.completed`,
-    eventType: "ai.call.completed",
+    idempotencyKey: `voice:${callId}:voice.call.minutes`,
+    eventType: "voice.call.minutes",
     source: "voice",
     provider: "vapi",
     model: vapiModel,
-    quantity: 1,
-    unit: "call",
-    metadata: { callId },
+    minutes,
+    externalId: callId,
+    metadata: { callId, customerNumber, durationSeconds: durationSecs },
   }).catch(() => {});
 
   if (allMessages.length === 0) {

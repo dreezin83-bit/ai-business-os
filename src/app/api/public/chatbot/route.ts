@@ -236,8 +236,9 @@ export async function POST(request: Request) {
       source: "chatbot",
       provider: "openai",
       model: usage?.model || process.env.AI_MODEL || "gpt-4o-mini",
-      quantity: usage?.totalTokens ?? 1000,
-      unit: "token",
+      tokensIn: usage?.promptTokens ?? 0,
+      tokensOut: usage?.completionTokens ?? 0,
+      externalId: usage?.externalId ?? undefined,
       metadata: { conversationId: convId },
     }).catch(() => {});
 

@@ -140,8 +140,9 @@ ${recentHistory.map((m) => `${m.role.toUpperCase()}: ${m.content}`).join("\n")}`
           source: meta.source || "lead_extractor",
           provider: "openai",
           model: usage?.model || process.env.AI_MODEL || "gpt-4o-mini",
-          quantity: usage?.totalTokens ?? 500,
-          unit: "token",
+          tokensIn: usage?.promptTokens ?? 0,
+          tokensOut: usage?.completionTokens ?? 0,
+          externalId: usage?.externalId ?? undefined,
         }).catch(() => {});
       } catch (meterErr) {
         console.error("[lead-extractor] Credit metering failed:", meterErr);

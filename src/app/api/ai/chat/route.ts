@@ -258,8 +258,9 @@ Start by asking: "Great, let's get your business set up! First, what's your busi
           source: "chat",
           provider: "openai",
           model: process.env.AI_MODEL || "gpt-4o-mini",
-          quantity: 500,
-          unit: "token",
+          tokensIn: 0,
+          tokensOut: 500, // onboarding estimate (output capped at max_tokens=500)
+          metadata: { conversationId: convId },
         }).catch(() => {});
       }
 
@@ -318,8 +319,9 @@ Start by asking: "Great, let's get your business set up! First, what's your busi
       source: "chat",
       provider: "openai",
       model: usage?.model || process.env.AI_MODEL || "gpt-4o-mini",
-      quantity: usage?.totalTokens ?? 1000,
-      unit: "token",
+      tokensIn: usage?.promptTokens ?? 0,
+      tokensOut: usage?.completionTokens ?? 0,
+      externalId: usage?.externalId ?? undefined,
       metadata: { conversationId: convId },
     }).catch(() => {});
 
