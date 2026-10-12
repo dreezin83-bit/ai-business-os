@@ -21,19 +21,22 @@ import { useToast } from "@/components/toaster";
 import { cn } from "@/lib/utils";
 
 const CATEGORIES = [
-  "HVAC",
-  "Plumbing",
-  "Roofing",
-  "Electrical",
-  "Cleaning",
-  "Landscaping",
-  "Pest Control",
-  "Dental",
-  "Law Firm",
-  "Real Estate",
-  "General Contractor",
-  "Other",
+  { label: "HVAC", value: "hvac" },
+  { label: "Plumbing", value: "plumbing" },
+  { label: "Roofing", value: "roofing" },
+  { label: "Electrical", value: "electrical" },
+  { label: "Cleaning", value: "cleaning" },
+  { label: "Landscaping", value: "landscaping" },
+  { label: "Pest Control", value: "pest-control" },
+  { label: "Dental", value: "dental" },
+  { label: "Law Firm", value: "law-firm" },
+  { label: "Real Estate", value: "real-estate" },
+  { label: "General Contractor", value: "general-contractor" },
+  { label: "Other", value: "other" },
 ];
+
+const categoryLabel = (value: string): string =>
+  CATEGORIES.find((c) => c.value === value)?.label ?? value;
 
 const DAYS = [
   "Monday",
@@ -80,6 +83,11 @@ export default function OnboardingPage() {
   const [step, setStep] = useState(1);
   const [submitting, setSubmitting] = useState(false);
   const [completed, setCompleted] = useState(false);
+  // When a category is picked, AI details (hours/services/greeting) come from
+  // the industry template. Only send manual values when the user opts in to
+  // customizing them — otherwise the server's template fallback is blocked.
+  const [customizeAI, setCustomizeAI] = useState(false);
+  const [hoursModified, setHoursModified] = useState(false);
   const [form, setForm] = useState<FormData>({
     businessName: "",
     category: "",
@@ -99,6 +107,7 @@ export default function OnboardingPage() {
     setForm((prev) => ({ ...prev, [field]: value }));
 
   const updateHour = (day: string, field: keyof DayHours, value: any) => {
+    setHoursModified(true);
     setForm((prev) => ({
       ...prev,
       hours: {
@@ -117,7 +126,9 @@ export default function OnboardingPage() {
       case 2:
         return !!form.serviceArea.trim();
       case 3:
-        return !!form.services.trim();
+        // Services/greeting come from the selected preset by default; the
+        // custom fields are optional even when the user opts in to them.
+        return true;
       case 4:
         return true; // optional step
       default:
@@ -147,13 +158,18 @@ export default function OnboardingPage() {
         email: form.email,
         website: form.website || undefined,
         serviceArea: form.serviceArea,
-        businessHours: form.hours,
         emergencyService: form.emergencyAvailable,
         emergencyNote: form.emergencyNote || undefined,
-        services: form.services,
-        greetingMessage: form.greeting || defaultGreeting,
         knowledgeItems: skipped ? undefined : form.knowledgeText ? [{ title: "Business Knowledge", content: form.knowledgeText, type: "txt" }] : undefined,
       };
+      // Only send manual AI-detail values when the user customized them.
+      // Omitting services/businessHours/greetingMessage lets the server's
+      // template fallback populate them from the selected industry preset.
+      if (customizeAI) {
+        if (form.services.trim()) payload.services = form.services;
+        if (hoursModified) payload.businessHours = form.hours;
+        if (form.greeting.trim()) payload.greetingMessage = form.greeting;
+      }
 
       const res = await fetch("/api/onboarding", {
         method: "POST",
@@ -289,11 +305,18 @@ export default function OnboardingPage() {
                       Select a category...
                     </option>
                     {CATEGORIES.map((cat) => (
-                      <option key={cat} value={cat} className="bg-black text-white">
-                        {cat}
+                      <option key={cat.value} value={cat.value} className="bg-black text-white">
+                        {cat.label}
                       </option>
                     ))}
                   </select>
+                  {form.category && (
+                    <p className="text-[11px] text-emerald-400/80 mt-1.5 flex items-center gap-1.5">
+                      <Check className="h-3 w-3" />
+                      {categoryLabel(form.category)} preset applied — services, hours,
+                      greeting &amp; FAQs are pre-loaded. You can customize below or later.
+                    </p>
+                  )}
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -358,83 +381,126 @@ export default function OnboardingPage() {
                   </p>
                 </div>
 
-                <div>
-                  <label className="text-xs font-medium text-white/60 mb-2 block">
-                    Business Hours
-                  </label>
-                  <div className="space-y-2">
-                    {DAYS.map((day) => (
-                      <div
-                        key={day}
-                        className="flex items-center gap-3 bg-white/[0.02] rounded-xl px-3 py-2 border border-white/[0.04]"
-                      >
-                        <span className="text-sm text-white/70 w-24 shrink-0">{day}</span>
-                        {form.hours[day]?.closed ? (
-                          <span className="text-xs text-white/30 flex-1">Closed</span>
-                        ) : (
-                          <div className="flex items-center gap-2 flex-1">
-                            <input
-                              type="time"
-                              value={form.hours[day]?.open || "08:00"}
-                              onChange={(e) => updateHour(day, "open", e.target.value)}
-                              className="glass-input h-8 w-28 text-xs"
-                            />
-                            <span className="text-white/20 text-xs">to</span>
-                            <input
-                              type="time"
-                              value={form.hours[day]?.close || "17:00"}
-                              onChange={(e) => updateHour(day, "close", e.target.value)}
-                              className="glass-input h-8 w-28 text-xs"
-                            />
-                          </div>
-                        )}
-                        <button
-                          onClick={() => updateHour(day, "closed", !form.hours[day]?.closed)}
-                          className={cn(
-                            "text-[10px] font-medium px-2 py-0.5 rounded-full border transition-colors shrink-0",
-                            form.hours[day]?.closed
-                              ? "bg-white/[0.04] border-white/[0.08] text-white/40"
-                              : "bg-emerald-500/10 border-emerald-500/20 text-emerald-400"
-                          )}
-                        >
-                          {form.hours[day]?.closed ? "Closed" : "Open"}
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
+                <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-4">
+                  <div className="flex items-center justify-between gap-3">
                     <div>
-                      <label className="text-sm font-medium text-white/80">
-                        Emergency Service Available?
-                      </label>
+                      <p className="text-sm font-medium text-white/80">
+                        Hours, services &amp; greeting
+                      </p>
                       <p className="text-[11px] text-white/30">
-                        Let customers know if you handle emergencies after hours.
+                        {customizeAI
+                          ? "Customize below — blank fields keep the preset defaults."
+                          : `Using your ${categoryLabel(form.category)} preset. You can customize now or later in Settings.`}
                       </p>
                     </div>
                     <button
-                      onClick={() => update("emergencyAvailable", !form.emergencyAvailable)}
+                      type="button"
+                      onClick={() => setCustomizeAI((v) => !v)}
                       className={cn(
-                        "relative h-6 w-11 rounded-full transition-colors duration-200",
-                        form.emergencyAvailable ? "bg-emerald-500" : "bg-white/[0.08]"
+                        "relative h-6 w-11 rounded-full transition-colors duration-200 shrink-0",
+                        customizeAI ? "bg-indigo-500" : "bg-white/[0.08]"
                       )}
+                      aria-pressed={customizeAI}
                     >
                       <span
                         className={cn(
                           "absolute top-0.5 h-5 w-5 rounded-full bg-white transition-transform duration-200 shadow-sm",
-                          form.emergencyAvailable ? "translate-x-5.5" : "translate-x-0.5"
+                          customizeAI ? "translate-x-5.5" : "translate-x-0.5"
                         )}
                       />
                     </button>
                   </div>
-                  {form.emergencyAvailable && (
-                    <Input
-                      value={form.emergencyNote}
-                      onChange={(e) => update("emergencyNote", e.target.value)}
-                      placeholder="e.g. Available 24/7 for emergencies — call anytime"
-                    />
+
+                  {customizeAI ? (
+                    <>
+                      <div className="mt-4">
+                        <label className="text-xs font-medium text-white/60 mb-2 block">
+                          Business Hours
+                        </label>
+                        <div className="space-y-2">
+                          {DAYS.map((day) => (
+                            <div
+                              key={day}
+                              className="flex items-center gap-3 bg-white/[0.02] rounded-xl px-3 py-2 border border-white/[0.04]"
+                            >
+                              <span className="text-sm text-white/70 w-24 shrink-0">{day}</span>
+                              {form.hours[day]?.closed ? (
+                                <span className="text-xs text-white/30 flex-1">Closed</span>
+                              ) : (
+                                <div className="flex items-center gap-2 flex-1">
+                                  <input
+                                    type="time"
+                                    value={form.hours[day]?.open || "08:00"}
+                                    onChange={(e) => updateHour(day, "open", e.target.value)}
+                                    className="glass-input h-8 w-28 text-xs"
+                                  />
+                                  <span className="text-white/20 text-xs">to</span>
+                                  <input
+                                    type="time"
+                                    value={form.hours[day]?.close || "17:00"}
+                                    onChange={(e) => updateHour(day, "close", e.target.value)}
+                                    className="glass-input h-8 w-28 text-xs"
+                                  />
+                                </div>
+                              )}
+                              <button
+                                onClick={() => updateHour(day, "closed", !form.hours[day]?.closed)}
+                                className={cn(
+                                  "text-[10px] font-medium px-2 py-0.5 rounded-full border transition-colors shrink-0",
+                                  form.hours[day]?.closed
+                                    ? "bg-white/[0.04] border-white/[0.08] text-white/40"
+                                    : "bg-emerald-500/10 border-emerald-500/20 text-emerald-400"
+                                )}
+                              >
+                                {form.hours[day]?.closed ? "Closed" : "Open"}
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div className="space-y-3 mt-4">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <label className="text-sm font-medium text-white/80">
+                              Emergency Service Available?
+                            </label>
+                            <p className="text-[11px] text-white/30">
+                              Let customers know if you handle emergencies after hours.
+                            </p>
+                          </div>
+                          <button
+                            onClick={() => update("emergencyAvailable", !form.emergencyAvailable)}
+                            className={cn(
+                              "relative h-6 w-11 rounded-full transition-colors duration-200",
+                              form.emergencyAvailable ? "bg-emerald-500" : "bg-white/[0.08]"
+                            )}
+                          >
+                            <span
+                              className={cn(
+                                "absolute top-0.5 h-5 w-5 rounded-full bg-white transition-transform duration-200 shadow-sm",
+                                form.emergencyAvailable ? "translate-x-5.5" : "translate-x-0.5"
+                              )}
+                            />
+                          </button>
+                        </div>
+                        {form.emergencyAvailable && (
+                          <Input
+                            value={form.emergencyNote}
+                            onChange={(e) => update("emergencyNote", e.target.value)}
+                            placeholder="e.g. Available 24/7 for emergencies — call anytime"
+                          />
+                        )}
+                      </div>
+                    </>
+                  ) : (
+                    <div className="mt-3 flex items-center gap-2 rounded-lg bg-emerald-500/[0.06] border border-emerald-500/15 px-3 py-2.5">
+                      <Check className="h-3.5 w-3.5 text-emerald-400 shrink-0" />
+                      <p className="text-[11px] text-emerald-300/80">
+                        Your {categoryLabel(form.category)} preset will set hours,
+                        services, greeting &amp; FAQ knowledge — nothing to fill in.
+                      </p>
+                    </div>
                   )}
                 </div>
               </CardContent>
@@ -446,39 +512,68 @@ export default function OnboardingPage() {
               <CardHeader>
                 <CardTitle className="text-lg">Services & Greeting</CardTitle>
                 <CardDescription className="text-white/40">
-                  Tell the AI what services you offer and how to greet customers.
+                  {customizeAI
+                    ? "Tell the AI what services you offer and how to greet customers."
+                    : "These are pre-filled from your preset — nothing required."}
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div>
-                  <label className="text-xs font-medium text-white/60 mb-1.5 block">
-                    Services Offered <span className="text-red-400">*</span>
-                  </label>
-                  <Textarea
-                    value={form.services}
-                    onChange={(e) => update("services", e.target.value)}
-                    placeholder={`AC repair & installation\nHeating system repair\nDuct cleaning\nIndoor air quality\nMaintenance plans\nEmergency repairs`}
-                    rows={5}
-                  />
-                  <p className="text-[11px] text-white/25 mt-1">
-                    List each service on a new line. This helps the AI understand what you offer.
-                  </p>
-                </div>
+                {customizeAI ? (
+                  <>
+                    <div>
+                      <label className="text-xs font-medium text-white/60 mb-1.5 block">
+                        Services Offered <span className="text-white/30">(optional — preset applies if blank)</span>
+                      </label>
+                      <Textarea
+                        value={form.services}
+                        onChange={(e) => update("services", e.target.value)}
+                        placeholder={`AC repair & installation\nHeating system repair\nDuct cleaning\nIndoor air quality\nMaintenance plans\nEmergency repairs`}
+                        rows={5}
+                      />
+                      <p className="text-[11px] text-white/25 mt-1">
+                        List each service on a new line. Leave blank to keep the preset services.
+                      </p>
+                    </div>
 
-                <div>
-                  <label className="text-xs font-medium text-white/60 mb-1.5 block">
-                    Preferred Greeting
-                  </label>
-                  <Textarea
-                    value={form.greeting}
-                    onChange={(e) => update("greeting", e.target.value)}
-                    placeholder={defaultGreeting}
-                    rows={3}
-                  />
-                  <p className="text-[11px] text-white/25 mt-1">
-                    How should the AI greet your customers? Leave blank to use the default.
-                  </p>
-                </div>
+                    <div>
+                      <label className="text-xs font-medium text-white/60 mb-1.5 block">
+                        Preferred Greeting
+                      </label>
+                      <Textarea
+                        value={form.greeting}
+                        onChange={(e) => update("greeting", e.target.value)}
+                        placeholder={defaultGreeting}
+                        rows={3}
+                      />
+                      <p className="text-[11px] text-white/25 mt-1">
+                        How should the AI greet your customers? Leave blank to keep the preset greeting.
+                      </p>
+                    </div>
+                  </>
+                ) : (
+                  <div className="flex items-start gap-2.5 rounded-xl border border-emerald-500/15 bg-emerald-500/[0.06] px-4 py-3.5">
+                    <Check className="h-4 w-4 text-emerald-400 mt-0.5 shrink-0" />
+                    <div className="text-[13px] text-emerald-300/80 leading-relaxed flex-1">
+                      <p className="font-medium text-emerald-300">
+                        {categoryLabel(form.category)} preset applied
+                      </p>
+                      <p className="mt-0.5 text-[12px]">
+                        Your services, greeting, hours and FAQ knowledge are pre-loaded
+                        from the {categoryLabel(form.category)} template. You can edit
+                        them anytime in Settings.
+                      </p>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="mt-2 h-8 text-emerald-300 hover:text-emerald-200 hover:bg-emerald-500/10 px-2.5"
+                        onClick={() => setCustomizeAI(true)}
+                      >
+                        I want to customize now
+                        <ChevronRight className="h-3.5 w-3.5 ml-1" />
+                      </Button>
+                    </div>
+                  </div>
+                )}
               </CardContent>
             </>
           )}

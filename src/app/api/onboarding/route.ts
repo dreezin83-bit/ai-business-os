@@ -47,8 +47,19 @@ export async function POST(request: Request) {
     emergencyService,
   } = body;
 
-  // Resolve aliased fields — page may send either name
-  const services = servicesOffered ?? servicesRaw ?? emergencyService;
+  // Resolve aliased fields — page may send either name.
+  // Guard the alias chain: only accept string/array values. The page sends
+  // `emergencyService` as a BOOLEAN (emergency availability), so without this
+  // guard an omitted-services payload would silently become `false`/`true`.
+  const servicesCandidates = [servicesOffered, servicesRaw].filter(
+    (v): v is string | unknown[] => typeof v === "string" || Array.isArray(v)
+  );
+  const services =
+    servicesCandidates.length > 0
+      ? servicesCandidates[0]
+      : typeof emergencyService === "string"
+        ? emergencyService
+        : undefined;
   const greetingMessage = greetingRaw ?? greetingMessageRaw;
   const knowledgeItemsResolved = knowledgeContent ?? knowledgeItems;
 
@@ -101,18 +112,37 @@ export async function POST(request: Request) {
     .where(eq(aiBrainConfig.businessId, biz.id))
     .limit(1);
 
-  // Start with template defaults, then override with user-provided values
-  const servicesValue = services !== undefined
-    ? (Array.isArray(services) ? JSON.stringify(services) : services)
-    : template ? JSON.stringify(template.services) : "[]";
+  // Start with template defaults, then override with user-provided values.
+  // Blank/empty user values are treated as "not provided" so the template
+  // fallback (services/hours/greeting from the category preset) actually fires.
+  const servicesValue =
+    services !== undefined &&
+    !(typeof services === "string" && services.trim() === "") &&
+    !(Array.isArray(services) && services.length === 0)
+      ? Array.isArray(services)
+        ? JSON.stringify(services)
+        : services
+      : template
+        ? JSON.stringify(template.services)
+        : "[]";
 
-  const businessHoursValue = businessHours !== undefined
-    ? (typeof businessHours === "object" ? JSON.stringify(businessHours) : businessHours)
-    : template ? JSON.stringify(template.businessHours) : "{}";
+  const businessHoursValue =
+    businessHours !== undefined &&
+    (typeof businessHours !== "object" ||
+      (typeof businessHours === "object" &&
+        !Array.isArray(businessHours) &&
+        Object.keys(businessHours).length > 0))
+      ? typeof businessHours === "object"
+        ? JSON.stringify(businessHours)
+        : businessHours
+      : template
+        ? JSON.stringify(template.businessHours)
+        : "{}";
 
-  const greetingValue = greetingMessage !== undefined
-    ? greetingMessage
-    : template?.greetingMessage ?? "Hello! How can I help you today?";
+  const greetingValue =
+    greetingMessage !== undefined && String(greetingMessage).trim() !== ""
+      ? greetingMessage
+      : template?.greetingMessage ?? "Hello! How can I help you today?";
 
   const serviceAreaValue = serviceArea !== undefined
     ? (typeof serviceArea === "string" ? serviceArea : JSON.stringify(serviceArea))
