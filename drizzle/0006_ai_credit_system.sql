@@ -84,7 +84,7 @@ CREATE TABLE IF NOT EXISTS "period_snapshot" (
 );
 CREATE INDEX IF NOT EXISTS "idx_period_snapshot_business" ON "period_snapshot" ("business_id");
 
--- ENV contract (set in Vercel; documented in .env.example — spec §6 keys):
+-- ENV contract (set in Vercel; defaults + parsing live in src/lib/credits.ts — spec §6 keys):
 --   CREDITS_INCLUDED_PER_PERIOD     default 10000 (10,000 credits/$199/mo; allocated milli = 10,000,000)
 --   CREDITS_WARN_REMAINING_PCT        default 15 (status 'low' at <=15% remaining = 1,500 credits = 1,500,000 milli)
 --   CREDITS_GRACE_HOURS              default 24 (grace window 24h when remaining hits 0, plus bounded 500-credit overdraft)
