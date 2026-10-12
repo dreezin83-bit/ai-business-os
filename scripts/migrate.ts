@@ -15,6 +15,9 @@
  *     already-applied migrations.
  *   - The migration files themselves are idempotent (IF NOT EXISTS), so even a
  *     partially-failed run can be safely re-applied.
+ *   - Statement splitting is comment/quote-aware: semicolons inside `--` comments
+ *     or single-quoted literals never terminate a statement (migration 0006
+ *     relies on this). Pure-comment fragments are dropped, not sent to the DB.
  *
  * To CHECK for drift without applying, use `bun run db:verify` (scripts/verify_migrations.ts).
  */
@@ -31,12 +34,82 @@ if (!DATABASE_URL) {
 const MIGRATIONS_DIR = path.join(process.cwd(), "drizzle");
 
 function splitStatements(sqlText: string): string[] {
-  // Safe for the current migrations: they contain only ALTER/CREATE statements with
-  // no semicolons inside string literals.
-  return sqlText
-    .split(";")
-    .map((s) => s.trim())
-    .filter((s) => s.length > 0);
+  // Splits on top-level semicolons only. Semicolons inside single-quoted string
+  // literals (e.g. DEFAULT '') or `--` line comments are legal PostgreSQL and
+  // must not terminate a statement — migration 0006 uses them in its header and
+  // column comments. Standard SQL quote escaping ('' inside a literal) is
+  // handled, so both DEFAULT '' and 'it''s' parse correctly.
+  // NOTE: dollar-quoted strings are not supported — keep them out of new
+  // migrations. Pure-comment chunks (no-op fragments) are dropped rather than
+  // sent to the server as empty queries.
+  const statements: string[] = [];
+  let current = "";
+  let inString = false;
+  let i = 0;
+  const n = sqlText.length;
+
+  const push = () => {
+    const stmt = current.trim();
+    if (stmt.length > 0 && !isCommentOnly(stmt)) statements.push(stmt);
+    current = "";
+  };
+
+  while (i < n) {
+    const ch = sqlText[i];
+    const next = sqlText[i + 1];
+
+    if (inString) {
+      current += ch;
+      if (ch === "'") {
+        if (next === "'") {
+          current += next; // escaped quote ('' inside a literal)
+          i += 2;
+          continue;
+        }
+        inString = false;
+      }
+      i += 1;
+      continue;
+    }
+
+    if (ch === "-" && next === "-") {
+      // `--` line comment: copied verbatim (comments are valid SQL text) but a
+      // semicolon inside one is never treated as a statement boundary.
+      current += ch + next;
+      i += 2;
+      while (i < n && sqlText[i] !== "\n") {
+        current += sqlText[i];
+        i += 1;
+      }
+      continue;
+    }
+
+    if (ch === "'") {
+      inString = true;
+      current += ch;
+      i += 1;
+      continue;
+    }
+
+    if (ch === ";") {
+      push();
+      i += 1;
+      continue;
+    }
+
+    current += ch;
+    i += 1;
+  }
+  push();
+  return statements;
+}
+
+function isCommentOnly(stmt: string): boolean {
+  // True when every non-blank line starts with `--` (a harmless no-op chunk).
+  return stmt.split("\n").every((line) => {
+    const trimmed = line.trim();
+    return trimmed.length === 0 || trimmed.startsWith("--");
+  });
 }
 
 async function main(): Promise<void> {
