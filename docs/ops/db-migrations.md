@@ -6,8 +6,8 @@ Applies to the production Neon database behind `www.sagenifyai.com`.
 
 | Question | Answer |
 |---|---|
-| Migrations already applied (as of 2026-09-09) | `0000_add_missing_ai_brain_columns.sql`, `0002_perf_indexes.sql`, `0003_paystack_subscription.sql`, `0004_core_operations.sql`, `0005_phone_provider_vapi.sql` — all recorded in `schema_migrations` |
-| Is 0001 missing? | Yes — there is **no 0001** file. The sequence is `0000, 0002, 0003, 0004, 0005` (0001 was never generated / squashed during history cleanup). Migrations are applied in filename order, so the gap is harmless. The next migration should be `0006_*.sql`. |
+| Migrations already applied (as of 2026-10-14) | `0000_add_missing_ai_brain_columns.sql`, `0002_perf_indexes.sql`, `0003_paystack_subscription.sql`, `0004_core_operations.sql`, `0005_phone_provider_vapi.sql`, `0006_ai_credit_system.sql` — all recorded in `schema_migrations` |
+| Is 0001 missing? | Yes — there is **no 0001** file. The sequence is `0000, 0002, 0003, 0004, 0005, 0006` (0001 was never generated / squashed during history cleanup). Migrations are applied in filename order, so the gap is harmless. The next migration should be `0007_*.sql`. |
 | How do I apply pending migrations? | `DATABASE_URL=... bun run db:migrate` (idempotent, tracks in `schema_migrations`) |
 | How do I check for drift without applying? | `bun run db:verify` (exit 1 if anything is pending) |
 | How do I check schema.ts vs DB? | `bunx drizzle-kit check` (exit non-zero on drift) |
