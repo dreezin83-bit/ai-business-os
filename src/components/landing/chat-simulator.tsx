@@ -25,6 +25,9 @@ const PROMPTS = [
 
 const TYPING_MS = 16; // ms per character
 
+const GREETING =
+  "Hi! 👋 I'm your AI receptionist. I answer calls and texts, qualify leads, and book appointments. Try a prompt below:";
+
 /**
  * Interactive chat simulator for the hero. Pure frontend state machine —
  * tapping a prompt chip shows the question and streams a canned, realistic
@@ -32,15 +35,16 @@ const TYPING_MS = 16; // ms per character
  */
 export default function ChatSimulator() {
   const [messages, setMessages] = useState<Message[]>([
-    {
-      role: "ai",
-      text: "Hi! 👋 I'm your AI receptionist. I answer calls and texts, qualify leads, and book appointments. Try a prompt below:",
-    },
+    { role: "ai", text: GREETING },
   ]);
   const [busy, setBusy] = useState(false);
   const [typing, setTyping] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const timers = useRef<ReturnType<typeof setTimeout>[]>([]);
+  // Refs read by the auto-rotate loop so it never sees a stale closure.
+  const busyRef = useRef(false);
+  const autoIdxRef = useRef(0); // next PROMPT to auto-play
+  const lastInteractionRef = useRef(0); // epoch start → demo plays on load
 
   // Keep the latest message scrolled into view.
   useEffect(() => {
@@ -54,9 +58,20 @@ export default function ChatSimulator() {
     return () => pending.forEach(clearTimeout);
   }, []);
 
-  const sendPrompt = (prompt: (typeof PROMPTS)[number]) => {
-    if (busy) return;
+  const resetDemo = () => {
+    timers.current.forEach(clearTimeout);
+    timers.current = [];
+    setMessages([{ role: "ai", text: GREETING }]);
+    setTyping(false);
+    setBusy(false);
+    busyRef.current = false;
+  };
+
+  const sendPrompt = (prompt: (typeof PROMPTS)[number], manual = false) => {
+    if (busyRef.current) return;
+    if (manual) lastInteractionRef.current = Date.now();
     setBusy(true);
+    busyRef.current = true;
     setMessages((prev) => [...prev, { role: "user", text: prompt.label }]);
 
     // Small delay, then stream the reply character by character.
@@ -82,6 +97,7 @@ export default function ChatSimulator() {
           } else {
             setTyping(false);
             setBusy(false);
+            busyRef.current = false;
           }
         };
         stream();
@@ -89,8 +105,26 @@ export default function ChatSimulator() {
     );
   };
 
+  // Rotating preview: every few seconds play the next scripted conversation,
+  // wrapping back to the greeting after the last one. Yields to a visitor
+  // actively clicking chips and resumes after 15s of idle.
+  useEffect(() => {
+    const loop = setInterval(() => {
+      if (busyRef.current || document.hidden) return;
+      if (Date.now() - lastInteractionRef.current < 15000) return;
+      if (autoIdxRef.current >= PROMPTS.length) {
+        resetDemo();
+        autoIdxRef.current = 0;
+      }
+      sendPrompt(PROMPTS[autoIdxRef.current]);
+      autoIdxRef.current += 1;
+    }, 5000);
+    return () => clearInterval(loop);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   return (
-    <div className="glass overflow-hidden rounded-2xl border-white/[0.06] shadow-2xl shadow-indigo-950/40">
+    <div className="glass overflow-hidden rounded-2xl border-white/[0.06] shadow-2xl shadow-purple-950/40">
       {/* Browser chrome */}
       <div className="flex items-center gap-2 border-b border-white/[0.05] bg-white/[0.02] px-4 py-2.5">
         <div className="flex gap-1.5">
@@ -118,13 +152,13 @@ export default function ChatSimulator() {
             <div
               className={
                 m.role === "user"
-                  ? "max-w-[80%] rounded-2xl rounded-br-md bg-indigo-500 px-3.5 py-2 text-[13px] text-white"
+                  ? "max-w-[80%] rounded-2xl rounded-br-md bg-purple-500 px-3.5 py-2 text-[13px] text-white"
                   : "max-w-[85%] rounded-2xl rounded-bl-md border border-white/[0.05] bg-white/[0.04] px-3.5 py-2 text-[13px] leading-relaxed text-white/85"
               }
             >
               {m.text}
               {m.role === "ai" && i === messages.length - 1 && typing && (
-                <span className="typing-caret ml-0.5 inline-block h-3.5 w-[2px] translate-y-0.5 bg-indigo-400" />
+                <span className="typing-caret ml-0.5 inline-block h-3.5 w-[2px] translate-y-0.5 bg-purple-400" />
               )}
             </div>
           </div>
@@ -146,11 +180,11 @@ export default function ChatSimulator() {
           {PROMPTS.map((p) => (
             <button
               key={p.label}
-              onClick={() => sendPrompt(p)}
+              onClick={() => sendPrompt(p, true)}
               disabled={busy}
-              className="inline-flex items-center gap-1.5 rounded-full border border-white/[0.07] bg-white/[0.03] px-3 py-1.5 text-xs text-white/60 transition-all hover:border-indigo-500/40 hover:bg-indigo-500/10 hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
+              className="inline-flex items-center gap-1.5 rounded-full border border-white/[0.07] bg-white/[0.03] px-3 py-1.5 text-xs text-white/60 transition-all hover:border-purple-500/40 hover:bg-purple-500/10 hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
             >
-              <Send className="h-3 w-3 text-indigo-400" />
+              <Send className="h-3 w-3 text-purple-400" />
               {p.label}
             </button>
           ))}

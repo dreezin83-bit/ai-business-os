@@ -48,7 +48,7 @@ export default function PricingCard() {
   return (
     <div className="relative mx-auto max-w-md">
       {/* Glow */}
-      <div className="absolute -inset-4 rounded-3xl bg-indigo-600/20 blur-2xl" aria-hidden />
+      <div className="absolute -inset-4 rounded-3xl bg-purple-600/20 blur-2xl" aria-hidden />
 
       <div className="relative rounded-2xl border border-white/10 bg-slate-900/80 backdrop-blur-xl p-7 md:p-8">
         {/* Billing toggle */}
@@ -76,7 +76,7 @@ export default function PricingCard() {
             Yearly
             <span
               className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full ${
-                yearly ? "bg-indigo-500 text-white" : "bg-indigo-500/20 text-indigo-300"
+                yearly ? "bg-purple-500 text-white" : "bg-purple-500/20 text-purple-300"
               }`}
             >
               -{YEARLY_DISCOUNT_PCT}%
@@ -111,7 +111,7 @@ export default function PricingCard() {
               </p>
             </div>
           )}
-          <Badge className="mt-3 bg-indigo-500/15 text-indigo-300 border border-indigo-500/25 font-medium">
+          <Badge className="mt-3 bg-purple-500/15 text-purple-300 border border-purple-500/25 font-medium">
             Everything included
           </Badge>
         </div>
@@ -119,8 +119,8 @@ export default function PricingCard() {
         <ul className="space-y-2.5 mb-8">
           {FEATURES.map((f) => (
             <li key={f} className="flex items-start gap-2.5 text-[13.5px] text-slate-300">
-              <span className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-indigo-500/20">
-                <Check className="h-3 w-3 text-indigo-300" />
+              <span className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-purple-500/20">
+                <Check className="h-3 w-3 text-purple-300" />
               </span>
               {f}
             </li>

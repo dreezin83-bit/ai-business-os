@@ -7,10 +7,18 @@ import {
   Sparkles,
   ChevronRight,
   ShieldCheck,
+  MessagesSquare,
 } from "lucide-react";
 import ChatSimulator from "@/components/landing/chat-simulator";
 import SubscribeCta from "@/components/landing/subscribe-cta";
 import LazySection from "@/components/landing/lazy-section";
+import MobileDrawer from "@/components/landing/mobile-drawer";
+import IndustryTicker from "@/components/landing/industry-ticker";
+import {
+  DISCORD_INVITE_URL,
+  WHATSAPP_SUPPORT_URL,
+  SUPPORT_EMAIL,
+} from "@/components/landing/site-links";
 
 // Below-the-fold interactive islands — code-split into deferred chunks and
 // mounted only when scrolled into view (see LazySection), so the initial
@@ -29,12 +37,12 @@ const FaqAccordion = dynamic(() => import("@/components/landing/faq-accordion"))
  */
 export default function HomePage() {
   return (
-    <div className="bg-[#0F172A] text-slate-50 overflow-x-hidden">
+    <div className="bg-black text-slate-50 overflow-x-hidden">
       {/* ─── Nav ─────────────────────────────────────────────────────── */}
-      <header className="fixed top-0 left-0 right-0 z-50 bg-[#0F172A]/85 backdrop-blur-xl border-b border-white/[0.06]">
+      <header className="fixed top-0 left-0 right-0 z-50 bg-black/85 backdrop-blur-xl border-b border-white/[0.06]">
         <div className="max-w-7xl mx-auto px-6 lg:px-8 flex items-center justify-between h-16">
           <a href="#top" className="flex items-center gap-2.5">
-            <div className="h-7 w-7 rounded-lg bg-indigo-500 flex items-center justify-center text-[10px] font-bold text-white shadow-lg shadow-indigo-500/30">
+            <div className="h-7 w-7 rounded-lg bg-purple-500 flex items-center justify-center text-[10px] font-bold text-white shadow-lg shadow-purple-500/30">
               AI
             </div>
             <span className="font-semibold text-[15px] tracking-tight">
@@ -54,38 +62,42 @@ export default function HomePage() {
             <a href="#faq" className="hover:text-white transition-colors">
               FAQ
             </a>
+            <Link href="/docs" className="hover:text-white transition-colors">
+              Docs
+            </Link>
           </nav>
           <div className="flex items-center gap-2">
             <a
-              href="https://wa.me/13057071059"
+              href={DISCORD_INVITE_URL}
               target="_blank"
               rel="noreferrer"
               className="hidden md:flex items-center gap-1.5 text-[13px] text-slate-400 hover:text-white transition-colors px-3 py-1.5 rounded-full hover:bg-white/5"
             >
-              <MessageCircle className="h-3.5 w-3.5" /> Support
+              <MessageCircle className="h-3.5 w-3.5" /> Discord
             </a>
             <Link
               href="/sign-in"
-              className="text-[13px] text-slate-400 hover:text-white transition-colors px-3 py-1.5"
+              className="hidden md:inline-flex text-[13px] text-slate-400 hover:text-white transition-colors px-3 py-1.5"
             >
               Sign In
             </Link>
             <Link
               href="/sign-up"
-              className="bg-indigo-500 hover:bg-indigo-400 text-white font-semibold text-xs h-9 px-5 rounded-full inline-flex items-center justify-center transition-colors"
+              className="hidden md:inline-flex bg-purple-500 hover:bg-purple-400 text-white font-semibold text-xs h-9 px-5 rounded-full items-center justify-center transition-colors"
             >
               Get Started
             </Link>
+            <MobileDrawer />
           </div>
         </div>
       </header>
 
       {/* ─── Hero ────────────────────────────────────────────────────── */}
       <section id="top" className="relative pt-32 pb-16 md:pt-40 md:pb-20 overflow-hidden">
-        {/* Radial indigo glow */}
+        {/* Radial purple glow */}
         <div
           aria-hidden
-          className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-indigo-900/30 via-slate-900/0 to-transparent"
+          className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-purple-950/40 via-black/0 to-transparent"
         />
         {/* Subtle grid */}
         <div
@@ -105,7 +117,7 @@ export default function HomePage() {
         <div className="relative max-w-7xl mx-auto px-6 lg:px-8">
           <div className="mx-auto max-w-3xl text-center">
             <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/[0.04] border border-white/[0.08] text-[13px] text-slate-300 mb-7 animate-fade-in">
-              <Sparkles className="h-3.5 w-3.5 text-indigo-400" />
+              <Sparkles className="h-3.5 w-3.5 text-purple-400" />
               Your AI receptionist, chatbot &amp; CRM in one platform
             </div>
 
@@ -124,7 +136,7 @@ export default function HomePage() {
             <div className="flex flex-col sm:flex-row items-center justify-center gap-3 mt-9 animate-fade-up delay-200">
               <Link
                 href="/sign-up"
-                className="inline-flex items-center gap-1.5 h-12 px-8 rounded-full bg-indigo-500 hover:bg-indigo-400 text-white font-semibold text-[15px] transition-colors"
+                className="inline-flex items-center gap-1.5 h-12 px-8 rounded-full bg-purple-500 hover:bg-purple-400 text-white font-semibold text-[15px] transition-colors"
               >
                 Get Started
                 <ArrowRight className="h-4 w-4 ml-1.5" />
@@ -161,7 +173,7 @@ export default function HomePage() {
       <section id="roi" className="py-16 md:py-24 border-t border-white/[0.04]">
         <div className="max-w-7xl mx-auto px-6 lg:px-8 grid lg:grid-cols-2 gap-10 lg:gap-16 items-center">
           <div>
-            <p className="text-xs uppercase tracking-[0.2em] text-indigo-400 font-semibold mb-3">
+            <p className="text-xs uppercase tracking-[0.2em] text-purple-400 font-semibold mb-3">
               ROI Calculator
             </p>
             <h2 className="text-3xl md:text-4xl font-bold tracking-tight mb-4">
@@ -180,7 +192,7 @@ export default function HomePage() {
                 "Booked appointments, not just voicemails",
               ].map((t) => (
                 <li key={t} className="flex items-start gap-2.5">
-                  <ArrowRight className="h-4 w-4 text-indigo-400 mt-0.5 shrink-0" />
+                  <ArrowRight className="h-4 w-4 text-purple-400 mt-0.5 shrink-0" />
                   {t}
                 </li>
               ))}
@@ -196,7 +208,7 @@ export default function HomePage() {
       <section id="features" className="py-16 md:py-24 border-t border-white/[0.04]">
         <div className="max-w-7xl mx-auto px-6 lg:px-8">
           <div className="text-center mb-12">
-            <p className="text-xs uppercase tracking-[0.2em] text-indigo-400 font-semibold mb-3">
+            <p className="text-xs uppercase tracking-[0.2em] text-purple-400 font-semibold mb-3">
               What you get
             </p>
             <h2 className="text-3xl md:text-4xl font-bold tracking-tight mb-4">
@@ -213,63 +225,13 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* ─── Trust ticker ────────────────────────────────────────────── */}
-      <section className="py-10 border-y border-white/[0.04]">
-        <p className="text-center text-xs uppercase tracking-[0.2em] text-slate-500 mb-6">
-          Built for service businesses
-        </p>
-        <div className="marquee-mask overflow-hidden">
-          <div className="animate-marquee flex w-max items-center gap-10">
-            {[
-              "HVAC",
-              "Plumbing",
-              "Roofing",
-              "Dental",
-              "Legal",
-              "Electrical",
-              "Pest Control",
-              "Landscaping",
-              "Auto Repair",
-              "Cleaning",
-            ].map((industry) => (
-              <span
-                key={industry}
-                className="flex items-center gap-10 text-[15px] font-semibold text-slate-500 whitespace-nowrap"
-              >
-                {industry}
-                <span className="h-1 w-1 rounded-full bg-indigo-500/50" />
-              </span>
-            ))}
-            {/* Duplicate for a seamless loop */}
-            {[
-              "HVAC",
-              "Plumbing",
-              "Roofing",
-              "Dental",
-              "Legal",
-              "Electrical",
-              "Pest Control",
-              "Landscaping",
-              "Auto Repair",
-              "Cleaning",
-            ].map((industry) => (
-              <span
-                key={`${industry}-2`}
-                className="flex items-center gap-10 text-[15px] font-semibold text-slate-500 whitespace-nowrap"
-              >
-                {industry}
-                <span className="h-1 w-1 rounded-full bg-indigo-500/50" />
-              </span>
-            ))}
-          </div>
-        </div>
-      </section>
-
+      {/* ─── Industry ticker ───────────────────────────────────────── */}
+      <IndustryTicker />
       {/* ─── Pricing ─────────────────────────────────────────────────── */}
       <section id="pricing" className="py-16 md:py-24">
         <div className="max-w-7xl mx-auto px-6 lg:px-8">
           <div className="text-center mb-12">
-            <p className="text-xs uppercase tracking-[0.2em] text-indigo-400 font-semibold mb-3">
+            <p className="text-xs uppercase tracking-[0.2em] text-purple-400 font-semibold mb-3">
               Pricing
             </p>
             <h2 className="text-3xl md:text-4xl font-bold tracking-tight mb-4">
@@ -290,7 +252,7 @@ export default function HomePage() {
       <section id="faq" className="py-16 md:py-24 border-t border-white/[0.04]">
         <div className="max-w-7xl mx-auto px-6 lg:px-8">
           <div className="text-center mb-12">
-            <p className="text-xs uppercase tracking-[0.2em] text-indigo-400 font-semibold mb-3">
+            <p className="text-xs uppercase tracking-[0.2em] text-purple-400 font-semibold mb-3">
               FAQ
             </p>
             <h2 className="text-3xl md:text-4xl font-bold tracking-tight mb-4">
@@ -309,7 +271,7 @@ export default function HomePage() {
           <div className="grid sm:grid-cols-3 gap-10 mb-10">
             <div>
               <div className="flex items-center gap-2 mb-4">
-                <div className="h-6 w-6 rounded-md bg-indigo-500 flex items-center justify-center text-[10px] font-bold text-white">
+                <div className="h-6 w-6 rounded-md bg-purple-500 flex items-center justify-center text-[10px] font-bold text-white">
                   AI
                 </div>
                 <span className="font-semibold text-sm">Sagenify AI</span>
@@ -324,7 +286,15 @@ export default function HomePage() {
               </h4>
               <div className="space-y-2 text-xs text-slate-500">
                 <a
-                  href="https://wa.me/13057071059"
+                  href={DISCORD_INVITE_URL}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="flex items-center gap-2 hover:text-white transition-colors"
+                >
+                  <MessagesSquare className="h-3 w-3" /> Discord Support
+                </a>
+                <a
+                  href={WHATSAPP_SUPPORT_URL}
                   target="_blank"
                   rel="noreferrer"
                   className="flex items-center gap-2 hover:text-white transition-colors"
@@ -332,7 +302,7 @@ export default function HomePage() {
                   <MessageCircle className="h-3 w-3" /> WhatsApp
                 </a>
                 <a
-                  href="mailto:notifications@sagenifyai.com"
+                  href={`mailto:${SUPPORT_EMAIL}`}
                   className="flex items-center gap-2 hover:text-white transition-colors"
                 >
                   <Mail className="h-3 w-3" /> Email Support
@@ -341,9 +311,12 @@ export default function HomePage() {
             </div>
             <div>
               <h4 className="text-xs font-semibold text-slate-400 mb-3">
-                Legal
+                Resources
               </h4>
               <div className="space-y-2 text-xs text-slate-500">
+                <Link href="/docs" className="hover:text-white transition-colors">
+                  Docs & Help Center
+                </Link>
                 <Link
                   href="/privacy"
                   className="cursor-pointer hover:text-white transition-colors"

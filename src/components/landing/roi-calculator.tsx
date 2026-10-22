@@ -59,7 +59,7 @@ export default function RoiCalculator() {
   return (
     <div className="glass rounded-2xl p-6 md:p-8">
       <div className="flex items-center gap-2 mb-1">
-        <TrendingUp className="h-4 w-4 text-indigo-400" />
+        <TrendingUp className="h-4 w-4 text-purple-400" />
         <h3 className="text-sm font-semibold text-slate-100">
           What are missed calls costing you?
         </h3>
@@ -74,7 +74,7 @@ export default function RoiCalculator() {
         className="flex items-center justify-between text-[13px] mb-3"
       >
         <span className="text-slate-300">Missed calls per week</span>
-        <span className="font-semibold text-indigo-300 tabular-nums">
+        <span className="font-semibold text-purple-300 tabular-nums">
           {missedCalls}
         </span>
       </label>
@@ -113,8 +113,8 @@ export default function RoiCalculator() {
       </div>
 
       {/* Glowing counter */}
-      <div className="mt-7 rounded-xl border border-indigo-500/20 bg-gradient-to-br from-indigo-500/[0.12] to-transparent p-5 text-center glow-pulse">
-        <div className="text-[10px] uppercase tracking-[0.18em] text-indigo-300/80 mb-1">
+      <div className="mt-7 rounded-xl border border-purple-500/20 bg-gradient-to-br from-purple-500/[0.12] to-transparent p-5 text-center glow-pulse">
+        <div className="text-[10px] uppercase tracking-[0.18em] text-purple-300/80 mb-1">
           Recoverable per year*
         </div>
         <div className="text-4xl md:text-5xl font-bold text-white tabular-nums tracking-tight">
