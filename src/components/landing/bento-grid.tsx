@@ -89,7 +89,7 @@ export default function BentoGrid() {
                   New lead: Jane Cooper
                 </p>
                 <p className="text-[10px] text-slate-500 truncate">
-                  AC Repair · (555) 123-4567 · $400 est.
+                  AC Repair · (555) 123-4567 · Est. quote
                 </p>
               </div>
               <span className="ml-auto text-[9px] text-slate-600">now</span>

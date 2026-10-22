@@ -69,6 +69,8 @@
   -webkit-mask-image: linear-gradient(to right, transparent, black 12%, black 88%, transparent);
   mask-image: linear-gradient(to right, transparent, black 12%, black 88%, transparent);
 }
+/* Pause the ticker while the visitor hovers it (no-jank: pure CSS) */
+.marquee-mask:hover .animate-marquee { animation-play-state: paused; }
 /* Landing page: typing caret */
 @keyframes caret-blink { 0%, 45% { opacity: 1; } 50%, 100% { opacity: 0; } }
 .typing-caret { animation: caret-blink 1s steps(1) infinite; }

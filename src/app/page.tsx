@@ -6,7 +6,6 @@ import {
   Mail,
   Sparkles,
   ChevronRight,
-  ShieldCheck,
   MessagesSquare,
 } from "lucide-react";
 import ChatSimulator from "@/components/landing/chat-simulator";
@@ -27,12 +26,11 @@ import {
 // SSR or first paint, even without ssr:false.
 const RoiCalculator = dynamic(() => import("@/components/landing/roi-calculator"));
 const BentoGrid = dynamic(() => import("@/components/landing/bento-grid"));
-const PricingCard = dynamic(() => import("@/components/landing/pricing-card"));
 const FaqAccordion = dynamic(() => import("@/components/landing/faq-accordion"));
 
 /**
  * Landing page — React Server Component. All interactivity lives in the
- * client islands below (ChatSimulator, RoiCalculator, PricingCard,
+ * client islands below (ChatSimulator, RoiCalculator, BentoGrid,
  * FaqAccordion, SubscribeCta) so the static shell can be CDN-cached.
  */
 export default function HomePage() {
@@ -55,9 +53,6 @@ export default function HomePage() {
             </a>
             <a href="#roi" className="hover:text-white transition-colors">
               ROI Calculator
-            </a>
-            <a href="#pricing" className="hover:text-white transition-colors">
-              Pricing
             </a>
             <a href="#faq" className="hover:text-white transition-colors">
               FAQ
@@ -156,10 +151,7 @@ export default function HomePage() {
               </a>
             </div>
 
-            <p className="mt-4 text-xs text-slate-500 flex items-center justify-center gap-1.5 animate-fade-up delay-300">
-              <ShieldCheck className="h-3.5 w-3.5" />
-              First month $399, then $199/month · Cancel anytime
-            </p>
+            
           </div>
 
           {/* Interactive chat simulator */}
@@ -168,7 +160,8 @@ export default function HomePage() {
           </div>
         </div>
       </section>
-
+      {/* ─── Industry ticker ───────────────────────────────────────── */}
+      <IndustryTicker />
       {/* ─── ROI Calculator ──────────────────────────────────────────── */}
       <section id="roi" className="py-16 md:py-24 border-t border-white/[0.04]">
         <div className="max-w-7xl mx-auto px-6 lg:px-8 grid lg:grid-cols-2 gap-10 lg:gap-16 items-center">
@@ -224,30 +217,6 @@ export default function HomePage() {
           </LazySection>
         </div>
       </section>
-
-      {/* ─── Industry ticker ───────────────────────────────────────── */}
-      <IndustryTicker />
-      {/* ─── Pricing ─────────────────────────────────────────────────── */}
-      <section id="pricing" className="py-16 md:py-24">
-        <div className="max-w-7xl mx-auto px-6 lg:px-8">
-          <div className="text-center mb-12">
-            <p className="text-xs uppercase tracking-[0.2em] text-purple-400 font-semibold mb-3">
-              Pricing
-            </p>
-            <h2 className="text-3xl md:text-4xl font-bold tracking-tight mb-4">
-              Simple, flat pricing
-            </h2>
-            <p className="text-slate-400 max-w-xl mx-auto">
-              One plan, everything included. First month $399, then $199/month
-              recurring — cancel anytime.
-            </p>
-          </div>
-          <LazySection minHeight={520}>
-            <PricingCard />
-          </LazySection>
-        </div>
-      </section>
-
       {/* ─── FAQ ─────────────────────────────────────────────────────── */}
       <section id="faq" className="py-16 md:py-24 border-t border-white/[0.04]">
         <div className="max-w-7xl mx-auto px-6 lg:px-8">
@@ -264,7 +233,6 @@ export default function HomePage() {
           </LazySection>
         </div>
       </section>
-
       {/* ─── Footer ──────────────────────────────────────────────────── */}
       <footer className="border-t border-white/[0.04] py-12">
         <div className="max-w-7xl mx-auto px-6 lg:px-8">

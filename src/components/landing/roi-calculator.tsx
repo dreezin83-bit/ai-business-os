@@ -13,27 +13,25 @@ import { TrendingUp, Info } from "lucide-react";
 /**
  * ROI calculator — interactive client island.
  *
- * Estimate: missed calls/week × avg ticket × 52 weeks × 40% recovery rate.
- * The figure is a forward-looking estimate (owner-approved copy must not
- * imply guaranteed results), so it is labelled as such.
+ * Owner correction (2026-10): NO dollar amounts anywhere on the marketing
+ * site. The calculator therefore measures *recoverable bookings per year*
+ * (missed calls × 52 weeks × recovery rate) instead of revenue figures.
+ * The result is a forward-looking estimate, labelled as such.
  */
-const RECOVERY_RATE = 0.4;
 const WEEKS_PER_YEAR = 52;
 
-const TICKET_PRESETS = [150, 250, 400, 750, 1500];
-
-const fmt = new Intl.NumberFormat("en-US", {
-  style: "currency",
-  currency: "USD",
-  maximumFractionDigits: 0,
-});
+const RECOVERY_PRESETS = [
+  { label: "Conservative (25%)", value: 0.25 },
+  { label: "Typical (40%)", value: 0.4 },
+  { label: "Aggressive (60%)", value: 0.6 },
+];
 
 export default function RoiCalculator() {
   const [missedCalls, setMissedCalls] = useState(8);
-  const [ticket, setTicket] = useState(250);
+  const [recovery, setRecovery] = useState(0.4);
   const [displayed, setDisplayed] = useState(0);
 
-  const annual = missedCalls * ticket * WEEKS_PER_YEAR * RECOVERY_RATE;
+  const annual = Math.round(missedCalls * WEEKS_PER_YEAR * recovery);
   const target = useRef(annual);
   const raf = useRef<number>(0);
 
@@ -65,7 +63,7 @@ export default function RoiCalculator() {
         </h3>
       </div>
       <p className="text-xs text-slate-400 mb-6">
-        A rough estimate of annual revenue Sagenify can help you recover.
+        A rough estimate of the bookings Sagenify can help you recover.
       </p>
 
       {/* Missed calls slider */}
@@ -95,17 +93,22 @@ export default function RoiCalculator() {
         <span>50</span>
       </div>
 
-      {/* Average ticket select */}
+      {/* Recovery-rate select */}
       <div className="mt-6">
-        <span className="text-[13px] text-slate-300">Average ticket price</span>
-        <Select value={String(ticket)} onValueChange={(v) => setTicket(Number(v))}>
+        <span className="text-[13px] text-slate-300">
+          Expected recovery rate
+        </span>
+        <Select
+          value={String(recovery)}
+          onValueChange={(v) => setRecovery(Number(v))}
+        >
           <SelectTrigger className="mt-2 w-full bg-slate-900/60 border-white/10 text-slate-100 h-10">
-            <SelectValue placeholder="Select a ticket price" />
+            <SelectValue placeholder="Select a recovery rate" />
           </SelectTrigger>
           <SelectContent className="bg-slate-900 border-white/10 text-slate-100">
-            {TICKET_PRESETS.map((t) => (
-              <SelectItem key={t} value={String(t)}>
-                {fmt.format(t)}
+            {RECOVERY_PRESETS.map((p) => (
+              <SelectItem key={p.label} value={String(p.value)}>
+                {p.label}
               </SelectItem>
             ))}
           </SelectContent>
@@ -115,21 +118,21 @@ export default function RoiCalculator() {
       {/* Glowing counter */}
       <div className="mt-7 rounded-xl border border-purple-500/20 bg-gradient-to-br from-purple-500/[0.12] to-transparent p-5 text-center glow-pulse">
         <div className="text-[10px] uppercase tracking-[0.18em] text-purple-300/80 mb-1">
-          Recoverable per year*
+          Recoverable bookings / year*
         </div>
         <div className="text-4xl md:text-5xl font-bold text-white tabular-nums tracking-tight">
-          {fmt.format(Math.round(displayed))}
+          {Math.round(displayed)}
         </div>
         <div className="mt-1 text-[11px] text-slate-400">
-          {missedCalls} missed/wk × {fmt.format(ticket)} × {WEEKS_PER_YEAR} wks ×{" "}
-          {Math.round(RECOVERY_RATE * 100)}% recovery
+          {missedCalls} missed/wk × {WEEKS_PER_YEAR} wks ×{" "}
+          {Math.round(recovery * 100)}% recovery
         </div>
       </div>
 
       <p className="flex items-start gap-1.5 mt-4 text-[11px] text-slate-500">
         <Info className="h-3.5 w-3.5 shrink-0 mt-px text-slate-600" />
         *Estimate for planning only — actual results vary by business.{" "}
-        {fmt.format(annual)}/yr at current inputs.
+        {annual} bookings/yr at current inputs.
       </p>
     </div>
   );

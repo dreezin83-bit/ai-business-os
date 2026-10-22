@@ -31,8 +31,8 @@ const FAQS = [
     a: "Absolutely. You control exactly when the AI hands off — say, when a caller asks for a human, or on high-value leads. All conversations and leads live in one dashboard your team can pick up anytime.",
   },
   {
-    q: "What does it cost?",
-    a: "The first month is $399, then $199/month recurring. That includes your AI receptionist, website chatbot, CRM, appointment booking, email automation, and reporting — no per-seat fees.",
+    q: "What's included with my subscription?",
+    a: "Everything you need to run AI-powered customer communication: your AI receptionist, website chatbot, CRM and lead management, appointment booking, email automation, reporting, and a monthly AI credit allowance that is metered transparently in your dashboard.",
   },
 ];
 

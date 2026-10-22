@@ -7,9 +7,10 @@ import { DISCORD_INVITE_URL } from "@/components/landing/site-links";
 const NAV_LINKS = [
   { href: "#features", label: "Features" },
   { href: "#roi", label: "ROI Calculator" },
-  { href: "#pricing", label: "Pricing" },
   { href: "#faq", label: "FAQ" },
   { href: "/docs", label: "Docs" },
+  { href: "/terms", label: "Terms of Service" },
+  { href: "/privacy", label: "Privacy Policy" },
 ];
 
 /**
@@ -96,12 +97,12 @@ export default function MobileDrawer() {
           <a
             href={DISCORD_INVITE_URL}
             target="_blank"
-            rel="noreferrer"
+            rel="noopener noreferrer"
             onClick={() => setOpen(false)}
             className="mt-1 flex items-center gap-2 rounded-xl px-3 py-2.5 text-[15px] text-slate-300 hover:bg-white/5 hover:text-white transition-colors"
           >
             <MessageCircle className="h-4 w-4 text-purple-400" />
-            Support (Discord)
+            Support/Community (Discord)
           </a>
         </nav>
 
