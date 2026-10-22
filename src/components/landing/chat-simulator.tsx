@@ -1,49 +1,107 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Bot, Send } from "lucide-react";
+import { Bot, Send, RotateCw } from "lucide-react";
 
 type Message = { role: "ai" | "user"; text: string };
+type Script = { label: string; reply: string };
+type Industry = { id: string; name: string; demo: string; scripts: Script[] };
 
-const PROMPTS = [
+/**
+ * Rotating chat preview. The simulator cycles through scripted conversations
+ * across several service industries (HVAC, dental, legal...) so the preview
+ * looks universal rather than tied to one vertical. Pure frontend state
+ * machine — no API calls. Manual chip clicks yield the auto-loop for 15s.
+ *
+ * Owner correction (2026-10): no dollar amounts in any copy.
+ */
+const INDUSTRIES: Industry[] = [
   {
-    label: "Book an appointment",
-    reply:
-      "I can get that booked for you! We have Tuesday 10:30 AM and Thursday 2:00 PM open this week — which works best?",
+    id: "hvac",
+    name: "HVAC company",
+    demo: "an HVAC company",
+    scripts: [
+      {
+        label: "Book an AC repair",
+        reply:
+          "I can get that scheduled! We have Tuesday 10:30 AM and Thursday 2:00 PM open this week — which works best for you?",
+      },
+      {
+        label: "Check availability",
+        reply:
+          "Today is fully booked, but I can have a technician out tomorrow between 9 AM and 11 AM. Want me to hold that slot for you?",
+      },
+      {
+        label: "Ask about cost",
+        reply:
+          "A repair visit depends on your unit and what's happening — tell me the model and the issue and I'll have the team confirm a quote before we book anything.",
+      },
+    ],
   },
   {
-    label: "Ask for pricing",
-    reply:
-      "A standard AC repair visit runs around $150–$250 depending on the unit and the issue. Tell me your model and what's happening and I'll narrow it down.",
+    id: "dental",
+    name: "dental clinic",
+    demo: "a dental clinic",
+    scripts: [
+      {
+        label: "Emergency toothache",
+        reply:
+          "I'm sorry to hear that! I can get you in for an urgent consultation today at 3:15 PM with Dr. Ellis. Does that work for you?",
+      },
+      {
+        label: "Book a cleaning",
+        reply:
+          "Great — a hygiene appointment runs about an hour. We have Thursday 9:00 AM and Friday 1:30 PM open this week. Which do you prefer?",
+      },
+      {
+        label: "Ask about insurance",
+        reply:
+          "We work with most major dental plans. Send us your policy details or bring your card to the visit and we'll verify coverage for you.",
+      },
+    ],
   },
   {
-    label: "Check availability",
-    reply:
-      "Today is fully booked, but I can have a technician out tomorrow between 9 AM and 11 AM. Want me to hold that slot for you?",
+    id: "legal",
+    name: "law firm",
+    demo: "a law firm",
+    scripts: [
+      {
+        label: "Request a consultation",
+        reply:
+          "Of course — we offer an initial consultation to review your matter. Our intake specialist will call you back today. What's the best number to reach you?",
+      },
+      {
+        label: "Case intake",
+        reply:
+          "I'll note the key details you share and route them to the right attorney. Which practice area does this involve?",
+      },
+      {
+        label: "Ask about fees",
+        reply:
+          "Fee structures vary by matter type. Our team will walk you through the engagement terms before anything starts — no surprises.",
+      },
+    ],
   },
 ];
 
-const TYPING_MS = 16; // ms per character
+const TYPING_MS = 14; // ms per character
 
 const GREETING =
-  "Hi! 👋 I'm your AI receptionist. I answer calls and texts, qualify leads, and book appointments. Try a prompt below:";
+  "Hi! 👋 I'm your AI receptionist. I answer calls and chats 24/7, qualify leads, and book appointments.";
 
-/**
- * Interactive chat simulator for the hero. Pure frontend state machine —
- * tapping a prompt chip shows the question and streams a canned, realistic
- * service-business answer with a typewriter effect. No API calls.
- */
 export default function ChatSimulator() {
   const [messages, setMessages] = useState<Message[]>([
     { role: "ai", text: GREETING },
   ]);
   const [busy, setBusy] = useState(false);
   const [typing, setTyping] = useState(false);
+  const [industryIdx, setIndustryIdx] = useState(0);
   const scrollRef = useRef<HTMLDivElement>(null);
   const timers = useRef<ReturnType<typeof setTimeout>[]>([]);
   // Refs read by the auto-rotate loop so it never sees a stale closure.
   const busyRef = useRef(false);
-  const autoIdxRef = useRef(0); // next PROMPT to auto-play
+  const industryRef = useRef(0); // active industry for auto-play
+  const scriptIdxRef = useRef(0); // next script within that industry
   const lastInteractionRef = useRef(0); // epoch start → demo plays on load
 
   // Keep the latest message scrolled into view.
@@ -67,7 +125,14 @@ export default function ChatSimulator() {
     busyRef.current = false;
   };
 
-  const sendPrompt = (prompt: (typeof PROMPTS)[number], manual = false) => {
+  const advanceIndustry = () => {
+    industryRef.current = (industryRef.current + 1) % INDUSTRIES.length;
+    setIndustryIdx(industryRef.current);
+    scriptIdxRef.current = 0;
+    resetDemo();
+  };
+
+  const sendPrompt = (prompt: Script, manual = false) => {
     if (busyRef.current) return;
     if (manual) lastInteractionRef.current = Date.now();
     setBusy(true);
@@ -101,27 +166,31 @@ export default function ChatSimulator() {
           }
         };
         stream();
-      }, 550)
+      }, 500)
     );
   };
 
-  // Rotating preview: every few seconds play the next scripted conversation,
-  // wrapping back to the greeting after the last one. Yields to a visitor
-  // actively clicking chips and resumes after 15s of idle.
+  // Rotating preview: play each scripted conversation of the active industry,
+  // then switch to the next industry and loop back to the greeting. Yields to
+  // a visitor actively clicking chips and resumes after 15s of idle.
   useEffect(() => {
     const loop = setInterval(() => {
       if (busyRef.current || document.hidden) return;
       if (Date.now() - lastInteractionRef.current < 15000) return;
-      if (autoIdxRef.current >= PROMPTS.length) {
-        resetDemo();
-        autoIdxRef.current = 0;
+      const industry = INDUSTRIES[industryRef.current];
+      if (scriptIdxRef.current >= industry.scripts.length) {
+        advanceIndustry();
+        return;
       }
-      sendPrompt(PROMPTS[autoIdxRef.current]);
-      autoIdxRef.current += 1;
+      const prompt = industry.scripts[scriptIdxRef.current];
+      scriptIdxRef.current += 1;
+      sendPrompt(prompt);
     }, 5000);
     return () => clearInterval(loop);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  const active = INDUSTRIES[industryIdx];
 
   return (
     <div className="glass overflow-hidden rounded-2xl border-white/[0.06] shadow-2xl shadow-purple-950/40">
@@ -136,7 +205,12 @@ export default function ChatSimulator() {
           <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
           yourbusiness.com
         </div>
-        <div className="w-10" />
+        <RotateCw className="h-3 w-3 text-purple-400/70" aria-hidden />
+      </div>
+
+      {/* Rotating industry context */}
+      <div className="flex items-center justify-center gap-1.5 border-b border-white/[0.04] bg-purple-500/[0.05] px-3 py-1.5 text-[10px] tracking-wide text-purple-300/80">
+        Demo conversation — now playing: {active.demo}
       </div>
 
       {/* Messages */}
@@ -174,10 +248,10 @@ export default function ChatSimulator() {
         )}
       </div>
 
-      {/* Prompt chips */}
+      {/* Prompt chips for the active industry */}
       <div className="border-t border-white/[0.05] bg-white/[0.02] px-4 py-3">
         <div className="flex flex-wrap items-center gap-2">
-          {PROMPTS.map((p) => (
+          {active.scripts.map((p) => (
             <button
               key={p.label}
               onClick={() => sendPrompt(p, true)}

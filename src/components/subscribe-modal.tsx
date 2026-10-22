@@ -88,9 +88,10 @@ export default function SubscribeModal({ open, onClose }: SubscribeModalProps) {
                   : "border-white/[0.06] bg-transparent hover:bg-white/[0.03]"
               }`}
             >
-              <div className="text-xs font-semibold text-white/70 mb-0.5">Starter</div>
-              <div className="text-lg font-bold text-white">$399<span className="text-xs font-normal text-white/30"> first mo</span></div>
-              <div className="text-[11px] text-white/30 mt-0.5">then $199/month</div>
+              <div className="text-xs font-semibold text-white/70">Starter</div>
+              <div className="text-[11px] text-white/30 mt-0.5">
+                For single-location service businesses
+              </div>
             </button>
             <button
               type="button"
@@ -101,9 +102,12 @@ export default function SubscribeModal({ open, onClose }: SubscribeModalProps) {
                   : "border-white/[0.06] bg-transparent hover:bg-white/[0.03]"
               }`}
             >
-              <div className="text-xs font-semibold text-white/70 mb-0.5">Professional</div>
-              <div className="text-lg font-bold text-white">$399<span className="text-xs font-normal text-white/30"> first mo</span></div>
-              <div className="text-[11px] text-white/30 mt-0.5">then $199/month</div>
+              <div className="text-xs font-semibold text-white/70">
+                Professional
+              </div>
+              <div className="text-[11px] text-white/30 mt-0.5">
+                For growing multi-location teams
+              </div>
             </button>
           </div>
 
