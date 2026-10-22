@@ -4,7 +4,6 @@ import {
   ArrowRight,
   MessageCircle,
   Mail,
-  Sparkles,
   ChevronRight,
   MessagesSquare,
 } from "lucide-react";
@@ -111,10 +110,6 @@ export default function HomePage() {
 
         <div className="relative max-w-7xl mx-auto px-6 lg:px-8">
           <div className="mx-auto max-w-3xl text-center">
-            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/[0.04] border border-white/[0.08] text-[13px] text-slate-300 mb-7 animate-fade-in">
-              <Sparkles className="h-3.5 w-3.5 text-purple-400" />
-              Your AI receptionist, chatbot &amp; CRM in one platform
-            </div>
 
             <h1 className="text-3xl sm:text-4xl md:text-6xl font-bold tracking-tight leading-[1.05] animate-fade-up">
               Never miss{" "}
