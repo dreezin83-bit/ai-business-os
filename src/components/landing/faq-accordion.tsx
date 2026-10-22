@@ -48,7 +48,7 @@ export default function FaqAccordion() {
             key={faq.q}
             className={`rounded-xl border transition-colors ${
               isOpen
-                ? "border-indigo-500/30 bg-slate-900/80"
+                ? "border-purple-500/30 bg-slate-900/80"
                 : "border-white/[0.06] bg-white/[0.02] hover:border-white/[0.12]"
             }`}
           >
@@ -70,7 +70,7 @@ export default function FaqAccordion() {
                 </span>
                 <ChevronDown
                   className={`h-4 w-4 shrink-0 text-slate-500 transition-transform duration-300 ${
-                    isOpen ? "rotate-180 text-indigo-400" : ""
+                    isOpen ? "rotate-180 text-purple-400" : ""
                   }`}
                 />
               </button>

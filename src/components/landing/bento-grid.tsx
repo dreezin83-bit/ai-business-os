@@ -12,8 +12,8 @@ export default function BentoGrid() {
       {/* Card 1 — 24/7 AI Booking */}
       <div className="glass rounded-2xl p-6 flex flex-col justify-between min-h-[280px] group hover:bg-white/[0.05] hover:border-white/[0.1] transition-all duration-500">
         <div>
-          <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-indigo-500/25 to-violet-500/5 border border-indigo-500/20 flex items-center justify-center mb-4">
-            <CalendarCheck2 className="h-5 w-5 text-indigo-300" />
+          <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-purple-500/25 to-violet-500/5 border border-purple-500/20 flex items-center justify-center mb-4">
+            <CalendarCheck2 className="h-5 w-5 text-purple-300" />
           </div>
           <h3 className="text-[15px] font-semibold mb-2">24/7 AI Booking</h3>
           <p className="text-sm text-slate-400 leading-relaxed">
@@ -27,7 +27,7 @@ export default function BentoGrid() {
             <span className="text-[11px] font-medium text-slate-300">
               This Week
             </span>
-            <span className="text-[10px] text-indigo-400 font-medium">
+            <span className="text-[10px] text-purple-400 font-medium">
               3 slots left
             </span>
           </div>
@@ -45,7 +45,7 @@ export default function BentoGrid() {
                   key={i}
                   className={`h-6 rounded-md flex items-center justify-center text-[9px] ${
                     today
-                      ? "bg-indigo-500 text-white font-semibold glow-pulse"
+                      ? "bg-purple-500 text-white font-semibold glow-pulse"
                       : booked
                         ? "bg-white/[0.06] text-slate-500"
                         : "text-slate-600"
@@ -56,9 +56,9 @@ export default function BentoGrid() {
               );
             })}
           </div>
-          <div className="mt-2.5 flex items-center gap-2 rounded-lg bg-indigo-500/10 border border-indigo-500/20 px-2.5 py-1.5">
-            <span className="h-1.5 w-1.5 rounded-full bg-indigo-400 animate-pulse-soft" />
-            <span className="text-[10px] text-indigo-300">
+          <div className="mt-2.5 flex items-center gap-2 rounded-lg bg-purple-500/10 border border-purple-500/20 px-2.5 py-1.5">
+            <span className="h-1.5 w-1.5 rounded-full bg-purple-400 animate-pulse-soft" />
+            <span className="text-[10px] text-purple-300">
               New booking confirmed — AC repair, Tue 10:30 AM
             </span>
           </div>
@@ -136,7 +136,7 @@ export default function BentoGrid() {
               {i < 2 && (
                 <span className="absolute left-[11px] top-6 h-full w-px bg-white/[0.08]" />
               )}
-              <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-white/10 bg-white/[0.03] text-[9px] font-semibold text-indigo-300">
+              <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-white/10 bg-white/[0.03] text-[9px] font-semibold text-purple-300">
                 {s.n}
               </span>
               <div className="pt-0.5">
