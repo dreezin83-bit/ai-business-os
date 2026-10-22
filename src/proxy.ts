@@ -4,6 +4,11 @@ import { neon } from "@neondatabase/serverless";
 
 const isPublicRoute = createRouteMatcher([
   "/",
+  // Marketing/legal pages — must be public so signed-out visitors can read
+  // them without being pushed to /sign-in (owner-reported routing bug).
+  "/docs(.*)",
+  "/privacy",
+  "/terms",
   "/sign-in(.*)",
   "/sign-up(.*)",
   // NOTE: /onboarding is intentionally NOT public — signed-out visitors
