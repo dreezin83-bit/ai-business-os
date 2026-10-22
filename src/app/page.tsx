@@ -117,7 +117,9 @@ export default function HomePage() {
               <span className="text-gradient-indigo">another customer</span>{" "}
               again.
             </h1>
-
+            <p className="text-sm md:text-base text-slate-300 font-medium mt-4 animate-fade-up delay-75">
+              No $2,000 agency setup required. Deploy your AI office manager in minutes.
+            </p>
             <p className="text-base md:text-lg text-slate-400 mt-6 leading-relaxed max-w-xl mx-auto animate-fade-up delay-100">
               Sagenify answers your calls and chats 24/7, qualifies every lead,
               books appointments, and follows up automatically — so no customer
