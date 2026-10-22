@@ -23,6 +23,12 @@ export default function AppLayout({
     <ClerkProvider
       signInUrl="/sign-in"
       signUpUrl="/sign-up"
+      // @clerk/nextjs 7.x: the deterministic "land on /dashboard after auth"
+      // props are the force-redirect pair (equivalent of legacy afterSignInUrl/
+      // afterSignUpUrl). Force semantics ignore any ?redirect_url param so a
+      // visitor can never be stranded on a loading screen mid-auth.
+      signInForceRedirectUrl="/dashboard"
+      signUpForceRedirectUrl="/dashboard"
       signInFallbackRedirectUrl="/dashboard"
       signUpFallbackRedirectUrl="/dashboard"
     >
