@@ -28,6 +28,8 @@ import { creditAccount, usageEvent, creditGrant, periodSnapshot, subscription, b
 import { eq, and, lt, sql } from "drizzle-orm";
 import { generateId } from "@/lib/utils";
 import { createHmac, timingSafeEqual } from "node:crypto";
+import { MILLI, computeCreditsMilli } from "@/lib/credit-weights";
+export { modelWeights, voiceWeight, normalizeModelId } from "@/lib/credit-weights";
 
 // ── Config (spec §6 — single place costs/limits change) ───────────────────────
 export const CREDITS_INCLUDED_PER_PERIOD = Number(process.env.CREDITS_INCLUDED_PER_PERIOD ?? 10000);
@@ -37,85 +39,14 @@ export const CREDITS_GRACE_OVERDRAFT_CREDITS = Number(process.env.CREDITS_GRACE_
 export const CREDITS_WEIGHTS_VERSION = process.env.CREDITS_WEIGHTS_VERSION ?? "2026-09-cal-v1";
 export const ENFORCEMENT_ON = String(process.env.AI_CREDITS_ENFORCEMENT ?? "off").toLowerCase() === "on";
 
-const MILLI = 1000; // milli-credits per credit
 export const ALLOCATED_MILLI = Math.round(CREDITS_INCLUDED_PER_PERIOD * MILLI);
 export const OVERDRAFT_MILLI = Math.round(CREDITS_GRACE_OVERDRAFT_CREDITS * MILLI);
 export const GRACE_MS = CREDITS_GRACE_HOURS * 3600 * 1000;
 
-function parseJsonEnv<T>(key: string): T | null {
-  const raw = process.env[key];
-  if (!raw) return null;
-  try {
-    return JSON.parse(raw) as T;
-  } catch {
-    console.warn(`[credits] Invalid JSON in ${key} — ignoring override`);
-    return null;
-  }
-}
-
-// ── Weight table (CREDIT-CALIBRATION.md §3 — SOURCE OF TRUTH; env-overridable) ──
-interface ModelWeights {
-  in: number;  // credits per 1K input tokens
-  out: number; // credits per 1K output tokens
-}
-
-/** Credits per 1K tokens; price ÷ $0.005 anchor. Unknown model → gpt-4o (fail closed, most expensive). */
-const MODEL_WEIGHTS_DEFAULT: Record<string, ModelWeights> = {
-  "openai:gpt-4o-mini": { in: 0.030, out: 0.120 }, // $0.15/$0.60 per 1M (app default)
-  "openai:gpt-4o": { in: 0.500, out: 2.000 },      // $2.50/$10.00 per 1M (fail-closed fallback)
-  "openai:gpt-4.1-mini": { in: 0.080, out: 0.320 },// $0.40/$1.60 per 1M
-  "openai:gpt-4.1-nano": { in: 0.020, out: 0.080 },// $0.10/$0.40 per 1M
-  "openai:gpt-6-luna": { in: 0.020, out: 0.100 },  // $0.10/$0.50 per 1M
-};
-export function modelWeights(model: string | null | undefined): ModelWeights {
-  const overrides = parseJsonEnv<Record<string, ModelWeights>>("CREDIT_MODEL_WEIGHTS");
-  const key = `openai:${model || ""}`;
-  const o = overrides?.[key];
-  if (o && typeof o.in === "number" && typeof o.out === "number" && o.in >= 0 && o.out >= 0) return o;
-  const def = model ? MODEL_WEIGHTS_DEFAULT[key] : undefined;
-  if (def) return def;
-  return MODEL_WEIGHTS_DEFAULT["openai:gpt-4o"]; // fail closed: most expensive listed model
-}
-
-/** Credits per call-minute; worst-case all-in Vapi minute ÷ $0.005. Unknown stack → 26 (fail closed). */
-const VOICE_WEIGHTS_DEFAULT: Record<string, number> = {
-  "vapi:openai:gpt-4o": 26,      // $0.1289/min worst case → ceil 25.78 = 26
-  "vapi:openai:gpt-4o-mini": 19, // $0.0914/min → ceil 18.28 = 19
-};
-export function voiceWeight(model: string | null | undefined): number {
-  const overrides = parseJsonEnv<Record<string, number>>("CREDIT_VOICE_WEIGHTS");
-  const key = `vapi:openai:${model || ""}`;
-  const o = overrides?.[key];
-  if (typeof o === "number" && o > 0) return o;
-  if (model && VOICE_WEIGHTS_DEFAULT[key] !== undefined) return VOICE_WEIGHTS_DEFAULT[key];
-  return 26; // fail closed: most expensive stack
-}
-
-/**
- * The ONLY place credit costs are computed (spec §2/§3). Returns INTEGER milli-credits.
- *  text:  ceil((tokens_in/1000 × w_in + tokens_out/1000 × w_out) × 1000)
- *  voice: ceil(minutes × w_voice × 1000)   (minutes = ceil(seconds/60), floored at 1)
- * Ceil → never under-charge; milli scale keeps rounding drift < 0.001 credit/event.
- */
-export function computeCreditsMilli(op: {
-  provider: "openai" | "vapi";
-  model?: string | null;
-  tokensIn?: number;
-  tokensOut?: number;
-  minutes?: number; // voice: billable minutes (ceil of seconds/60)
-}): number {
-  if (op.provider === "vapi") {
-    const perMinute = voiceWeight(op.model);
-    const minutes = Math.max(1, Math.ceil(op.minutes ?? 0));
-    return Math.max(1, Math.ceil(minutes * perMinute * MILLI));
-  }
-  const w = modelWeights(op.model);
-  const tin = Math.max(0, op.tokensIn ?? 0);
-  const tout = Math.max(0, op.tokensOut ?? 0);
-  const milli = Math.ceil((tin / 1000 * w.in + tout / 1000 * w.out) * MILLI);
-  return Math.max(1, milli);
-}
-
+// ── Weight tables + cost formula ──────────────────────────────────────────────
+// Live in the pure module src/lib/credit-weights.ts (incl. the P1 model-id
+// normalization fix); imported above and re-exported for API compatibility.
+// See CREDIT-CALIBRATION.md §3 for the source of truth.
 // ── Embed token helpers (owner decision #6) ──────────────────────────────────
 const TOKEN_TTL_MS = Number(process.env.CHATBOT_TOKEN_TTL_MS ?? 365 * 24 * 60 * 60 * 1000); // 1y embed token
 export function makeChatbotToken(businessId: string): { token: string; expiresAt: string } {
