@@ -26,6 +26,7 @@ import type { LucideIcon } from "lucide-react";
 import { useState } from "react";
 import { useClerk } from "@clerk/nextjs";
 import { Button } from "@/components/ui/button";
+import { ThemeSwitcher } from "@/components/dashboard/theme-switcher";
 
 type NavItem = {
   name: string;
@@ -78,17 +79,17 @@ export function Sidebar() {
       {/* Sidebar */}
       <aside
         className={cn(
-          "fixed top-0 left-0 z-40 h-full w-64 border-r border-slate-800 bg-slate-950/90 backdrop-blur-xl text-slate-300 transition-transform duration-200",
+          "fixed top-0 left-0 z-40 h-full w-64 border-r border-[var(--dash-divider)] bg-[var(--dash-sidebar)] backdrop-blur-xl text-[var(--dash-text)] transition-transform duration-200",
           mobileOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"
         )}
       >
         <div className="flex flex-col h-full">
           {/* Logo */}
-          <div className="flex items-center gap-3 px-5 py-4 border-b border-slate-800">
+          <div className="flex items-center gap-3 px-5 py-4 border-b border-[var(--dash-divider)]">
             <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-sm font-bold text-white shadow-lg shadow-purple-500/25">
               S
             </div>
-            <span className="font-semibold text-sm tracking-tight text-white">Sagenify AI</span>
+            <span className="font-semibold text-sm tracking-tight text-[var(--dash-heading)]">Sagenify AI</span>
           </div>
 
           {/* Navigation */}
@@ -99,8 +100,8 @@ export function Sidebar() {
               const linkClass = cn(
                 "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-150",
                 isActive
-                  ? "bg-slate-800 text-white shadow-sm"
-                  : "text-slate-400 hover:text-white hover:bg-slate-800/50"
+                  ? "bg-[var(--dash-card-hover)] text-[var(--dash-heading)] shadow-sm"
+                  : "text-[var(--dash-muted)] hover:text-[var(--dash-heading)] hover:bg-[var(--dash-hover)]"
               );
 
               if (isExternal) {
@@ -133,12 +134,13 @@ export function Sidebar() {
             })}
           </nav>
 
-          {/* Footer */}
-          <div className="p-3 border-t border-slate-800">
+          {/* Footer: theme switcher + sign out */}
+          <div className="p-3 border-t border-[var(--dash-divider)]">
+            <ThemeSwitcher />
             <Button
               variant="ghost"
               size="sm"
-              className="w-full justify-start text-slate-400 hover:text-white"
+              className="w-full justify-start text-[var(--dash-muted)] hover:text-[var(--dash-heading)]"
               onClick={() => signOut({ redirectUrl: "/" })}
             >
               <LogOut className="h-4 w-4 mr-2" />

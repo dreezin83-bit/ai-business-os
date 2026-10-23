@@ -46,6 +46,8 @@ export async function GET() {
       upcomingApptsList,
       thisWeekLeads,
       lastWeekLeads,
+      recentConvos,
+      recentComms,
     ] = await Promise.all([
       // Total lead count
       db.select({ count: sql<number>`count(*)::int` }).from(lead).where(eq(lead.businessId, businessId)),
@@ -101,6 +103,35 @@ export async function GET() {
           lte(lead.createdAt, new Date(sevenDaysAgo.getTime() - 1))
         )
       ),
+
+      // Recent AI conversations (last 5) — for the activity feed
+      db
+        .select({
+          id: conversation.id,
+          customerName: conversation.customerName,
+          source: conversation.source,
+          createdAt: conversation.createdAt,
+        })
+        .from(conversation)
+        .where(eq(conversation.businessId, businessId))
+        .orderBy(desc(conversation.createdAt))
+        .limit(5),
+
+      // Recent communication log entries (last 5) — follow-ups, delivery
+      // status and failures, for the activity feed
+      db
+        .select({
+          id: communicationLog.id,
+          type: communicationLog.type,
+          toAddress: communicationLog.toAddress,
+          subject: communicationLog.subject,
+          status: communicationLog.status,
+          sentAt: communicationLog.sentAt,
+        })
+        .from(communicationLog)
+        .where(eq(communicationLog.businessId, businessId))
+        .orderBy(desc(communicationLog.sentAt))
+        .limit(5),
     ]);
 
     // ─── Build weekly chart data (fill gaps for days with 0 leads) ───
@@ -159,6 +190,21 @@ export async function GET() {
         date: a.date,
         startTime: a.startTime,
         status: a.status,
+      })),
+      // Activity feed sources: recent AI conversations + communication log
+      recentConversationsList: recentConvos.map(c => ({
+        id: c.id,
+        customerName: c.customerName || "",
+        source: c.source || "chatbot",
+        createdAt: c.createdAt?.toISOString() ?? "",
+      })),
+      recentCommunications: recentComms.map(m => ({
+        id: m.id,
+        type: m.type,
+        toAddress: m.toAddress,
+        subject: m.subject || "",
+        status: m.status,
+        sentAt: m.sentAt?.toISOString() ?? "",
       })),
       weeklyLeads,
       weeklyChange,

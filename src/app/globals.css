@@ -163,3 +163,169 @@
   @apply inline-flex items-center rounded-full border border-white/[0.06] bg-white/[0.04] px-2.5 py-0.5
          text-[10px] font-medium text-white/60;
 }
+
+/* ─────────────────────────────────────────────────────────────────────
+   Dashboard theme system — owner task: 4-theme switcher.
+   The dashboard chrome (wrapper, sidebar, header bar, metric tiles,
+   activity feed) reads these tokens. next-themes applies the selected
+   theme as a class on <html> (attribute="class"), so each theme block
+   below is keyed by that class. The marketing site never mounts the
+   ThemeProvider — its hardcoded `dark` root keeps the landing page
+   untouched. `body` stays black at the root; the dashboard covers the
+   viewport with `.dash-shell`, which contains the light theme swap.
+   ───────────────────────────────────────────────────────────────────── */
+
+:root,
+.dark {
+  /* Pitch Black (default) — #000 background, white headings, purple accents */
+  --dash-bg: #000000;
+  --dash-bg-a: #000000;
+  --dash-bg-b: #07070d;
+  --dash-bg-c: #0e0a1c;
+  --dash-sidebar: rgba(0, 0, 0, 0.92);
+  --dash-heading: #ffffff;
+  --dash-text: #e2e8f0;
+  --dash-muted: #94a3b8;
+  --dash-card: rgba(255, 255, 255, 0.03);
+  --dash-card-border: rgba(255, 255, 255, 0.06);
+  --dash-card-hover: rgba(255, 255, 255, 0.06);
+  --dash-card-border-hover: rgba(255, 255, 255, 0.12);
+  --dash-divider: rgba(255, 255, 255, 0.06);
+  --dash-hover: rgba(255, 255, 255, 0.05);
+  --dash-accent: #a855f7;
+  --dash-accent-text: #c084fc;
+  --dash-accent-chip: rgba(168, 85, 247, 0.12);
+  --dash-accent-chip-border: rgba(168, 85, 247, 0.3);
+  --dash-green: #34d399;
+  --dash-green-chip: rgba(52, 211, 153, 0.12);
+  --dash-green-chip-border: rgba(52, 211, 153, 0.3);
+  --dash-skeleton: rgba(255, 255, 255, 0.06);
+  --dash-glow: 168, 85, 247;
+  --dash-glow-2: 59, 130, 246;
+}
+
+.light {
+  /* Light Mode — off-white background, crisp dark typography */
+  --dash-bg: #f8fafc;
+  --dash-bg-a: #f8fafc;
+  --dash-bg-b: #eef2ff;
+  --dash-bg-c: #faf5ff;
+  --dash-sidebar: rgba(255, 255, 255, 0.88);
+  --dash-heading: #0f172a;
+  --dash-text: #334155;
+  --dash-muted: #64748b;
+  --dash-card: rgba(255, 255, 255, 0.94);
+  --dash-card-border: rgba(15, 23, 42, 0.08);
+  --dash-card-hover: #ffffff;
+  --dash-card-border-hover: rgba(15, 23, 42, 0.16);
+  --dash-divider: rgba(15, 23, 42, 0.08);
+  --dash-hover: rgba(15, 23, 42, 0.05);
+  --dash-accent: #7c3aed;
+  --dash-accent-text: #6d28d9;
+  --dash-accent-chip: rgba(124, 58, 237, 0.1);
+  --dash-accent-chip-border: rgba(124, 58, 237, 0.28);
+  --dash-green: #059669;
+  --dash-green-chip: rgba(5, 150, 105, 0.1);
+  --dash-green-chip-border: rgba(5, 150, 105, 0.28);
+  --dash-skeleton: rgba(15, 23, 42, 0.07);
+  --dash-glow: 124, 58, 237;
+  --dash-glow-2: 99, 102, 241;
+}
+
+.midnight-purple {
+  /* Midnight Purple — deep indigo-purple gradient */
+  --dash-bg: #0b0721;
+  --dash-bg-a: #0b0721;
+  --dash-bg-b: #171240;
+  --dash-bg-c: #271a63;
+  --dash-sidebar: rgba(14, 10, 37, 0.94);
+  --dash-heading: #eef2ff;
+  --dash-text: #c7d2fe;
+  --dash-muted: #a5b4fc;
+  --dash-card: rgba(129, 140, 248, 0.07);
+  --dash-card-border: rgba(129, 140, 248, 0.18);
+  --dash-card-hover: rgba(129, 140, 248, 0.12);
+  --dash-card-border-hover: rgba(129, 140, 248, 0.32);
+  --dash-divider: rgba(129, 140, 248, 0.14);
+  --dash-hover: rgba(255, 255, 255, 0.06);
+  --dash-accent: #818cf8;
+  --dash-accent-text: #a5b4fc;
+  --dash-accent-chip: rgba(129, 140, 248, 0.14);
+  --dash-accent-chip-border: rgba(129, 140, 248, 0.32);
+  --dash-green: #34d399;
+  --dash-green-chip: rgba(52, 211, 153, 0.14);
+  --dash-green-chip-border: rgba(52, 211, 153, 0.32);
+  --dash-skeleton: rgba(165, 180, 252, 0.12);
+  --dash-glow: 99, 102, 241;
+  --dash-glow-2: 168, 85, 247;
+}
+
+.cyber-emerald {
+  /* Cyber Emerald — dark slate + neon green accents */
+  --dash-bg: #04100c;
+  --dash-bg-a: #04100c;
+  --dash-bg-b: #071a12;
+  --dash-bg-c: #0a2318;
+  --dash-sidebar: rgba(3, 12, 9, 0.94);
+  --dash-heading: #ecfdf5;
+  --dash-text: #a7f3d0;
+  --dash-muted: #6b9483;
+  --dash-card: rgba(52, 211, 153, 0.06);
+  --dash-card-border: rgba(52, 211, 153, 0.16);
+  --dash-card-hover: rgba(52, 211, 153, 0.1);
+  --dash-card-border-hover: rgba(52, 211, 153, 0.3);
+  --dash-divider: rgba(52, 211, 153, 0.12);
+  --dash-hover: rgba(255, 255, 255, 0.05);
+  --dash-accent: #34d399;
+  --dash-accent-text: #6ee7b7;
+  --dash-accent-chip: rgba(52, 211, 153, 0.12);
+  --dash-accent-chip-border: rgba(52, 211, 153, 0.32);
+  --dash-green: #34d399;
+  --dash-green-chip: rgba(52, 211, 153, 0.14);
+  --dash-green-chip-border: rgba(52, 211, 153, 0.34);
+  --dash-skeleton: rgba(52, 211, 153, 0.1);
+  --dash-glow: 52, 211, 153;
+  --dash-glow-2: 16, 185, 129;
+}
+
+/* Dashboard chrome utilities (used by the layout, sidebar, header bar,
+   metric tiles and activity feed) */
+.dash-shell {
+  background-color: var(--dash-bg);
+  background-image: linear-gradient(
+    135deg,
+    var(--dash-bg-a),
+    var(--dash-bg-b) 55%,
+    var(--dash-bg-c)
+  );
+  color: var(--dash-heading);
+}
+.dash-card {
+  background: var(--dash-card);
+  border: 1px solid var(--dash-card-border);
+  transition: background 0.3s, border-color 0.3s;
+}
+.dash-card-hover:hover {
+  background: var(--dash-card-hover);
+  border-color: var(--dash-card-border-hover);
+}
+.dash-heading { color: var(--dash-heading); }
+.dash-text { color: var(--dash-text); }
+.dash-muted { color: var(--dash-muted); }
+.dash-accent-text { color: var(--dash-accent-text); }
+.dash-border { border-color: var(--dash-divider); }
+.dash-chip {
+  background: var(--dash-accent-chip);
+  border: 1px solid var(--dash-accent-chip-border);
+  color: var(--dash-accent-text);
+}
+.dash-skeleton {
+  background: var(--dash-skeleton);
+  animation: pulse-soft 2s ease-in-out infinite;
+}
+.dash-glow-orb {
+  position: absolute;
+  border-radius: 9999px;
+  pointer-events: none;
+  filter: blur(110px);
+}
