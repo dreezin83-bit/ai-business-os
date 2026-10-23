@@ -57,7 +57,7 @@ export default function DashboardLayout({
     // content) instead of a blank full-screen spinner so the navigation
     // feels instant once the session is confirmed.
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-blue-950">
+      <div className="min-h-screen dash-shell">
         {/* Sidebar skeleton */}
         <div className="hidden md:flex fixed top-0 left-0 z-40 h-full w-64 flex-col border-r border-slate-800 bg-slate-950/90 p-4">
           <div className="h-8 w-24 bg-slate-800 rounded-lg animate-pulse" />
@@ -91,11 +91,17 @@ export default function DashboardLayout({
     );
   }
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-blue-950">
-      {/* Ambient glow */}
+    <div className="min-h-screen dash-shell">
+      {/* Ambient glow — follows the active theme's accent */}
       <div className="fixed inset-0 pointer-events-none">
-        <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-blue-500/5 rounded-full blur-[120px]" />
-        <div className="absolute bottom-0 left-0 w-[400px] h-[400px] bg-purple-500/5 rounded-full blur-[100px]" />
+        <div
+          className="dash-glow-orb top-0 right-0 h-[500px] w-[500px]"
+          style={{ background: `radial-gradient(circle, rgb(var(--dash-glow) / 0.07), transparent 60%)` }}
+        />
+        <div
+          className="dash-glow-orb bottom-0 left-0 h-[400px] w-[400px]"
+          style={{ background: `radial-gradient(circle, rgb(var(--dash-glow-2) / 0.07), transparent 60%)` }}
+        />
       </div>
       <Sidebar />
       <main className="md:pl-64 min-h-screen relative">
