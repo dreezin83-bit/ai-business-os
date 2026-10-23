@@ -6,21 +6,13 @@ import { cn } from "@/lib/utils";
 import {
   LayoutDashboard,
   Users,
-  Calendar,
   Bot,
-  BookOpen,
-  MessageSquare,
+  Inbox,
+  Zap,
   Settings,
-  Phone,
-  PhoneMissed,
   Menu,
   X,
   LogOut,
-  Mail,
-  Terminal,
-  TrendingUp,
-  Zap,
-  MessageCircle,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { useState } from "react";
@@ -32,25 +24,75 @@ type NavItem = {
   name: string;
   href: string;
   icon: LucideIcon;
-  external?: boolean;
+  /** Extra paths that should light this item up (tab routes absorb their old pages). */
+  match?: string[];
 };
 
-const navigation: NavItem[] = [
-  { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
-  { name: "Overview", href: "/dashboard/overview", icon: TrendingUp },
-  { name: "AI Commander", href: "/dashboard/ai-commander", icon: Terminal },
-  { name: "Leads", href: "/dashboard/leads", icon: Users },
-  { name: "Appointments", href: "/dashboard/appointments", icon: Calendar },
-  { name: "AI Brain", href: "/dashboard/ai-brain", icon: Bot },
-  { name: "Knowledge Base", href: "/dashboard/knowledge-base", icon: BookOpen },
-  { name: "Chatbot", href: "/dashboard/chatbot", icon: MessageSquare },
-  { name: "Messages", href: "/dashboard/messages", icon: Mail },
-  { name: "Communication", href: "/dashboard/settings/communication", icon: MessageCircle },
-  { name: "Missed Calls", href: "/dashboard/missed-calls", icon: PhoneMissed },
-  { name: "Automation", href: "/dashboard/automation", icon: Zap },
-  { name: "Contact Support", href: "https://wa.me/13057071059", icon: Phone, external: true },
-  { name: "Settings", href: "/dashboard/settings", icon: Settings },
+type NavSection = {
+  label: string;
+  items: NavItem[];
+};
+
+/**
+ * Grouped sidebar navigation — 4 owner-specified sections. Old routes are
+ * never deleted; tab routes (/dashboard/communications, /dashboard/ai-brain)
+ * simply absorb the former flat items via shared tab views.
+ */
+const navSections: NavSection[] = [
+  {
+    label: "Main Workspace",
+    items: [
+      { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
+      {
+        name: "Leads & Appointments",
+        href: "/dashboard/leads",
+        icon: Users,
+        match: ["/dashboard/leads", "/dashboard/appointments"],
+      },
+    ],
+  },
+  {
+    label: "Communications",
+    items: [
+      {
+        name: "Inbox & Calls",
+        href: "/dashboard/communications",
+        icon: Inbox,
+        match: [
+          "/dashboard/communications",
+          "/dashboard/chatbot",
+          "/dashboard/messages",
+          "/dashboard/missed-calls",
+          "/dashboard/settings/communication",
+        ],
+      },
+    ],
+  },
+  {
+    label: "AI Settings & Knowledge",
+    items: [
+      {
+        name: "AI Brain & Knowledge Base",
+        href: "/dashboard/ai-brain",
+        icon: Bot,
+        match: ["/dashboard/ai-brain", "/dashboard/ai-commander", "/dashboard/knowledge-base"],
+      },
+      {
+        name: "Automations",
+        href: "/dashboard/automations",
+        icon: Zap,
+        match: ["/dashboard/automations", "/dashboard/automation"],
+      },
+    ],
+  },
 ];
+
+function isActive(item: NavItem, pathname: string) {
+  const paths = item.match ?? [item.href];
+  return paths.some(
+    (p) => pathname === p || pathname.startsWith(p + "/")
+  );
+}
 
 export function Sidebar() {
   const pathname = usePathname();
@@ -92,50 +134,60 @@ export function Sidebar() {
             <span className="font-semibold text-sm tracking-tight text-[var(--dash-heading)]">Sagenify AI</span>
           </div>
 
-          {/* Navigation */}
-          <nav className="flex-1 px-2.5 py-3 space-y-0.5 overflow-y-auto">
-            {navigation.map((item) => {
-              const isActive = pathname === item.href || pathname.startsWith(item.href + "/");
-              const isExternal = item.external;
-              const linkClass = cn(
-                "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-150",
-                isActive
-                  ? "bg-[var(--dash-card-hover)] text-[var(--dash-heading)] shadow-sm"
-                  : "text-[var(--dash-muted)] hover:text-[var(--dash-heading)] hover:bg-[var(--dash-hover)]"
-              );
-
-              if (isExternal) {
-                return (
-                  <a
-                    key={item.href}
-                    href={item.href}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className={linkClass}
-                  >
-                    <item.icon className="h-4 w-4 flex-shrink-0" />
-                    {item.name}
-                  </a>
-                );
-              }
-
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  prefetch
-                  onClick={() => setMobileOpen(false)}
-                  className={linkClass}
-                >
-                  <item.icon className="h-4 w-4 flex-shrink-0" />
-                  {item.name}
-                </Link>
-              );
-            })}
+          {/* Grouped navigation */}
+          <nav className="flex-1 px-2.5 py-3 overflow-y-auto">
+            {navSections.map((section) => (
+              <div key={section.label} className="mb-4 last:mb-0">
+                <p className="px-3 pb-1.5 text-[11px] font-semibold uppercase tracking-wider text-[var(--dash-muted)]">
+                  {section.label}
+                </p>
+                <div className="space-y-0.5">
+                  {section.items.map((item) => {
+                    const active = isActive(item, pathname);
+                    return (
+                      <Link
+                        key={item.href}
+                        href={item.href}
+                        prefetch
+                        onClick={() => setMobileOpen(false)}
+                        className={cn(
+                          "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-150",
+                          active
+                            ? "bg-[var(--dash-card-hover)] text-[var(--dash-heading)] shadow-sm"
+                            : "text-[var(--dash-muted)] hover:text-[var(--dash-heading)] hover:bg-[var(--dash-hover)]"
+                        )}
+                        aria-current={active ? "page" : undefined}
+                      >
+                        <item.icon className="h-4 w-4 flex-shrink-0" />
+                        {item.name}
+                      </Link>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
           </nav>
 
-          {/* Footer: theme switcher + sign out */}
+          {/* Account & Preferences */}
           <div className="p-3 border-t border-[var(--dash-divider)]">
+            <p className="px-3 pb-1.5 text-[11px] font-semibold uppercase tracking-wider text-[var(--dash-muted)]">
+              Account &amp; Preferences
+            </p>
+            <div className="space-y-0.5">
+              <Link
+                href="/dashboard/settings"
+                onClick={() => setMobileOpen(false)}
+                className={cn(
+                  "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-150",
+                  isActive({ name: "Settings", href: "/dashboard/settings", icon: Settings }, pathname)
+                    ? "bg-[var(--dash-card-hover)] text-[var(--dash-heading)] shadow-sm"
+                    : "text-[var(--dash-muted)] hover:text-[var(--dash-heading)] hover:bg-[var(--dash-hover)]"
+                )}
+              >
+                <Settings className="h-4 w-4 flex-shrink-0" />
+                Settings
+              </Link>
+            </div>
             <ThemeSwitcher />
             <Button
               variant="ghost"

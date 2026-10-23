@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useToast } from "@/components/toaster";
+import { useDashboardStats } from "@/hooks/use-dashboard-stats";
 import { getStatusColor, getStatusLabel, formatDate, generateId } from "@/lib/utils";
 
 interface Lead {
@@ -174,6 +175,9 @@ export default function LeadsPage() {
           </DialogContent>
         </Dialog>
       </div>
+
+      {/* Appointments section — keeps appointments visible from Leads & Appointments */}
+      <AppointmentsSection />
 
       {/* ROI Dashboard */}
       <div className="grid gap-4 grid-cols-2 sm:grid-cols-4">
@@ -350,5 +354,37 @@ export default function LeadsPage() {
         </Card>
       )}
     </div>
+  );
+}
+
+function AppointmentsSection() {
+  const { data: stats } = useDashboardStats();
+  const today = stats?.todayAppointments ?? 0;
+  const upcoming = stats?.upcomingAppointments ?? 0;
+
+  return (
+    <Card className="bg-gradient-to-br from-violet-500/5 to-violet-500/10 border-violet-500/20">
+      <CardContent className="p-4">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center gap-3">
+            <div className="h-10 w-10 rounded-lg bg-violet-500/15 flex items-center justify-center">
+              <Calendar className="h-5 w-5 text-violet-500" />
+            </div>
+            <div>
+              <p className="text-sm font-semibold">Appointments</p>
+              <p className="text-xs text-muted-foreground">
+                {today} today · {upcoming} upcoming
+              </p>
+            </div>
+          </div>
+          <Link href="/dashboard/appointments">
+            <Button variant="outline" size="sm">
+              Open Calendar
+              <ArrowUpRight className="h-3.5 w-3.5 ml-1.5" />
+            </Button>
+          </Link>
+        </div>
+      </CardContent>
+    </Card>
   );
 }
