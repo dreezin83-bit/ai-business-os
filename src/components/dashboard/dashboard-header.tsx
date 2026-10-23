@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useUser } from "@clerk/nextjs";
 import { Link2, PhoneCall } from "lucide-react";
 import { useToast } from "@/components/toaster";
+import { ThemeSwitcher } from "@/components/dashboard/theme-switcher";
 
 function getGreeting() {
   const h = new Date().getHours();
@@ -81,6 +82,11 @@ export function DashboardHeader() {
           <Link2 className="h-3.5 w-3.5" />
           Share Booking Link
         </button>
+
+        {/* Theme selector — same shared component as the sidebar */}
+        <div className="w-44 shrink-0">
+          <ThemeSwitcher />
+        </div>
       </div>
     </div>
   );
