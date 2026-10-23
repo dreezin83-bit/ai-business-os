@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { useAuth } from "@clerk/nextjs";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -85,6 +86,7 @@ DAYS.forEach((day) => {
 export default function OnboardingPage() {
   const router = useRouter();
   const { toast } = useToast();
+  const { isLoaded, isSignedIn } = useAuth();
 
   const [step, setStep] = useState(1);
   const [submitting, setSubmitting] = useState(false);
@@ -95,6 +97,15 @@ export default function OnboardingPage() {
   const [customizeAI, setCustomizeAI] = useState(false);
   const [hoursModified, setHoursModified] = useState(false);
   const [chipDraft, setChipDraft] = useState("");
+  // Signed-out guard — mirror of dashboard/layout.tsx. Server-side auth on
+  // /onboarding passes through in prod, so without this the full onboarding
+  // form would render to signed-out visitors (no data risk: /api/onboarding
+  // still 401s without a session). Pure UI hardening.
+  useEffect(() => {
+    if (isLoaded && !isSignedIn) {
+      router.replace("/sign-in");
+    }
+  }, [isLoaded, isSignedIn, router]);
   // Pre-fill the cascading selector from an existing value if the business
   // already has one saved (legacy freeform string or JSON array).
   useEffect(() => {
@@ -250,6 +261,16 @@ export default function OnboardingPage() {
     }
   };
 
+  // Hold the wizard until Clerk has resolved auth state — same behavior as
+  // dashboard/layout.tsx: signed-out visitors are redirected to /sign-in and
+  // never see the onboarding form render.
+  if (!isLoaded || !isSignedIn) {
+    return (
+      <div className="min-h-screen bg-black flex items-center justify-center">
+        <Loader2 className="h-6 w-6 animate-spin text-white/40" />
+      </div>
+    );
+  }
   if (completed) {
     return (
       <div className="min-h-screen bg-black flex items-center justify-center relative overflow-hidden">
