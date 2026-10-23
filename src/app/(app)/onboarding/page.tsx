@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -19,6 +19,12 @@ import {
 } from "lucide-react";
 import { useToast } from "@/components/toaster";
 import { cn } from "@/lib/utils";
+import {
+  SERVICE_AREA_COUNTRIES,
+  SERVICE_AREA_REGIONS,
+  splitLegacyServiceArea,
+  type ServiceAreaSelection,
+} from "@/lib/service-area";
 
 const CATEGORIES = [
   { label: "HVAC", value: "hvac" },
@@ -60,7 +66,7 @@ interface FormData {
   phone: string;
   email: string;
   website: string;
-  serviceArea: string;
+  serviceArea: ServiceAreaSelection;
   hours: Record<string, DayHours>;
   emergencyAvailable: boolean;
   emergencyNote: string;
@@ -88,13 +94,37 @@ export default function OnboardingPage() {
   // customizing them — otherwise the server's template fallback is blocked.
   const [customizeAI, setCustomizeAI] = useState(false);
   const [hoursModified, setHoursModified] = useState(false);
+  const [chipDraft, setChipDraft] = useState("");
+  // Pre-fill the cascading selector from an existing value if the business
+  // already has one saved (legacy freeform string or JSON array).
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await fetch("/api/settings");
+        if (!res.ok) return;
+        const data = await res.json();
+        const legacy =
+          data && typeof data.address === "string" && data.address
+            ? data.address
+            : data?.serviceAreas;
+        if (typeof legacy === "string" && legacy.trim()) {
+          const sel = splitLegacyServiceArea(legacy);
+          if (sel.cities.length > 0 || sel.otherNote.trim()) {
+            setForm((prev) => ({ ...prev, serviceArea: sel }));
+          }
+        }
+      } catch {
+        // Pre-fill is best-effort; the wizard works fine empty.
+      }
+    })();
+  }, []);
   const [form, setForm] = useState<FormData>({
     businessName: "",
     category: "",
     phone: "",
     email: "",
     website: "",
-    serviceArea: "",
+    serviceArea: { country: "US", region: "", cities: [], otherNote: "" },
     hours: { ...defaultHours },
     emergencyAvailable: false,
     emergencyNote: "",
@@ -117,6 +147,34 @@ export default function OnboardingPage() {
     }));
   };
 
+  const addServiceAreaChip = (raw: string) => {
+    const v = raw.trim();
+    if (!v) return;
+    setForm((prev) => {
+      if (prev.serviceArea.cities.some((c) => c.toLowerCase() === v.toLowerCase())) return prev;
+      return {
+        ...prev,
+        serviceArea: { ...prev.serviceArea, cities: [...prev.serviceArea.cities, v] },
+      };
+    });
+  };
+  const removeServiceAreaChip = (idx: number) =>
+    setForm((prev) => ({
+      ...prev,
+      serviceArea: {
+        ...prev.serviceArea,
+        cities: prev.serviceArea.cities.filter((_, i) => i !== idx),
+      },
+    }));
+  const serviceAreaValid = (): boolean => {
+    const sa = form.serviceArea;
+    if (!sa?.country) return false;
+    if (sa.country === "global") {
+      return !!sa.otherNote?.trim() || (sa.cities ?? []).some((c) => c.trim());
+    }
+    if (!sa.region) return false;
+    return (sa.cities ?? []).some((c) => c.trim());
+  };
   const defaultGreeting = `Hello! Welcome to ${form.businessName || "[Business Name]"}. How can I help you today?`;
 
   const canNext = (): boolean => {
@@ -124,7 +182,7 @@ export default function OnboardingPage() {
       case 1:
         return !!form.businessName.trim() && !!form.category && !!form.phone.trim() && !!form.email.trim();
       case 2:
-        return !!form.serviceArea.trim();
+        return serviceAreaValid();
       case 3:
         // Services/greeting come from the selected preset by default; the
         // custom fields are optional even when the user opts in to them.
@@ -370,15 +428,134 @@ export default function OnboardingPage() {
                   <label className="text-xs font-medium text-white/60 mb-1.5 block">
                     Service Area <span className="text-red-400">*</span>
                   </label>
-                  <Textarea
-                    value={form.serviceArea}
-                    onChange={(e) => update("serviceArea", e.target.value)}
-                    placeholder="Phoenix, AZ; Scottsdale, AZ; Tempe, AZ (zip codes: 85001-85099)"
-                    rows={2}
-                  />
-                  <p className="text-[11px] text-white/25 mt-1">
-                    Enter cities, zip codes, or regions you serve — separated by commas or semicolons.
-                  </p>
+                  <div className="space-y-3">
+                    {/* Country + State/Region cascading selects */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div>
+                        <label className="text-[11px] text-white/40 mb-1 block">Country</label>
+                        <select
+                          value={form.serviceArea.country}
+                          onChange={(e) => {
+                            const country = e.target.value;
+                            setForm((prev) => ({
+                              ...prev,
+                              serviceArea: {
+                                ...prev.serviceArea,
+                                country,
+                                // Reset the region when the country changes.
+                                region: country === "global" ? "" : prev.serviceArea.region,
+                              },
+                            }));
+                          }}
+                          className="glass-input h-10 appearance-none cursor-pointer"
+                          style={{ WebkitAppearance: "none" }}
+                        >
+                          {SERVICE_AREA_COUNTRIES.map((c) => (
+                            <option key={c.value} value={c.value} className="bg-black text-white">
+                              {c.label}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      {form.serviceArea.country !== "global" && (
+                        <div>
+                          <label className="text-[11px] text-white/40 mb-1 block">State / Region</label>
+                          <select
+                            value={form.serviceArea.region}
+                            onChange={(e) =>
+                              setForm((prev) => ({
+                                ...prev,
+                                serviceArea: { ...prev.serviceArea, region: e.target.value },
+                              }))
+                            }
+                            className="glass-input h-10 appearance-none cursor-pointer"
+                            style={{ WebkitAppearance: "none" }}
+                          >
+                            <option value="" disabled className="bg-black">
+                              Select a state / region...
+                            </option>
+                            {(SERVICE_AREA_REGIONS[form.serviceArea.country] || []).map((r) => (
+                              <option key={r} value={r} className="bg-black text-white">
+                                {r}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      )}
+                    </div>
+                    {form.serviceArea.country === "global" ? (
+                      <div>
+                        <label className="text-[11px] text-white/40 mb-1 block">
+                          Describe your service area
+                        </label>
+                        <Input
+                          value={form.serviceArea.otherNote}
+                          onChange={(e) =>
+                            setForm((prev) => ({
+                              ...prev,
+                              serviceArea: { ...prev.serviceArea, otherNote: e.target.value },
+                            }))
+                          }
+                          placeholder="e.g. Nationwide — remote support in all timezones"
+                        />
+                      </div>
+                    ) : (
+                      <div>
+                        <label className="text-[11px] text-white/40 mb-1 block">
+                          Cities / Zip Codes served{" "}
+                          <span className="text-white/25">(press Enter to add)</span>
+                        </label>
+                        <div className="flex flex-wrap items-center gap-2 rounded-xl border border-white/[0.08] bg-white/[0.02] p-2">
+                          {form.serviceArea.cities.map((city, i) => (
+                            <span
+                              key={`${city}-${i}`}
+                              className="inline-flex items-center gap-1.5 rounded-lg bg-indigo-500/15 border border-indigo-400/20 px-2.5 py-1 text-xs text-indigo-200"
+                            >
+                              {city}
+                              <button
+                                type="button"
+                                onClick={() => removeServiceAreaChip(i)}
+                                className="text-indigo-300/60 hover:text-white transition-colors"
+                                aria-label={`Remove ${city}`}
+                              >
+                                <X className="h-3 w-3" />
+                              </button>
+                            </span>
+                          ))}
+                          <Input
+                            value={chipDraft}
+                            onChange={(e) => setChipDraft(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter" || e.key === ",") {
+                                e.preventDefault();
+                                addServiceAreaChip(chipDraft);
+                                setChipDraft("");
+                              } else if (
+                                e.key === "Backspace" &&
+                                !chipDraft &&
+                                form.serviceArea.cities.length > 0
+                              ) {
+                                removeServiceAreaChip(form.serviceArea.cities.length - 1);
+                              }
+                            }}
+                            onBlur={() => {
+                              addServiceAreaChip(chipDraft);
+                              setChipDraft("");
+                            }}
+                            placeholder={
+                              form.serviceArea.cities.length > 0
+                                ? "Add another…"
+                                : "Type a city or zip code and press Enter"
+                            }
+                            className="h-8 min-w-[170px] flex-1 border-none bg-transparent shadow-none focus-visible:ring-0 px-1"
+                          />
+                        </div>
+                      </div>
+                    )}
+                    <p className="text-[11px] text-white/25">
+                      Pick your country and region, then add the cities or zip codes you serve.
+                    </p>
+                  </div>
                 </div>
 
                 <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-4">

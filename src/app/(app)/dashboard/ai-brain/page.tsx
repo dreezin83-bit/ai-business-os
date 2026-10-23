@@ -12,6 +12,7 @@ import {
   Phone, Globe, Clock, Mail, Bell, Webhook, ExternalLink,
 } from "lucide-react";
 import { useToast } from "@/components/toaster";
+import { formatServiceAreas } from "@/lib/service-area";
 import { ErrorBoundary } from "@/components/error-boundary";
 import Link from "next/link";
 
@@ -107,9 +108,9 @@ function AiBrainContent() {
 
   // Derived
   const dismissWarning = () => { setWarningDismissed(true); try { localStorage.setItem(WARNING_DISMISS_KEY, "1"); } catch {} };
-  const showWarning = !warningDismissed && (!config.pricingGuidance?.trim() || !config.serviceAreas?.trim());
+  const showWarning = !warningDismissed && (!config.pricingGuidance?.trim() || !formatServiceAreas(config.serviceAreas));
   const hasPricing = !!config.pricingGuidance?.trim();
-  const hasServiceAreas = !!config.serviceAreas?.trim();
+  const hasServiceAreas = !!formatServiceAreas(config.serviceAreas);
   const hasBusinessHours = useMemo(() => {
     try { return JSON.parse(config.businessHours || "[]").some((d: any) => !d.closed); } catch { return false; }
   }, [config.businessHours]);
@@ -269,7 +270,7 @@ function AiBrainContent() {
                   { label: "Phone Number", filled: !!businessInfo.phone, value: businessInfo.phone || "Not set" },
                   { label: "Email", filled: !!businessInfo.email, value: businessInfo.email || "Not set" },
                   { label: "Website", filled: !!businessInfo.website, value: businessInfo.website || "Not set" },
-                  { label: "Service Areas", filled: hasServiceAreas, value: hasServiceAreas ? config.serviceAreas : "Not set" },
+                  { label: "Service Areas", filled: hasServiceAreas, value: hasServiceAreas ? formatServiceAreas(config.serviceAreas) : "Not set" },
                   { label: "Business Hours", filled: hasBusinessHours, value: hasBusinessHours ? "Configured" : "Not set" },
                   { label: "Pricing", filled: hasPricing, value: hasPricing ? "Configured" : "Not set" },
                 ].map((f) => (
