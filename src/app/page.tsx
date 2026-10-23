@@ -13,6 +13,7 @@ import LazySection from "@/components/landing/lazy-section";
 import MobileDrawer from "@/components/landing/mobile-drawer";
 import IndustryTicker from "@/components/landing/industry-ticker";
 import Testimonials from "@/components/landing/testimonials";
+import Comparison from "@/components/landing/comparison";
 import {
   DISCORD_INVITE_URL,
   WHATSAPP_SUPPORT_URL,
@@ -162,6 +163,8 @@ export default function HomePage() {
       <IndustryTicker />
       {/* ─── Testimonials ───────────────────────────────────────────── */}
       <Testimonials />
+      {/* ─── Without vs With Sagenify ────────────────────────────────── */}
+      <Comparison />
       {/* ─── ROI Calculator ──────────────────────────────────────────── */}
       <section id="roi" className="py-16 md:py-24 border-t border-white/[0.04]">
         <div className="max-w-7xl mx-auto px-6 lg:px-8 grid lg:grid-cols-2 gap-10 lg:gap-16 items-center">
