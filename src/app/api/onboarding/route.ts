@@ -11,6 +11,7 @@ import { business, aiBrainConfig, knowledgeDocument } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { generateId } from "@/lib/utils";
 import { getTemplate } from "@/lib/ai-templates/index";
+import { normalizeServiceAreaValue } from "@/lib/service-area";
 import { invalidateAiContextCache } from "@/lib/ai-context-cache";
 import { canProvisionVoice, provisionVapiVoice } from "@/lib/vapi-provisioning";
 
@@ -65,6 +66,10 @@ export async function POST(request: Request) {
 
   // Load template if category is provided
   const template = category ? getTemplate(category) : undefined;
+  // Human-readable summary for business.address (only meaningful when the
+  // client sent a value — otherwise keep the current "" / existing address).
+  const addressSummary =
+    serviceArea !== undefined ? normalizeServiceAreaValue(serviceArea).summary : "";
 
   // ── Find or create the business ─────────────────────────────
   let [biz] = await db
@@ -84,7 +89,7 @@ export async function POST(request: Request) {
       phone: phone || "",
       email: email || "",
       website: website || "",
-      address: serviceArea || "",
+      address: addressSummary || "",
       onboardingComplete: true,
       updatedAt: new Date(),
     });
@@ -100,7 +105,7 @@ export async function POST(request: Request) {
     if (phone !== undefined) updateData.phone = phone;
     if (website !== undefined) updateData.website = website;
     if (email !== undefined) updateData.email = email;
-    if (serviceArea !== undefined) updateData.address = serviceArea;
+    if (serviceArea !== undefined) updateData.address = addressSummary;
 
     await db.update(business).set(updateData).where(eq(business.id, biz.id));
   }
@@ -144,9 +149,13 @@ export async function POST(request: Request) {
       ? greetingMessage
       : template?.greetingMessage ?? "Hello! How can I help you today?";
 
-  const serviceAreaValue = serviceArea !== undefined
-    ? (typeof serviceArea === "string" ? serviceArea : JSON.stringify(serviceArea))
-    : existingConfig?.serviceAreas ?? "[]";
+  // Normalize service areas into the storage contract: service_areas is a JSON
+  // array of readable area strings ("["Austin, Texas","Round Rock, Texas"]");
+  // business.address carries the same areas as a readable summary (above).
+  const { areasJson: serviceAreaJson } = normalizeServiceAreaValue(
+    serviceArea,
+    existingConfig?.serviceAreas
+  );
 
   if (existingConfig) {
     await db
@@ -156,7 +165,7 @@ export async function POST(request: Request) {
         services: servicesValue,
         businessHours: businessHoursValue,
         greetingMessage: greetingValue,
-        serviceAreas: serviceAreaValue,
+        serviceAreas: serviceAreaJson,
         systemPrompt: template?.systemPrompt ?? existingConfig.systemPrompt ?? "",
         leadCollectionRules: template?.leadCollectionRules ?? existingConfig.leadCollectionRules ?? "",
         appointmentBookingRules: template?.appointmentBookingRules ?? existingConfig.appointmentBookingRules ?? "",
@@ -174,7 +183,7 @@ export async function POST(request: Request) {
       services: servicesValue,
       businessHours: businessHoursValue,
       greetingMessage: greetingValue,
-      serviceAreas: serviceAreaValue,
+      serviceAreas: serviceAreaJson,
       leadCollectionRules: template?.leadCollectionRules ?? "",
       appointmentBookingRules: template?.appointmentBookingRules ?? "",
       responseStyle: template?.responseStyle ?? "",
