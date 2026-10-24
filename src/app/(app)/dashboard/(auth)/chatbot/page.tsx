@@ -39,14 +39,15 @@ export default function ChatbotPage() {
       .catch(() => setLoading(false));
   }, []);
 
-  const simpleEmbed = `<script src="https://www.sagenifyai.com/api/public/chatbot/widget" data-business-id="${businessId}" data-chatbot-token="${embedToken}"></script>`;
+  const widgetBase = `${process.env.NEXT_PUBLIC_APP_URL ?? "https://www.sagenifyai.com"}`;
+  const simpleEmbed = `<script src="${widgetBase}/api/public/chatbot/widget" data-business-id="${businessId}" data-chatbot-token="${embedToken}"></script>`;
 
   const asyncEmbed = `<script>
   (function(w,d,s,o,f,js,fjs){
     w['AIWidgetConfig']=o;w[o]=w[o]||function(){(w[o].q=w[o].q||[]).push(arguments)};
     js=d.createElement(s),fjs=d.getElementsByTagName(s)[0];
     js.id=o;js.src=f;js.async=1;fjs.parentNode.insertBefore(js,fjs);
-  })(window,document,'script','aiChatbot','https://www.sagenifyai.com/api/public/chatbot/widget');
+  })(window,document,'script','aiChatbot','${widgetBase}/api/public/chatbot/widget');
   aiChatbot('init', { businessId: '${businessId}', token: '${embedToken}' });
 </script>`;
 

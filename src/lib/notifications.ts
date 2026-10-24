@@ -2,6 +2,7 @@ import { db } from "@/db";
 import { communicationLog, business, communicationSettings, lead, appointment } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { generateId } from "@/lib/utils";
+import { APP_URL } from "@/lib/domains";
 
 interface LeadData {
   id: string;
@@ -169,7 +170,7 @@ export async function notifyContractorOfNewLead(
     `Service Request: ${lead.serviceRequest || "Not specified"}`,
     summaryLine,
     `━━━━━━━━━━━━━━━━━━━━━`,
-    `View all leads: https://www.sagenifyai.com/dashboard/leads`,
+    `View all leads: ${APP_URL}/dashboard/leads`,
   ].filter(Boolean).join("\n");
 
   console.log(`[notifications] Notifying contractor about lead ${leadId} for business ${businessId}`);
@@ -346,7 +347,7 @@ export async function notifyContractorOfNewAppointment(
     `Date: ${appt.date}`,
     `Time: ${appt.startTime}${appt.endTime ? ` - ${appt.endTime}` : ""}`,
     `━━━━━━━━━━━━━━━━━━━━━`,
-    `View all appointments: https://www.sagenifyai.com/dashboard/appointments`,
+    `View all appointments: ${APP_URL}/dashboard/appointments`,
   ].join("\n");
 
   console.log(`[notifications] Notifying contractor about appointment ${appointmentId} for business ${businessId}`);

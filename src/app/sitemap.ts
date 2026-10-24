@@ -1,6 +1,5 @@
 import type { MetadataRoute } from "next";
-
-const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://www.sagenifyai.com";
+import { SITE_URL } from "@/lib/domains";
 
 /**
  * sitemap.xml — public marketing pages only. Auth-gated routes
@@ -8,6 +7,7 @@ const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://www.sagenifyai.com
  * they are private app pages and must not be crawled or indexed.
  */
 export default function sitemap(): MetadataRoute.Sitemap {
+  const BASE_URL = SITE_URL;
   return [
     {
       url: `${BASE_URL}/`,

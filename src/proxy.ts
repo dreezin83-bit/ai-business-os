@@ -1,6 +1,7 @@
 import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 import { neon } from "@neondatabase/serverless";
+import { resolveSubdomainRedirect } from "@/lib/domains";
 
 const isPublicRoute = createRouteMatcher([
   "/",
@@ -33,6 +34,21 @@ const ONBOARDING_COOKIE = "ob_status";
 
 export default clerkMiddleware(
   async (auth, req) => {
+    // ── Subdomain canonicalization (marketing site ↔ app portal) ────────
+    // Runs BEFORE auth.protect() so signed-out visitors on the wrong host are
+    // moved to the canonical host first (Clerk then redirects to sign-in on
+    // the correct host). No-op until NEXT_PUBLIC_APP_URL activates the split;
+    // /api/* and /_next/* are never redirected (webhooks + chatbot embeds
+    // must keep working from both hosts during the transition).
+    const canonical = resolveSubdomainRedirect({
+      host: req.headers.get("host") ?? req.nextUrl.host,
+      pathname: req.nextUrl.pathname,
+      search: req.nextUrl.search,
+    });
+    if (canonical) {
+      return NextResponse.redirect(new URL(canonical), 307);
+    }
+
     // Protect non-public routes
     if (!isPublicRoute(req)) {
       auth.protect();

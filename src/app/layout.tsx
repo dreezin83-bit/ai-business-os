@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
+import { SITE_URL } from "@/lib/domains";
 
 /**
  * Root layout — minimal shell shared by every route.
@@ -13,8 +14,7 @@ import "./globals.css";
  */
 const inter = Inter({ subsets: ["latin"] });
 
-const siteUrl =
-  process.env.NEXT_PUBLIC_SITE_URL ?? "https://www.sagenifyai.com";
+const siteUrl = SITE_URL;
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
