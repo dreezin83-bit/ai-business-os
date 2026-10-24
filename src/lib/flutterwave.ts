@@ -141,6 +141,18 @@ async function findPaymentPlan(): Promise<FlutterwavePlan | null> {
 
 // ─── Recurring enrollment ($199/mo from month 2, plan-deferred) ─
 /**
+ * Idempotency guard for the setup webhook: once a business holds a Flutterwave
+ * enrollment link, a retried webhook (lost 200/202 ack) must NOT enroll again —
+ * a second plan subscription would double up the month-2 $199 charges.
+ * Returns true when the business already has a flutterwave subscription id.
+ */
+export function shouldSkipRecurringEnrollment(
+  existingFlutterwaveSubId: string | null | undefined,
+): boolean {
+  return !!existingFlutterwaveSubId;
+}
+
+/**
  * Enroll the customer in the $199/mo payment plan. The plan's start_date
  * (+31d, the day after month 1 closes) governs when its first charge can
  * occur — nothing is charged in month 1 (the $399 setup is the entire

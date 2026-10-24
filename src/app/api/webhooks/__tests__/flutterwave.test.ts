@@ -10,6 +10,7 @@ import {
   majorToCents,
   RECURRING_CENTS,
   SETUP_FEE_CENTS,
+  shouldSkipRecurringEnrollment,
   verifyFlutterwaveSignature,
 } from "@/lib/flutterwave";
 
@@ -88,6 +89,20 @@ describe("deferredPlanStartDate (first $199 charge after month 1 closes)", () =>
     const creditPeriodEnd = new Date(ref.getTime() + 30 * 86_400_000); // 2026-11-23T12:00
     const planStart = new Date(`${deferredPlanStartDate(ref)}T00:00:00.000Z`);
     expect(planStart.getTime()).toBeGreaterThan(creditPeriodEnd.getTime());
+  });
+});
+
+describe("shouldSkipRecurringEnrollment (idempotent retry guard)", () => {
+  test("undefined (no local subscription yet) → enroll", () => {
+    expect(shouldSkipRecurringEnrollment(undefined)).toBe(false);
+  });
+
+  test("null id (enrollment pending/failed) → enroll (retry allowed)", () => {
+    expect(shouldSkipRecurringEnrollment(null)).toBe(false);
+  });
+
+  test("existing flutterwaveSubId → skip (never double-enroll on retry)", () => {
+    expect(shouldSkipRecurringEnrollment("12345")).toBe(true);
   });
 });
 

@@ -32,6 +32,7 @@ import {
   ensurePaymentPlan,
   majorToCents,
   RECURRING_CENTS,
+  shouldSkipRecurringEnrollment,
   type SignupMetadata,
   verifyFlutterwaveSignature,
   verifyFlutterwaveTransaction,
@@ -189,61 +190,79 @@ export async function POST(request: Request) {
       }
     }
 
-    // ── Enroll recurring subscription ($199/mo via payment plan) ──
+    // ── Recurring enrollment ($199/mo via payment plan) ──
     let flutterwaveSubscriptionId: number | null = null;
     let subscriptionFailed = false;
 
-    // Record the setup payment on the timeline (billing milestone).
-    await recordTimelineEvent({
-      businessId,
-      scope: "billing",
-      event: "setup_payment_received",
-      detail: `$${(majorToCents(data.amount) / 100).toFixed(2)} setup payment captured (charge ${data.id}, tx_ref: ${data.tx_ref})`,
-      status: "success",
-    });
+    // Read the local subscription FIRST. If this business already holds a
+    // Flutterwave enrollment link, NEVER re-enroll: a retried webhook (lost
+    // 200/202 ack after fulfillment) must not create a second plan
+    // subscription — that would double up the month-2 $199 charges. The
+    // pre-check makes the entire fulfill path idempotent for retries.
+    const [existingSub] = await db
+      .select()
+      .from(subscription)
+      .where(eq(subscription.businessId, businessId));
+    const existingFlutterwaveSubId = existingSub?.flutterwaveSubId ?? null;
 
-    const customerEmail = verified.customer?.email || data.customer?.email || "";
-    if (customerEmail) {
-      try {
-        const plan = await ensurePaymentPlan();
-        const externalRef = `sub-${businessId}-${data.id ?? Date.now()}`;
-        const sub = await createFlutterwaveSubscription(
-          customerEmail,
-          plan.id,
-          externalRef,
-        );
-        flutterwaveSubscriptionId = sub.id;
-        console.log(
-          `[flutterwave-webhook] Flutterwave subscription created: ${flutterwaveSubscriptionId} for business ${businessId}`,
-        );
-        await recordTimelineEvent({
-          businessId,
-          scope: "billing",
-          event: "subscription_created",
-          detail: `Flutterwave recurring plan $199/month enrolled (subscription ${flutterwaveSubscriptionId}); first plan charge deferred by plan start_date`,
-          status: "success",
-        });
-      } catch (err: any) {
+    if (shouldSkipRecurringEnrollment(existingFlutterwaveSubId)) {
+      flutterwaveSubscriptionId = Number(existingFlutterwaveSubId);
+      console.log(
+        `[flutterwave-webhook] Subscription ${existingFlutterwaveSubId} already recorded for ${businessId} — skipping enrollment (idempotent retry)`,
+      );
+    } else {
+      // Record the setup payment on the timeline (billing milestone).
+      await recordTimelineEvent({
+        businessId,
+        scope: "billing",
+        event: "setup_payment_received",
+        detail: `${(majorToCents(data.amount) / 100).toFixed(2)} setup payment captured (charge ${data.id}, tx_ref: ${data.tx_ref})`,
+        status: "success",
+      });
+
+      const customerEmail = verified.customer?.email || data.customer?.email || "";
+      if (customerEmail) {
+        try {
+          const plan = await ensurePaymentPlan();
+          const externalRef = `sub-${businessId}-${data.id ?? Date.now()}`;
+          const sub = await createFlutterwaveSubscription(
+            customerEmail,
+            plan.id,
+            externalRef,
+          );
+          flutterwaveSubscriptionId = sub.id;
+          console.log(
+            `[flutterwave-webhook] Flutterwave subscription created: ${flutterwaveSubscriptionId} for business ${businessId}`,
+          );
+          await recordTimelineEvent({
+            businessId,
+            scope: "billing",
+            event: "subscription_created",
+            detail: `Flutterwave recurring plan $199/month enrolled (subscription ${flutterwaveSubscriptionId}); first plan charge deferred by plan start_date`,
+            status: "success",
+          });
+        } catch (err: any) {
+          console.error(
+            `[flutterwave-webhook] Failed to create Flutterwave subscription: ${err?.message}`,
+          );
+          subscriptionFailed = true;
+          await recordTimelineEvent({
+            businessId,
+            scope: "billing",
+            event: "subscription_creation_failed",
+            detail: `Setup payment captured but recurring enrollment failed: ${(err as any)?.message || "unknown error"}`,
+            status: "failed",
+          });
+          // One-time $399 succeeded but recurring setup failed. Return 202 to
+          // flag the partial state — Flutterwave won't retry, but the business
+          // is marked as "pending_subscription" for manual/retry.
+        }
+      } else {
         console.error(
-          `[flutterwave-webhook] Failed to create Flutterwave subscription: ${err?.message}`,
+          "[flutterwave-webhook] No customer email on verified charge — skipping enrollment",
         );
         subscriptionFailed = true;
-        await recordTimelineEvent({
-          businessId,
-          scope: "billing",
-          event: "subscription_creation_failed",
-          detail: `Setup payment captured but recurring enrollment failed: ${(err as any)?.message || "unknown error"}`,
-          status: "failed",
-        });
-        // One-time $399 succeeded but recurring setup failed. Return 202 to
-        // flag the partial state — Flutterwave won't retry, but the business
-        // is marked as "pending_subscription" for manual/retry.
       }
-    } else {
-      console.error(
-        "[flutterwave-webhook] No customer email on verified charge — skipping enrollment",
-      );
-      subscriptionFailed = true;
     }
 
     // ── Upsert local subscription ──
@@ -255,20 +274,8 @@ export async function POST(request: Request) {
     // provisioning gate, and can be retried from an admin endpoint.
     const subStatus = subscriptionFailed ? "pending_subscription" : "active";
 
-    const [existingSub] = await db
-      .select()
-      .from(subscription)
-      .where(eq(subscription.businessId, businessId));
-
-    // Dedup: if this flutterwave subscription id is already stored, skip
-    if (
-      flutterwaveSubscriptionId &&
-      existingSub?.flutterwaveSubId === String(flutterwaveSubscriptionId)
-    ) {
-      console.log(
-        `[flutterwave-webhook] Subscription ${flutterwaveSubscriptionId} already recorded — skipping`,
-      );
-    } else if (existingSub) {
+    // Idempotent upsert: refresh the existing row on retries, insert once.
+    if (existingSub) {
       await db
         .update(subscription)
         .set({
