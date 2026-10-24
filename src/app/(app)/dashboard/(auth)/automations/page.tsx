@@ -1,4 +1,5 @@
 import { AutomationView } from "@/components/dashboard/views/automation-view";
+import { requireDashboardUser } from "@/lib/require-dashboard-user";
 
 /**
  * AutomationsPage — the canonical automations route (/dashboard/automations).
@@ -6,5 +7,6 @@ import { AutomationView } from "@/components/dashboard/views/automation-view";
  * route redirects here.
  */
 export default function AutomationsPage() {
+  await requireDashboardUser();
   return <AutomationView />;
 }

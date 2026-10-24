@@ -1,5 +1,6 @@
-import { auth } from "@clerk/nextjs/server";
-import { redirect } from "next/navigation";
+import { requireDashboardUser } from "@/lib/require-dashboard-user";
+
+export const dynamic = "force-dynamic"; // never serve a generated/cached page past the guard
 
 /**
  * Server-side auth enforcement for the entire /dashboard segment.
