@@ -91,7 +91,7 @@ export function isLegacyRateLimited(businessId: string, limit = 20, windowMs = 6
 }
 
 // ── Period helpers ────────────────────────────────────────────────────────────
-/** Resolve the tenant's current billing window from its subscription (Paystack-driven period). */
+/** Resolve the tenant's current billing window from its subscription (Flutterwave-driven period). */
 export async function getPeriodWindow(businessId: string): Promise<{ start: Date; end: Date }> {
   const [sub] = await db
     .select({ periodStart: subscription.currentPeriodStart, periodEnd: subscription.currentPeriodEnd })
@@ -108,7 +108,7 @@ export async function getPeriodWindow(businessId: string): Promise<{ start: Date
 }
 
 /**
- * Open (or refresh) the credit period for a business — called from the Paystack webhook
+ * Open (or refresh) the credit period for a business — called from the Flutterwave webhook
  * with the authoritative subscription window. Idempotent: closing an already-closed period
  * is a no-op; the new period row is created once; monthly_included grant is deduped.
  * Balances are milli-credits: allocated = CREDITS_INCLUDED_PER_PERIOD × 1000.

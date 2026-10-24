@@ -11,7 +11,7 @@ interface SubscribeModalProps {
   onClose: () => void;
 }
 
-const CHECKOUT_URL = "/api/paystack/checkout";
+const CHECKOUT_URL = "/api/flutterwave/checkout";
 
 export default function SubscribeModal({ open, onClose }: SubscribeModalProps) {
   const [email, setEmail] = useState("");
@@ -54,8 +54,8 @@ export default function SubscribeModal({ open, onClose }: SubscribeModalProps) {
         return;
       }
 
-      if (data.authorization_url) {
-        window.location.href = data.authorization_url;
+      if (data.redirect_url) {
+        window.location.href = data.redirect_url;
       } else {
         setError("No payment URL returned");
         setSubmitting(false);

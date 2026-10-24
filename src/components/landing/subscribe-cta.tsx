@@ -9,7 +9,7 @@ type ButtonSize = "default" | "sm" | "lg" | "icon";
 
 /**
  * Small client island: a CTA button that opens the existing SubscribeModal
- * (the Paystack checkout entry). The landing page itself stays a server
+ * (the Flutterwave checkout entry). The landing page itself stays a server
  * component — this is the only client boundary a CTA needs.
  */
 export default function SubscribeCta({

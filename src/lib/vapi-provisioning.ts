@@ -444,7 +444,8 @@ export async function canProvisionVoice(businessId: string): Promise<boolean> {
     return false;
   }
 
-  // Require a verified payment identifier (Paystack or Flutterwave sub ID)
+  // Require a verified payment identifier (Flutterwave sub ID; paystackSubId
+  // kept for legacy rows created before the provider swap).
   const hasPaymentId = !!sub.paystackSubId || !!sub.flutterwaveSubId;
   if (!hasPaymentId) {
     console.log(`[vapi-provisioning] Business ${businessId}: no verified payment identifier — rejecting`);
