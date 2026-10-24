@@ -13,8 +13,8 @@ const FW_BASE = "https://api.flutterwave.com/v3";
 
 export interface FlutterwavePaymentInput {
   tx_ref: string;           // unique transaction reference
-  amount: number;            // amount in the smallest currency unit (e.g., cents)
-  currency?: string;         // default: "USD"
+  amount: number;           // amount in the currency's MAJOR unit (e.g., 399 = $399.00)
+  currency?: string;        // default: "USD"
   redirect_url?: string;     // where to redirect after payment
   customer: {
     email: string;
@@ -201,6 +201,20 @@ export async function listSubscriptions(): Promise<{
 }
 
 // ─── Plans ──────────────────────────────────────────────────────
+
+/** List all payment plans (for idempotent plan lookup). */
+export async function getPaymentPlans(): Promise<{
+  status: string;
+  data: Array<{
+    id: number;
+    name?: string;
+    amount?: number;
+    interval?: string;
+    status?: string;
+  }>;
+}> {
+  return fwFetch("GET", "/payment-plans");
+}
 
 /** Create a payment plan for subscriptions */
 export async function createPlan(input: {

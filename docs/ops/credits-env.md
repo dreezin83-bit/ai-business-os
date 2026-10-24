@@ -28,7 +28,7 @@ team `contractor-ai`). Set via `bunx vercel env add <NAME> production --token $V
   3. Verify the warn/grace/stop ladder on a test tenant before broad rollout.
 - Active calls are **never** dropped mid-conversation on exhaustion (business-plan
   rule) — enforcement only stops *new* expensive AI work.
-- Authorized credit grants (owner/admin) are the only refill path; Paystack
+- Authorized credit grants (owner/admin) are the only refill path; Flutterwave
   top-up purchasing is explicitly out of scope until usage data exists.
 
 ## Ledger audit columns

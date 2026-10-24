@@ -31,7 +31,7 @@
  * 8. Persist all provider IDs, number, status, timestamps
  * 9. Set voiceSetupReady = true, state = "completed"
  *
- * Required env: VAPI_API_KEY, NEXT_PUBLIC_APP_URL
+ * Required env: VAPI_PRIVATE_KEY (VAPI_API_KEY legacy fallback), NEXT_PUBLIC_APP_URL
  */
 
 import { db } from "@/db";
@@ -180,9 +180,9 @@ export async function provisionVapiVoice(
   console.log(`[vapi-provisioning] Starting for business ${businessId}`);
 
   // ── Validate env ─────────────────────────────────────
-  if (!process.env.VAPI_API_KEY) {
-    await recordError(businessId, "VAPI_API_KEY not configured");
-    return { success: false, error: "VAPI_API_KEY not configured" };
+  if (!process.env.VAPI_PRIVATE_KEY && !process.env.VAPI_API_KEY) {
+    await recordError(businessId, "VAPI key not configured (VAPI_PRIVATE_KEY or legacy VAPI_API_KEY)");
+    return { success: false, error: "VAPI key not configured" };
   }
 
   // ── Load business ────────────────────────────────────
@@ -444,7 +444,8 @@ export async function canProvisionVoice(businessId: string): Promise<boolean> {
     return false;
   }
 
-  // Require a verified payment identifier (Paystack or Flutterwave sub ID)
+  // Require a verified payment identifier (Flutterwave sub ID; paystackSubId
+  // kept for legacy rows created before the provider swap).
   const hasPaymentId = !!sub.paystackSubId || !!sub.flutterwaveSubId;
   if (!hasPaymentId) {
     console.log(`[vapi-provisioning] Business ${businessId}: no verified payment identifier — rejecting`);

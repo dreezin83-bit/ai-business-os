@@ -18,7 +18,7 @@ export async function GET() {
     if (!sub) return NextResponse.json({ plan: "starter", status: "pending", hasSubscription: false });
     return NextResponse.json({
       plan: sub.plan, status: sub.status, amount: sub.amount, currency: sub.currency,
-      interval: sub.interval, paystackSubId: sub.paystackSubId, flutterwaveSubId: sub.flutterwaveSubId,
+      interval: sub.interval, flutterwaveSubId: sub.flutterwaveSubId,
       paymentProvider: sub.paymentProvider, currentPeriodStart: sub.currentPeriodStart,
       currentPeriodEnd: sub.currentPeriodEnd, canceledAt: sub.canceledAt, hasSubscription: true,
     });
