@@ -49,8 +49,25 @@ export default clerkMiddleware(
       return NextResponse.redirect(new URL(canonical), 307);
     }
 
-    // Protect non-public routes
+    // Protect non-public routes — explicit signed-out redirect (belt-and-braces).
+    // Clerk's auth.protect() redirect is swallowed on this stack (Next 16.2 +
+    // Turbopack on Vercel): the proxy runs (x-clerk-auth-status: signed-out IS
+    // set on responses) but the redirect it emits disappears at the boundary —
+    // verified 2026-10-24 across /dashboard/* pages and even raw
+    // NextResponse.redirect() rewrites. `auth` here is the middleware helper
+    // object (NOT a function), so the check is auth.userId — the same property
+    // the onboarding block below already reads. Page navigations (document or
+    // RSC state-tree request) get a raw 307 to /sign-in; API/data requests
+    // (sec-fetch-dest !== document, no router header) intentionally fall
+    // through to auth.protect() and the route-handler guards, which keep
+    // returning their 401s instead of an HTML redirect.
+    const isPageNavigation =
+      req.headers.get("sec-fetch-dest") === "document" ||
+      req.headers.get("next-router-state-tree") !== null;
     if (!isPublicRoute(req)) {
+      if (!auth.userId && isPageNavigation) {
+        return NextResponse.redirect(new URL("/sign-in", req.url));
+      }
       auth.protect();
     }
 
