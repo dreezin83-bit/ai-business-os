@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { db } from "@/db";
-import { lead, appointment, conversation, communicationLog } from "@/db/schema";
+import { lead, appointment, conversation, communicationLog, usageEvent } from "@/db/schema";
 import { eq, and, gte, lte, sql, desc } from "drizzle-orm";
 import { ensureBusiness } from "@/lib/business";
 import { getCreditStatus } from "@/lib/credits";
@@ -168,6 +168,34 @@ export async function GET() {
       });
     }
 
+    // ─── Chat vs voice credit split (dashboard usage bars) ──────────────
+    // Sums the usage ledger for THIS billing period: chat = all non-voice
+    // events, voice = voice.call.minutes. Defensive: a missing ledger in a
+    // pre-migration environment must never take the dashboard down.
+    let creditUsage: { chat: number; voice: number } | null = null;
+    if (aiCredits) {
+      try {
+        const [split] = await db
+          .select({
+            chat: sql<number>`coalesce(sum(case when ${usageEvent.eventType} <> 'voice.call.minutes' then ${usageEvent.creditsMilli} else 0 end), 0)`,
+            voice: sql<number>`coalesce(sum(case when ${usageEvent.eventType} = 'voice.call.minutes' then ${usageEvent.creditsMilli} else 0 end), 0)`,
+          })
+          .from(usageEvent)
+          .where(and(eq(usageEvent.businessId, businessId), eq(usageEvent.periodStartAt, aiCredits.periodStart)));
+        if (split) {
+          creditUsage = {
+            chat: Math.round(Number(split.chat) / 1000),
+            voice: Math.round(Number(split.voice) / 1000),
+          };
+        }
+      } catch (err) {
+        console.error("[dashboard/stats] Failed to read credit usage split", {
+          businessId,
+          error: err instanceof Error ? err.message : String(err),
+        });
+      }
+    }
+
     return NextResponse.json({
       totalLeads: Number(totalLeadsResult[0]?.count ?? 0),
       todayAppointments: Number(todayAppts[0]?.count ?? 0),
@@ -217,6 +245,7 @@ export async function GET() {
             periodEnd: aiCredits.periodEnd.toISOString(),
           }
         : null,
+      creditUsage,
     });
   } catch (error: unknown) {
     // Structured server-side logging: full error context so production DB failures

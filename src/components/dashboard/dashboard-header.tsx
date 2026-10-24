@@ -66,7 +66,7 @@ export function DashboardHeader() {
         </span>
 
         <Link
-          href="/dashboard/ai-commander"
+          href="/dashboard/voice"
           className="inline-flex h-9 items-center gap-1.5 rounded-full border border-[var(--dash-card-border-hover)] px-4 text-xs font-semibold text-[var(--dash-heading)] transition-colors hover:bg-[var(--dash-hover)]"
         >
           <PhoneCall className="h-3.5 w-3.5" />

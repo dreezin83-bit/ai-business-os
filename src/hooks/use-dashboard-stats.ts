@@ -62,6 +62,8 @@ export interface DashboardStats {
     status: string;
     periodEnd: string;
   } | null;
+  /** Chat vs voice credits consumed this billing period (null = ledger unavailable). */
+  creditUsage: { chat: number; voice: number } | null;
 }
 
 const CACHE_KEY = "sagenify.dashboard.stats.v1";

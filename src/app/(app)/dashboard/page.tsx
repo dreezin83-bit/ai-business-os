@@ -4,6 +4,7 @@ import { BarChart3 } from "lucide-react";
 import { useDashboardStats } from "@/hooks/use-dashboard-stats";
 import { DashboardHeader } from "@/components/dashboard/dashboard-header";
 import { MetricTiles } from "@/components/dashboard/metric-tiles";
+import { UsageBars } from "@/components/dashboard/usage-bars";
 import { ActivityFeed } from "@/components/dashboard/activity-feed";
 
 /**
@@ -30,6 +31,7 @@ export default function DashboardPage() {
       <DashboardHeader />
 
       <MetricTiles stats={stats} />
+      <UsageBars stats={stats} />
 
       {failed ? (
         <section className="dash-card flex flex-col items-center gap-4 rounded-2xl px-6 py-12 text-center">

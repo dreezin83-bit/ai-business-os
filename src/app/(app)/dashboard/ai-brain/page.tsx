@@ -1,45 +1,26 @@
 "use client";
 
-import { useState } from "react";
-import { BookOpen, Bot, Terminal } from "lucide-react";
-import { PageTabs } from "@/components/dashboard/page-tabs";
-import { AiCommanderView } from "@/components/dashboard/views/ai-commander-view";
+import { Bot } from "lucide-react";
 import { AiBrainView } from "@/components/dashboard/views/ai-brain-view";
-import { KnowledgeBaseView } from "@/components/dashboard/views/knowledge-base-view";
-
-const TABS = [
-  { id: "ai-commander", label: "AI Commander", icon: Terminal },
-  { id: "ai-brain", label: "AI Brain", icon: Bot },
-  { id: "knowledge-base", label: "Knowledge Base", icon: BookOpen },
-] as const;
-
-type TabId = (typeof TABS)[number]["id"];
 
 /**
- * AiBrainPage — unified AI Brain & Knowledge Base tab view combining the
- * former AI Commander, AI Brain and Knowledge Base pages. Each tab mounts the
- * shared extracted view so the old routes keep working untouched.
+ * AiBrainPage — standalone AI Brain /dashboard/ai-brain page.
+ * The view carries its own tabs (Business Profile, Knowledge Base, Behavior
+ * with tone sliders/toggles, Channels) and its own save flow.
  */
 export default function AiBrainPage() {
-  const [active, setActive] = useState<TabId>("ai-brain");
-
   return (
     <div className="space-y-5">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight dash-heading">
-          AI Brain &amp; Knowledge Base
+        <h1 className="flex items-center gap-2 text-2xl font-bold tracking-tight dash-heading">
+          <Bot className="h-6 w-6" /> AI Brain
         </h1>
         <p className="mt-1 text-sm dash-muted">
-          Command your AI, tune its tone and behavior, and manage everything
-          it knows about your business.
+          Tune your AI&apos;s tone and behavior, manage what it knows about
+          your business, and control how it talks to customers.
         </p>
       </div>
-
-      <PageTabs tabs={TABS} active={active} onChange={setActive} />
-
-      {active === "ai-commander" && <AiCommanderView />}
-      {active === "ai-brain" && <AiBrainView />}
-      {active === "knowledge-base" && <KnowledgeBaseView />}
+      <AiBrainView />
     </div>
   );
 }
