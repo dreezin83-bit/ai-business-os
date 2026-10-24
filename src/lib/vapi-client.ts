@@ -4,7 +4,7 @@
  * Typed client for the Vapi Phone Numbers, Assistants, and Calls APIs.
  * Docs: https://docs.vapi.ai/api-reference
  *
- * Required env: VAPI_API_KEY
+ * Required env: VAPI_PRIVATE_KEY (owner-saved name; VAPI_API_KEY kept as legacy fallback)
  */
 
 const VAPI_BASE = "https://api.vapi.ai";
@@ -100,9 +100,9 @@ async function vapiFetch<T>(
   path: string,
   options: RequestInit = {}
 ): Promise<T> {
-  const apiKey = process.env.VAPI_API_KEY;
+  const apiKey = process.env.VAPI_PRIVATE_KEY ?? process.env.VAPI_API_KEY;
   if (!apiKey) {
-    throw new Error("VAPI_API_KEY is not configured");
+    throw new Error("VAPI key is not configured (VAPI_PRIVATE_KEY or legacy VAPI_API_KEY)");
   }
 
   const res = await fetch(`${VAPI_BASE}${path}`, {
