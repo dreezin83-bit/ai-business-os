@@ -12,7 +12,8 @@ import SubscribeCta from "@/components/landing/subscribe-cta";
 import LazySection from "@/components/landing/lazy-section";
 import MobileDrawer from "@/components/landing/mobile-drawer";
 import IndustryTicker from "@/components/landing/industry-ticker";
-import Testimonials from "@/components/landing/testimonials";
+import ProductSection from "@/components/landing/product-section";
+import PricingSection from "@/components/landing/pricing-section";
 import Comparison from "@/components/landing/comparison";
 import {
   DISCORD_INVITE_URL,
@@ -54,6 +55,9 @@ export default function HomePage() {
             </a>
             <a href="#roi" className="hover:text-white transition-colors">
               ROI Calculator
+            </a>
+            <a href="#pricing" className="hover:text-white transition-colors">
+              Pricing
             </a>
             <a href="#faq" className="hover:text-white transition-colors">
               FAQ
@@ -161,8 +165,8 @@ export default function HomePage() {
       </section>
       {/* ─── Industry ticker ───────────────────────────────────────── */}
       <IndustryTicker />
-      {/* ─── Testimonials ───────────────────────────────────────────── */}
-      <Testimonials />
+      {/* ─── What Sagenify does (replaces the old testimonials section) ── */}
+      <ProductSection />
       {/* ─── Without vs With Sagenify ────────────────────────────────── */}
       <Comparison />
       {/* ─── ROI Calculator ──────────────────────────────────────────── */}
@@ -220,6 +224,10 @@ export default function HomePage() {
           </LazySection>
         </div>
       </section>
+
+      {/* ─── Pricing ─────────────────────────────────────────────────── */}
+      <PricingSection />
+
       {/* ─── FAQ ─────────────────────────────────────────────────────── */}
       <section id="faq" className="py-16 md:py-24 border-t border-white/[0.04]">
         <div className="max-w-7xl mx-auto px-6 lg:px-8">
