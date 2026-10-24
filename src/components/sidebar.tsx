@@ -13,6 +13,10 @@ import {
   Menu,
   X,
   LogOut,
+  Sparkles,
+  MessageSquare,
+  PhoneCall,
+  BookOpen,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { useState } from "react";
@@ -44,6 +48,12 @@ const navSections: NavSection[] = [
     items: [
       { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
       {
+        name: "Business Co-Pilot",
+        href: "/dashboard/copilot",
+        icon: Sparkles,
+        match: ["/dashboard/copilot", "/dashboard/ai-commander"],
+      },
+      {
         name: "Leads & Appointments",
         href: "/dashboard/leads",
         icon: Users,
@@ -60,11 +70,22 @@ const navSections: NavSection[] = [
         icon: Inbox,
         match: [
           "/dashboard/communications",
-          "/dashboard/chatbot",
           "/dashboard/messages",
           "/dashboard/missed-calls",
           "/dashboard/settings/communication",
         ],
+      },
+      {
+        name: "Chatbot",
+        href: "/dashboard/chatbot",
+        icon: MessageSquare,
+        match: ["/dashboard/chatbot"],
+      },
+      {
+        name: "AI Voice Call",
+        href: "/dashboard/voice",
+        icon: PhoneCall,
+        match: ["/dashboard/voice"],
       },
     ],
   },
@@ -72,10 +93,16 @@ const navSections: NavSection[] = [
     label: "AI Settings & Knowledge",
     items: [
       {
-        name: "AI Brain & Knowledge Base",
+        name: "AI Brain",
         href: "/dashboard/ai-brain",
         icon: Bot,
-        match: ["/dashboard/ai-brain", "/dashboard/ai-commander", "/dashboard/knowledge-base"],
+        match: ["/dashboard/ai-brain"],
+      },
+      {
+        name: "Knowledge Base",
+        href: "/dashboard/knowledge-base",
+        icon: BookOpen,
+        match: ["/dashboard/knowledge-base"],
       },
       {
         name: "Automations",

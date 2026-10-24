@@ -76,7 +76,7 @@ export function AiCommanderView() {
           <Terminal className="h-4 w-4 text-white" />
         </div>
         <div>
-          <h1 className="text-sm font-semibold text-white">AI Commander</h1>
+          <h1 className="text-sm font-semibold text-white">Sagenify Business Co-Pilot</h1>
           <p className="text-[11px] text-white/35">{sending ? "Thinking..." : "Online — ready to help"}</p>
         </div>
       </div>
@@ -168,7 +168,7 @@ export function AiCommanderView() {
           </Button>
         </div>
         <p className="text-[10px] text-white/15 text-center mt-2">
-          AI Commander knows your leads, appointments, and business data
+          Sagenify Business Co-Pilot knows your leads, appointments, and business data — ask it anything about your operation and it will act using your workspace context.
         </p>
       </div>
     </div>

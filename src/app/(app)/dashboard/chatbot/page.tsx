@@ -12,6 +12,9 @@ import { useToast } from "@/components/toaster";
 
 export default function ChatbotPage() {
   const [enabled, setEnabled] = useState(true);
+  const [accent, setAccent] = useState("#8b5cf6");
+  const [greeting, setGreeting] = useState("Hello! 👋 How can I help you today?");
+  const accentSoft = accent.startsWith("#") ? `${accent}1A` : accent;
   const [copiedSimple, setCopiedSimple] = useState(false);
   const [copiedAsync, setCopiedAsync] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
@@ -19,7 +22,7 @@ export default function ChatbotPage() {
   const [embedToken, setEmbedToken] = useState<string>("");
   const [loading, setLoading] = useState(true);
   const [chatMessages, setChatMessages] = useState<{ role: string; content: string }[]>([
-    { role: "assistant", content: "Hello! 👋 How can I help you today?" },
+    { role: "assistant", content: greeting },
   ]);
   const { toast } = useToast();
 
@@ -105,6 +108,58 @@ export default function ChatbotPage() {
                 <Badge variant={enabled ? "default" : "secondary"} className="text-[10px]">
                   {enabled ? "Live" : "Off"}
                 </Badge>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Appearance & Greeting */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-sm flex items-center gap-2">
+                <Eye className="h-4 w-4" /> Appearance &amp; Greeting
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div>
+                <p className="text-xs font-medium mb-2">Accent color</p>
+                <div className="flex flex-wrap items-center gap-2">
+                  {["#8b5cf6", "#2563eb", "#0d9488", "#ea580c", "#db2777", "#16a34a"].map((c) => (
+                    <button
+                      key={c}
+                      type="button"
+                      aria-label={`Accent ${c}`}
+                      onClick={() => setAccent(c)}
+                      className={`h-7 w-7 rounded-full transition-transform hover:scale-110 ${
+                        accent === c ? "ring-2 ring-offset-2 ring-[var(--dash-accent)]" : ""
+                      }`}
+                      style={{ background: c }}
+                    />
+                  ))}
+                  <label className="flex items-center gap-2 text-xs text-muted-foreground">
+                    <input
+                      type="color"
+                      value={accent}
+                      onChange={(e) => setAccent(e.target.value)}
+                      className="h-7 w-9 cursor-pointer rounded border border-border bg-transparent"
+                    />
+                    Custom
+                  </label>
+                </div>
+              </div>
+              <div>
+                <label htmlFor="chatbot-greeting" className="text-xs font-medium mb-1.5 block">
+                  Greeting message
+                </label>
+                <textarea
+                  id="chatbot-greeting"
+                  value={greeting}
+                  onChange={(e) => setGreeting(e.target.value)}
+                  rows={2}
+                  className="w-full rounded-lg border border-border bg-muted/50 px-3 py-2 text-sm focus:outline-none"
+                />
+                <p className="text-[11px] text-muted-foreground mt-1">
+                  The first message visitors see when they open the widget.
+                </p>
               </div>
             </CardContent>
           </Card>
@@ -274,13 +329,15 @@ export default function ChatbotPage() {
                       <button
                         onClick={() => setChatOpen(true)}
                         className="flex items-center justify-center h-12 w-12 rounded-full bg-primary shadow-lg hover:scale-105 transition-transform"
+                        style={{ background: accent }}
                       >
                         <MessageSquare className="h-5 w-5 text-primary-foreground" />
                       </button>
                     ) : (
                       <div className="bg-card rounded-2xl shadow-2xl w-72 border border-border overflow-hidden">
                         {/* Header */}
-                        <div className="p-3 bg-primary text-primary-foreground flex items-center justify-between">
+                        <div className="p-3 bg-primary text-primary-foreground flex items-center justify-between"
+                          style={{ background: accent, color: "#fff" }}>
                           <div className="flex items-center gap-2">
                             <Bot className="h-4 w-4" />
                             <span className="text-sm font-medium">AI Assistant</span>
@@ -295,15 +352,16 @@ export default function ChatbotPage() {
                           {chatMessages.map((msg, i) => (
                             <div key={i} className={`flex gap-2 ${msg.role === "user" ? "justify-end" : ""}`}>
                               {msg.role === "assistant" && (
-                                <div className="h-6 w-6 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                                  <Bot className="h-3 w-3 text-primary" />
+                                <div className="h-6 w-6 rounded-full bg-primary/10 flex items-center justify-center shrink-0" style={{ background: accentSoft }}>
+                                  <Bot className="h-3 w-3 text-primary" style={{ color: accent }} />
                                 </div>
                               )}
-                              <div className={`max-w-[80%] rounded-xl p-2.5 text-xs ${
-                                msg.role === "user"
-                                  ? "bg-primary text-primary-foreground"
-                                  : "bg-muted"
-                              }`}>
+                              <div
+                                className={`max-w-[80%] rounded-xl p-2.5 text-xs ${
+                                  msg.role === "user" ? "bg-primary text-primary-foreground" : "bg-muted"
+                                }`}
+                                style={msg.role === "user" ? { background: accent, color: "#fff" } : undefined}
+                              >
                                 {msg.content}
                               </div>
                               {msg.role === "user" && (
@@ -366,7 +424,7 @@ export default function ChatbotPage() {
                                 }
                               }}
                             />
-                            <div className="h-7 w-7 rounded-lg bg-primary flex items-center justify-center">
+                            <div className="h-7 w-7 rounded-lg bg-primary flex items-center justify-center" style={{ background: accent }}>
                               <ChevronDown className="h-3 w-3 text-primary-foreground rotate-90" />
                             </div>
                           </div>
