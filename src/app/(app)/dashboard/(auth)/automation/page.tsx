@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { requireDashboardUser } from "@/lib/require-dashboard-user";
 
 /**
  * Legacy singular route — the canonical automations route is now plural
@@ -6,5 +7,6 @@ import { redirect } from "next/navigation";
  * links keep working without a dead end.
  */
 export default function AutomationRedirect() {
+  await requireDashboardUser();
   redirect("/dashboard/automations");
 }
