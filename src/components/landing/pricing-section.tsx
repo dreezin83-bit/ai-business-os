@@ -57,7 +57,7 @@ const PLANS: Record<
     anchor: "$299/mo",
     rate: "$199",
     unit: "/mo",
-    billing: "Billed monthly",
+    billing: "Billed monthly.",
     total: "",
   },
   half: {
