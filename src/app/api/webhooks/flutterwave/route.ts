@@ -275,7 +275,18 @@ export async function POST(request: Request) {
     const subStatus = subscriptionFailed ? "pending_subscription" : "active";
 
     // Idempotent upsert: refresh the existing row on retries, insert once.
-    if (existingSub) {
+    // Post-upsert dedup guard (kept per review, defense in depth alongside the
+    // pre-enrollment guard): if the enrollment id we resolved is already what
+    // the stored row holds — idempotent retry of an already-fulfilled charge —
+    // skip the write entirely so the stored flutterwaveSubId stays stable.
+    if (
+      flutterwaveSubscriptionId &&
+      existingSub?.flutterwaveSubId === String(flutterwaveSubscriptionId)
+    ) {
+      console.log(
+        `[flutterwave-webhook] Subscription ${flutterwaveSubscriptionId} already recorded — skipping upsert`,
+      );
+    } else if (existingSub) {
       await db
         .update(subscription)
         .set({
