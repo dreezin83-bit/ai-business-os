@@ -31,7 +31,6 @@ export default function DashboardPage() {
       <DashboardHeader />
 
       <MetricTiles stats={stats} />
-      <UsageBars stats={stats} />
 
       {failed ? (
         <section className="dash-card flex flex-col items-center gap-4 rounded-2xl px-6 py-12 text-center">
@@ -62,6 +61,9 @@ export default function DashboardPage() {
           lastUpdated={lastUpdated}
         />
       )}
+
+      {/* AI usage bars — bottom of the dashboard (owner direction 2026-10-24) */}
+      <UsageBars stats={stats} />
     </div>
   );
 }
