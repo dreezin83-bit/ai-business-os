@@ -63,6 +63,7 @@ function AiBrainContent() {
   const [formality, setFormality] = useState(50);
   const [warmth, setWarmth] = useState(60);
   const [conciseness, setConciseness] = useState(50);
+  const [empathy, setEmpathy] = useState(55);
 
   // Editable lists
   const [servicesList, setServicesList] = useState<string[]>([""]);
@@ -421,6 +422,7 @@ function AiBrainContent() {
                   { label: "Formality", value: formality, set: setFormality, left: "Casual", right: "Formal" },
                   { label: "Warmth", value: warmth, set: setWarmth, left: "Neutral", right: "Empathetic" },
                   { label: "Conciseness", value: conciseness, set: setConciseness, left: "Detailed", right: "Brief" },
+                  { label: "Empathy", value: empathy, set: setEmpathy, left: "Neutral", right: "Compassionate" },
                 ].map((s) => (
                   <div key={s.label} className="space-y-2">
                     <div className="flex justify-between text-sm"><span className="text-slate-400">{s.label}</span><span className="text-white font-mono">{s.value}%</span></div>

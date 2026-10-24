@@ -348,7 +348,12 @@ export default function VoicePage() {
                   <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl border border-purple-500/30 bg-purple-500/15">
                     <Lock className="h-6 w-6 text-purple-300" />
                   </div>
-                  <h2 className="mt-4 text-lg font-bold text-white">Upgrade to Unlock Voice</h2>
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-purple-300">
+                    Paid plan required
+                  </p>
+                  <h2 className="mt-3 text-xl font-bold leading-snug text-white">
+                    Unlock 24/7 AI Phone Receptionist with a Paid Plan
+                  </h2>
                   <p className="mt-2 text-sm text-white/60 leading-relaxed">
                     AI Voice Calling is included with your paid Sagenify plan.
                     Your free trial covers AI chat — voice unlocks with your
@@ -358,7 +363,7 @@ export default function VoicePage() {
                     href="/dashboard/settings"
                     className="mt-5 inline-flex h-10 items-center gap-1.5 rounded-full bg-purple-500 px-6 text-sm font-semibold text-white transition-colors hover:bg-purple-400"
                   >
-                    View Plans &amp; Billing <span aria-hidden>→</span>
+                    Upgrade to Unlock Voice <span aria-hidden>→</span>
                   </Link>
                 </>
               )}
