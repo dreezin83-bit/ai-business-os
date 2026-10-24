@@ -41,6 +41,7 @@ import { generateId } from "@/lib/utils";
 import { buildAiContext } from "@/lib/ai-context";
 import { parseServices } from "@/lib/ai-services";
 import { recordTimelineEvent } from "@/lib/timeline";
+import { APP_URL } from "@/lib/domains";
 import {
   buyPhoneNumber,
   createAssistant,
@@ -70,7 +71,7 @@ function generateWebhookToken(): string {
 }
 
 function buildWebhookUrl(token: string): string {
-  const base = process.env.NEXT_PUBLIC_APP_URL || "https://www.sagenifyai.com";
+  const base = APP_URL;
   return `${base}/api/voice/vapi/${token}`;
 }
 

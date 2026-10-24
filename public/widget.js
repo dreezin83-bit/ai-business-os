@@ -7,7 +7,11 @@
   var CFG = (typeof window !== 'undefined' && window.AIWidgetConfig) || {};
   var BUSINESS_ID = SCRIPT?.getAttribute('data-business-id') || CFG.businessId || '';
   var CHATBOT_TOKEN = SCRIPT?.getAttribute('data-chatbot-token') || CFG.token || '';
-  var PLATFORM_URL = 'https://www.sagenifyai.com';
+  // API origin is injected at serve time (see /api/public/chatbot/widget
+  // route) so the widget always talks to the SAME host it was loaded from.
+  // Old embeds served from www keep calling www; app-hosted embeds call the
+  // app subdomain. Never hand-edit this token — it is replaced by the route.
+  var PLATFORM_URL = '__SAGENIFY_PLATFORM_URL__';
   var WIDGET_URL = PLATFORM_URL + '/api/public/chatbot';
 
   if (!BUSINESS_ID) {

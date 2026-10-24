@@ -27,6 +27,7 @@ import {
   SETUP_FEE_MAJOR,
 } from "@/lib/flutterwave";
 import { initializePayment } from "@/lib/flutterwave-client";
+import { APP_URL } from "@/lib/domains";
 
 export async function POST(request: Request) {
   // ── Parse body ────────────────────────────────────────────────
@@ -78,7 +79,9 @@ export async function POST(request: Request) {
     };
 
     // ── Initialize the $399 one-time setup transaction ──────────
-    const redirectUrl = `${process.env.NEXT_PUBLIC_APP_URL}/onboarding?payment=done`;
+    // redirect_url follows APP_URL: single host today, app subdomain once
+    // the split activates (NEXT_PUBLIC_APP_URL = app.sagenifyai.com).
+    const redirectUrl = `${APP_URL}/onboarding?payment=done`;
     const checkoutUrl = await initializePayment({
       tx_ref: `sagenify-setup-${Date.now()}-${crypto.randomUUID().slice(0, 8)}`,
       amount: SETUP_FEE_MAJOR, // 399 = $399.00 USD (major units)
