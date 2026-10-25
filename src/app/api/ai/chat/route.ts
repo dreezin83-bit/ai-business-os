@@ -10,6 +10,7 @@ import { createLlmCompletion } from "@/lib/llm";
 import { notifyContractorOfNewLead, sendCustomerConfirmation, notifyContractorOfNewAppointment, sendCustomerAppointmentConfirmation } from "@/lib/notifications";
 import { extractLeadFromConversation, isValidLead } from "@/lib/lead-extractor";
 import { consumeCredits, creditsExhaustedError, isHardStopped } from "@/lib/credits";
+import { getWorkspaceEntitlements, trialExhaustedError } from "@/lib/trial";
 import {
   createHandoff,
   parseEscalateMarker,
@@ -152,6 +153,13 @@ export async function POST(request: Request) {
   try {
     const businessId = await ensureBusiness();
     if (!businessId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    // ── Free-trial entitlement: 50 chat messages, voice locked (owner 2026-10-24). ──
+    // Paid workspaces pass straight through and are metered by the credit wallet below;
+    // a trial workspace is counted in MESSAGES, from the same usage ledger.
+    const entitlements = await getWorkspaceEntitlements(businessId);
+    if (entitlements.chatBlocked) {
+      return NextResponse.json(trialExhaustedError(entitlements), { status: 402 });
+    }
     // ── Per-period enforcement: 402 on hard-stop (after grace). Non-AI APIs are never affected. ──
     if (await isHardStopped(businessId)) {
       return NextResponse.json(creditsExhaustedError(), { status: 402 });

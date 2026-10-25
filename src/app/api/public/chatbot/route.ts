@@ -6,6 +6,7 @@ import { generateId } from "@/lib/utils";
 import { buildAiContext } from "@/lib/ai-context";
 import { createLlmCompletion } from "@/lib/llm";
 import { consumeCredits, verifyChatbotToken, isLegacyRateLimited, creditsExhaustedError, isHardStopped } from "@/lib/credits";
+import { getWorkspaceEntitlements, trialExhaustedError } from "@/lib/trial";
 import { notifyContractorOfNewLead, sendCustomerConfirmation } from "@/lib/notifications";
 import { extractLeadFromConversation, isValidLead } from "@/lib/lead-extractor";
 import {
@@ -138,6 +139,11 @@ export async function POST(request: Request) {
     if (!biz || biz.status !== "active") {
       console.warn(`[chatbot] Rejected request for missing/inactive businessId=${businessId}`);
       return corsResponse({ error: "Business not found" }, 404);
+    }
+    // ── Free-trial entitlement: 50 chat messages (owner 2026-10-24) ──
+    const entitlements = await getWorkspaceEntitlements(businessId);
+    if (entitlements.chatBlocked) {
+      return corsResponse(trialExhaustedError(entitlements), 402);
     }
     // ── Per-period enforcement: 402 on hard-stop (after grace). Non-AI work is never blocked. ──
     if (await isHardStopped(businessId)) {
