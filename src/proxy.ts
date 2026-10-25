@@ -32,6 +32,35 @@ const isApiOrStaticRoute = createRouteMatcher([
 /** Cookie name for onboarding-status cache (5 min TTL) */
 const ONBOARDING_COOKIE = "ob_status";
 
+/**
+ * Legacy dashboard aliases → canonical routes.
+ *
+ * These must be redirected HERE, at the edge, and not by a page-level
+ * `redirect()` (next/navigation). On this stack (Next 16.2 + Turbopack on
+ * Vercel) a server `redirect()` thrown from a page is swallowed at the
+ * response boundary — the browser receives an app shell with no navigation
+ * and renders an empty frame (same class of failure as auth.protect()'s
+ * redirect, fixed at the edge in PR #79). A raw 307 emitted by the proxy
+ * reaches the browser intact.
+ *
+ * Exact-match only, on the normalized pathname, so a query string or a
+ * trailing slash still resolves. Never a capturing-group rewrite rule.
+ */
+const LEGACY_ROUTE_REDIRECTS: Record<string, string> = {
+  // AI Commander was renamed to Sagenify Business Co-Pilot.
+  "/dashboard/ai-commander": "/dashboard/copilot",
+  // Singular legacy alias for the (real, canonical) automations page.
+  // Deliberately NOT sent to /dashboard/copilot: /dashboard/automations
+  // renders AutomationView and is a live sidebar destination.
+  "/dashboard/automation": "/dashboard/automations",
+};
+
+/** Trailing-slash-insensitive pathname lookup for the legacy alias table. */
+function resolveLegacyRedirect(pathname: string): string | null {
+  const normalized = pathname.length > 1 ? pathname.replace(/\/+$/, "") : pathname;
+  return LEGACY_ROUTE_REDIRECTS[normalized] ?? null;
+}
+
 export default clerkMiddleware(
   async (auth, req) => {
     // ── Subdomain canonicalization (marketing site ↔ app portal) ────────
@@ -64,18 +93,41 @@ export default clerkMiddleware(
     const isPageNavigation =
       req.headers.get("sec-fetch-dest") === "document" ||
       req.headers.get("next-router-state-tree") !== null;
+    // Clerk v7's typings model this callback argument as an AuthFn; at runtime
+    // it is the auth helper object. Read userId through one explicit cast so
+    // the mismatch is stated once instead of surfacing as a type error on
+    // every read.
+    const clerkUserId = (auth as unknown as { userId: string | null }).userId;
     if (!isPublicRoute(req)) {
-      if (!auth.userId && isPageNavigation) {
+      if (!clerkUserId && isPageNavigation) {
         return NextResponse.redirect(new URL("/sign-in", req.url));
       }
       auth.protect();
+    }
+
+    // ── Legacy dashboard alias redirects (edge-level) ───────────────────
+    // Placed AFTER the auth gate so the signed-out behaviour is unchanged:
+    // a signed-out page navigation to a legacy alias still 307s to /sign-in
+    // (the gate above returns first), and only an authenticated visitor is
+    // moved on to the canonical route. Done at the edge because a page-level
+    // redirect() is swallowed on this stack (empty-frame risk).
+    const legacyTarget = resolveLegacyRedirect(req.nextUrl.pathname);
+    if (legacyTarget && (clerkUserId || isPageNavigation)) {
+      const legacyUrl = new URL(legacyTarget, req.url);
+      // Preserve the original query string (?tab=… deep links keep working).
+      legacyUrl.search = req.nextUrl.search;
+      const redirectRes = NextResponse.redirect(legacyUrl, 307);
+      // Aliases must never be cached — a stale 307 would strand a visitor on
+      // a retired path (and would make QA cache-busted probes lie).
+      redirectRes.headers.set("Cache-Control", "no-store, must-revalidate");
+      return redirectRes;
     }
 
     // ── Onboarding redirect ──────────────────────────────────
     // Skip entirely for API routes, static assets, and public routes
     if (isApiOrStaticRoute(req) || isPublicRoute(req)) return;
 
-    const { userId } = auth;
+    const userId = clerkUserId;
     if (!userId) return;
 
     // Check cookie cache first — skip DB if already confirmed for this user
