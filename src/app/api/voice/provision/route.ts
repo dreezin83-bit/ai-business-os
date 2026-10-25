@@ -14,6 +14,7 @@ import { business, phoneNumber } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { ensureBusiness } from "@/lib/business";
 import { provisionVapiVoice, canProvisionVoice } from "@/lib/vapi-provisioning";
+import { evaluateVoiceAccess } from "@/lib/vapi-master-key";
 
 export async function GET() {
   try {
@@ -37,6 +38,10 @@ export async function GET() {
       provisionError: biz.voiceProvisionError || null,
       provisionedAt: biz.voiceProvisionedAt || null,
       canProvision: await canProvisionVoice(businessId),
+      // Controller gate: paid subscription AND credit state, with the reason
+      // the UI shows when a new call may not start (an active call is never
+      // dropped by this — see lib/vapi-master-key.ts).
+      voiceAccess: await evaluateVoiceAccess(businessId),
     });
   } catch (error: any) {
     return NextResponse.json({ error: error?.message }, { status: 500 });

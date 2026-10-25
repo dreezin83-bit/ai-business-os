@@ -42,6 +42,7 @@ import { buildAiContext } from "@/lib/ai-context";
 import { parseServices } from "@/lib/ai-services";
 import { recordTimelineEvent } from "@/lib/timeline";
 import { APP_URL } from "@/lib/domains";
+import { hasVapiMasterKey } from "@/lib/vapi-master-key";
 import {
   buyPhoneNumber,
   createAssistant,
@@ -181,7 +182,9 @@ export async function provisionVapiVoice(
   console.log(`[vapi-provisioning] Starting for business ${businessId}`);
 
   // ── Validate env ─────────────────────────────────────
-  if (!process.env.VAPI_PRIVATE_KEY && !process.env.VAPI_API_KEY) {
+  // Ask the controller instead of re-reading the env here: it owns the
+  // VAPI_PRIVATE_KEY → VAPI_API_KEY precedence (lib/vapi-master-key.ts).
+  if (!hasVapiMasterKey()) {
     await recordError(businessId, "VAPI key not configured (VAPI_PRIVATE_KEY or legacy VAPI_API_KEY)");
     return { success: false, error: "VAPI key not configured" };
   }
