@@ -1,17 +1,24 @@
 /**
  * POST /api/webhooks/flutterwave — Flutterwave payment webhook (THE live path).
  *
- * Handles the subscribe-first checkout: on a successful $399 setup charge,
+ * Handles the subscribe-first checkout: on a successful period charge,
  *  1. verifies verif-hash (fail closed) + server-verifies the transaction,
  *  2. creates/finds the business from signup metadata,
- *  3. enrolls the customer in the $199/mo payment plan (start_date +31d —
- *     Reading-A deferral keeps month 1 = $399; nothing extra is charged),
- *  4. persists the local subscription (flutterwaveSubId, paymentProvider
- *     "flutterwave", amount = RECURRING_CENTS),
- *  5. opens the monthly credit period (fire-and-forget, idempotent),
+ *  3. resolves the chosen billing cadence (monthly / semiannual / annual) and
+ *     records the local subscription at the SAME amount for the next cycle
+ *     (the plan's own recurrence) + stamps the early-bird price-lock,
+ *  4. persists the local subscription (paymentProvider "flutterwave", amount =
+ *     cadence amountCents, interval + periodDays by cadence),
+ *  5. opens the credit period (fire-and-forget, idempotent) for the cadence,
  *  6. provisions Vapi voice once onboarding is complete (fire-and-forget).
  *
- * Idempotent: flutterwaveSubId dedup + IF NOT EXISTS semantics everywhere.
+ * No setup fee and no first-month premium exist anywhere: month 1 equals the
+ * advertised cadence price (Monthly $199 / 6 Months $1,194 / Yearly $2,268).
+ * Monthly + annual charges attach the cadence's FW plan at checkout (the charge
+ * IS the plan's first payment), so the webhook creates NO provider-side
+ * subscription — retries are inherently idempotent (local upsert re-applies).
+ *
+ * Idempotent: flutterwaveSubId dedup + upsert semantics everywhere.
  * Tenant-isolated: businessId resolved from signup email metadata (or legacy
  * meta.businessId).
  *
@@ -27,11 +34,10 @@ import { eq } from "drizzle-orm";
 import { generateId } from "@/lib/utils";
 import { openCreditPeriod } from "@/lib/credits";
 import {
-  createFlutterwaveSubscription,
+  BILLING_OPTIONS,
   CURRENCY,
-  ensurePaymentPlan,
   majorToCents,
-  RECURRING_CENTS,
+  resolveBillingCadence,
   shouldSkipRecurringEnrollment,
   type SignupMetadata,
   verifyFlutterwaveSignature,
@@ -51,6 +57,7 @@ function extractSignupMetadata(data: any): SignupMetadata | null {
     signupName: String(m.signupName || ""),
     signupCompany: String(m.signupCompany || ""),
     plan: m.plan === "professional" ? "professional" : "starter",
+    cadence: resolveBillingCadence(m.cadence),
   };
 }
 
@@ -136,9 +143,9 @@ export async function POST(request: Request) {
     const data = payload.data || {};
 
     // ── Gate on event + status ──
-    // Only successful $399 setup charges drive account creation. Renewal
-    // charges (plan payments) carry no signup metadata — they are logged and
-    // skipped here (known gap, tracked: period extension/churn on renewals).
+    // Only successful period charges drive enrollment. Renewal charges (plan
+    // payments) carry no signup metadata — they are logged and skipped here
+    // (known gap, tracked: period extension/churn on renewals).
     if (event !== "charge.completed") {
       console.log(
         `[flutterwave-webhook] Ignoring event ${event} (tx_ref: ${data.tx_ref || "n/a"})`,
@@ -190,14 +197,19 @@ export async function POST(request: Request) {
       }
     }
 
-    // ── Recurring enrollment ($199/mo via payment plan) ──
+    // ── Cadence + enrollment resolution ──────────────────────────
+    // PER-PLAN TERMS (owner-ratified 2026-10-24): the checkout charges the
+    // chosen cadence's full amount as period 1 (Monthly $199 / 6 Months
+    // $1,194 / Yearly $2,268). No setup fee and no first-month premium exist.
+    // The local subscription records the SAME amount for the next cycle (the
+    // plan's own recurrence) and stamps the per-tenant early-bird price-lock.
+    const option = BILLING_OPTIONS[resolveBillingCadence(signup?.cadence)];
     let flutterwaveSubscriptionId: number | null = null;
     let subscriptionFailed = false;
 
     // Read the local subscription FIRST. If this business already holds a
     // Flutterwave enrollment link, NEVER re-enroll: a retried webhook (lost
-    // 200/202 ack after fulfillment) must not create a second plan
-    // subscription — that would double up the month-2 $199 charges. The
+    // 200/202 ack after fulfillment) must not duplicate the record. The
     // pre-check makes the entire fulfill path idempotent for retries.
     const [existingSub] = await db
       .select()
@@ -211,67 +223,34 @@ export async function POST(request: Request) {
         `[flutterwave-webhook] Subscription ${existingFlutterwaveSubId} already recorded for ${businessId} — skipping enrollment (idempotent retry)`,
       );
     } else {
-      // Record the setup payment on the timeline (billing milestone).
+      // Nothing provider-side is created at webhook time:
+      //  - Monthly/Annual: the checkout attached `payment_plan`, so THIS charge
+      //    is the plan's first payment — the plan is already active and bills
+      //    its own interval from the next cycle. Creating a Flutterwave
+      //    subscription here would double-enroll (see src/lib/flutterwave.ts).
+      //  - 6 Months: no native Flutterwave interval — the charge opens a
+      //    180-day access window; the next period is a fresh checkout.
+      // Retries are therefore inherently idempotent — the local upsert below
+      // re-applies the same values.
+      const amountLabel = "$" + option.major.toFixed(2);
       await recordTimelineEvent({
         businessId,
         scope: "billing",
-        event: "setup_payment_received",
-        detail: `${(majorToCents(data.amount) / 100).toFixed(2)} setup payment captured (charge ${data.id}, tx_ref: ${data.tx_ref})`,
+        event: "period_payment_received",
+        detail: `${option.label} — ${amountLabel} period payment captured (charge ${data.id}, tx_ref: ${data.tx_ref})`,
         status: "success",
       });
-
-      const customerEmail = verified.customer?.email || data.customer?.email || "";
-      if (customerEmail) {
-        try {
-          const plan = await ensurePaymentPlan();
-          const externalRef = `sub-${businessId}-${data.id ?? Date.now()}`;
-          const sub = await createFlutterwaveSubscription(
-            customerEmail,
-            plan.id,
-            externalRef,
-          );
-          flutterwaveSubscriptionId = sub.id;
-          console.log(
-            `[flutterwave-webhook] Flutterwave subscription created: ${flutterwaveSubscriptionId} for business ${businessId}`,
-          );
-          await recordTimelineEvent({
-            businessId,
-            scope: "billing",
-            event: "subscription_created",
-            detail: `Flutterwave recurring plan $199/month enrolled (subscription ${flutterwaveSubscriptionId}); first plan charge deferred by plan start_date`,
-            status: "success",
-          });
-        } catch (err: any) {
-          console.error(
-            `[flutterwave-webhook] Failed to create Flutterwave subscription: ${err?.message}`,
-          );
-          subscriptionFailed = true;
-          await recordTimelineEvent({
-            businessId,
-            scope: "billing",
-            event: "subscription_creation_failed",
-            detail: `Setup payment captured but recurring enrollment failed: ${(err as any)?.message || "unknown error"}`,
-            status: "failed",
-          });
-          // One-time $399 succeeded but recurring setup failed. Return 202 to
-          // flag the partial state — Flutterwave won't retry, but the business
-          // is marked as "pending_subscription" for manual/retry.
-        }
-      } else {
-        console.error(
-          "[flutterwave-webhook] No customer email on verified charge — skipping enrollment",
-        );
-        subscriptionFailed = true;
-      }
     }
 
     // ── Upsert local subscription ──
     const now = new Date();
-    const periodEnd = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+    const periodEnd = new Date(
+      now.getTime() + option.periodDays * 24 * 60 * 60 * 1000,
+    );
 
-    // Only mark active if the Flutterwave enrollment was actually created.
-    // If it failed, persist as "pending_subscription" — won't pass the
-    // provisioning gate, and can be retried from an admin endpoint.
+    // Paid webhook fulfillment always marks the subscription active — the
+    // period charge succeeded, so the tenant may pass the provisioning gate.
+    // (subscriptionFailed is retained for legacy reservation/retry paths.)
     const subStatus = subscriptionFailed ? "pending_subscription" : "active";
 
     // Idempotent upsert: refresh the existing row on retries, insert once.
@@ -292,13 +271,15 @@ export async function POST(request: Request) {
         .set({
           status: subStatus,
           plan: (data.meta?.plan as string) || existingSub.plan || "starter",
-          amount: RECURRING_CENTS, // $199/mo recurring (NOT the $399 setup charge)
+          amount: option.amountCents, // next cycle = SAME cadence amount
           currency: (data.currency || CURRENCY).toUpperCase(),
           flutterwaveSubId:
             flutterwaveSubscriptionId != null
               ? String(flutterwaveSubscriptionId)
               : existingSub.flutterwaveSubId,
           paymentProvider: "flutterwave",
+          priceLockedAt: existingSub.priceLockedAt ?? now,
+          lockedPlan: existingSub.lockedPlan ?? "early-bird",
           currentPeriodStart: now,
           currentPeriodEnd: periodEnd,
           updatedAt: now,
@@ -311,14 +292,16 @@ export async function POST(request: Request) {
         businessId,
         status: subStatus,
         plan: (data.meta?.plan as string) || "starter",
-        amount: RECURRING_CENTS, // $199/mo recurring
+        amount: option.amountCents, // period charge = next cycle amount
         currency: (data.currency || CURRENCY).toUpperCase(),
-        interval: "month",
+        interval: option.interval,
         flutterwaveSubId:
           flutterwaveSubscriptionId != null
             ? String(flutterwaveSubscriptionId)
             : undefined,
         paymentProvider: "flutterwave",
+        priceLockedAt: now,
+        lockedPlan: "early-bird",
         currentPeriodStart: now,
         currentPeriodEnd: periodEnd,
       });

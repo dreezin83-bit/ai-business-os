@@ -2,27 +2,24 @@
  * Flutterwave payment domain helpers — THE live payment path (owner decision
  * 2026-10-23; Paystack fully removed).
  *
- * Checkout flow (subscribe-first):
- *   1. POST /api/flutterwave/checkout — ensures the $199/mo payment plan exists
- *      (idempotent), then initializes a *standalone* $399 one-time transaction
- *      (no plan attached — plan amounts would override the $399).
- *   2. Flutterwave webhook (charge.completed, status "successful") — verifies
+ * Checkout flow (subscribe-first, per-plan terms ratified 2026-10-24):
+ *   1. POST /api/flutterwave/checkout — resolves the chosen cadence
+ *      (monthly / semiannual / annual), ensures that cadence's payment plan
+ *      exists (idempotent; monthly + annual only), and initializes ONE charge
+ *      for the cadence's full amount: $199 (Monthly), $1,194 (6 Months),
+ *      $2,268 (Yearly). No setup fee and no first-month premium — month 1 is
+ *      exactly the advertised price.
+ *   2. Monthly and Annual attach the cadence's plan (payment_plan), so the
+ *      checkout charge IS the plan's first payment — the plan is active
+ *      immediately and bills its own interval from the next cycle. 6 Months
+ *      (no native Flutterwave interval) stands alone and grants a 180-day
+ *      access window; its next period is a fresh checkout.
+ *   3. Flutterwave webhook (charge.completed, status "successful") — verifies
  *      verif-hash, server-verifies the transaction, creates the business from
- *      signup metadata, enrolls the customer in the $199/mo payment plan
- *      (subscription starting at plan.start_date = +30 days), persists the
- *      local subscription, opens the monthly credit period, and provisions
- *      Vapi voice once onboarding completes.
- *
- * First-month billing invariant (owner-ratified offer: "$399 first month,
- * then $199/month recurring"):
- *   - The $399 setup charge is standalone — nothing else is charged at
- *     checkout, so month-1 total can never exceed $399 from this flow.
- *   - The $199/mo payment plan is created with start_date ≈ now + 31 days
- *     (the calendar day AFTER the 30-day first month closes), which defers the
- *     FIRST recurring charge into the second month (the Reading-A behavior the
- *     pricing findings required). QA must CONFIRM in Flutterwave TEST MODE
- *     before launch that enrolling the subscription triggers NO immediate
- *     $199 charge (see shared FLUTTERWAVE-FIRST-MONTH-BILLING.md).
+ *      signup metadata, records the local subscription at the SAME amount for
+ *      the next cycle (the plan's own recurrence), stamps the per-tenant
+ *      early-bird price-lock, opens the credit period (periodDays by cadence),
+ *      and provisions Vapi voice once onboarding completes.
  *
  * Required env: FLUTTERWAVE_SECRET_KEY, FLUTTERWAVE_WEBHOOK_SECRET
  */
@@ -33,33 +30,118 @@ import {
   verifyTransaction,
 } from "@/lib/flutterwave-client";
 
-// ─── Pricing constants (USD) ────────────────────────────────────
-/** $399.00 one-time setup — the entire first-month charge. */
-export const SETUP_FEE_CENTS = 39_900;
-/** $199.00/month recurring, charged via the payment plan from month 2 on. */
-export const RECURRING_CENTS = 19_900;
+// ─── Pricing constants (USD) — owner decision 2026-10-24 (plan rev 13) ──────
+// The offer is now REAL early-bird terms, billed from month 1:
+//   - early-bird monthly  $199/mo  (the price-lock source; NEVER raised)
+//   - semi-annual         $1,194 / 6 months (6 × $199)
+//   - annual              $2,268 / year (12 × $189 = the 5%-off yearly)
+//   - standard monthly    $299/mo  (the true LIST price; backs the crossed-out
+//     anchor on the landing; charged only after the 10k cap fills — inactive
+//     until the cap logic ships)
+// Month 1 is exactly $199 (no $399 setup anywhere). Enrollments for monthly
+// and annual attach the payment to the Flutterwave payment plan
+// (POST /payments `payment_plan`) so the checkout charge IS the plan's first
+// payment: one charge, plan active immediately, no deferral, no double-charge.
+// Semi-annual has NO native Flutterwave interval (FW supports daily/weekly/
+// monthly/quarterly/yearly only) — it bills as a $1,194 charge per 180-day
+// access window (renewal re-initializes), which is literally "$1,194 per period".
 export const CURRENCY = "USD";
-/** Major-unit amounts Flutterwave expects in API bodies (v3 uses major units). */
-export const SETUP_FEE_MAJOR = SETUP_FEE_CENTS / 100; // 399
-export const RECURRING_FEE_MAJOR = RECURRING_CENTS / 100; // 199
 
-export const PLAN_NAME = "Sagenify AI Professional — Monthly";
-export const PLAN_INTERVAL = "monthly";
+/** $199.00/month early-bird — the locked price. Also month-1's charge. */
+export const EARLY_BIRD_CENTS = 19_900;
+/** $1,194.00 per 6-month period (6 × $199). */
+export const SEMI_ANNUAL_CENTS = 119_400;
+/** $2,268.00 per year (12 × $189 — the 5%-off yearly). */
+export const ANNUAL_CENTS = 226_800;
+/** $299.00/month standard list price (anchor backing; post-cap only). */
+export const STANDARD_CENTS = 29_900;
+
+/** Major-unit amounts Flutterwave expects in API bodies (v3 uses major units). */
+export const EARLY_BIRD_MAJOR = EARLY_BIRD_CENTS / 100; // 199
+export const SEMI_ANNUAL_MAJOR = SEMI_ANNUAL_CENTS / 100; // 1194
+export const ANNUAL_MAJOR = ANNUAL_CENTS / 100; // 2268
+export const STANDARD_MAJOR = STANDARD_CENTS / 100; // 299
+
+/** Early-bird offer cap (owner: "first 10,000 users — Ending Soon"). */
+export const EARLY_BIRD_CAP = 10_000;
+
+/** Billing cadence offered at the landing checkout. */
+export type BillingCadence = "monthly" | "semiannual" | "annual";
+
+/** Rules of one billing cadence. `fwPlan` = null means no native FW plan. */
+export interface BillingOptionDef {
+  key: BillingCadence;
+  label: string;
+  amountCents: number;
+  major: number;
+  /** Local cadence recorded on the subscription row. */
+  interval: string;
+  /** Local access-window length granted per charge (days). */
+  periodDays: number;
+  /** Flutterwave plan: null for semi-annual (no native FW interval). */
+  fwPlan: { name: string; interval: "monthly" | "yearly"; amount: number } | null;
+  /** True when the checkout charge should attach to the FW plan. */
+  planAttached: boolean;
+}
+
+export const BILLING_OPTIONS: Record<BillingCadence, BillingOptionDef> = {
+  monthly: {
+    key: "monthly",
+    label: "Monthly",
+    amountCents: EARLY_BIRD_CENTS,
+    major: EARLY_BIRD_MAJOR,
+    interval: "month",
+    periodDays: 30,
+    fwPlan: {
+      name: "Sagenify AI — Early Bird Monthly ($199)",
+      interval: "monthly",
+      amount: EARLY_BIRD_MAJOR,
+    },
+    planAttached: true,
+  },
+  semiannual: {
+    key: "semiannual",
+    label: "6 Months",
+    amountCents: SEMI_ANNUAL_CENTS,
+    major: SEMI_ANNUAL_MAJOR,
+    interval: "6months",
+    periodDays: 180,
+    fwPlan: null, // Flutterwave has no 6-month interval — period product
+    planAttached: false,
+  },
+  annual: {
+    key: "annual",
+    label: "Yearly",
+    amountCents: ANNUAL_CENTS,
+    major: ANNUAL_MAJOR,
+    interval: "year",
+    periodDays: 365,
+    fwPlan: {
+      name: "Sagenify AI — Annual ($2,268)",
+      interval: "yearly",
+      amount: ANNUAL_MAJOR,
+    },
+    planAttached: true,
+  },
+};
+
+/** Parse a caller-supplied cadence; default monthly, unknown → monthly. */
+export function resolveBillingCadence(value: unknown): BillingCadence {
+  return value === "semiannual" || value === "annual" ? value : "monthly";
+}
+
+/** Short tx_ref prefix per cadence (audit/ledger readability). */
+export function billingRefPrefix(cadence: BillingCadence): string {
+  return cadence === "monthly"
+    ? "sagenify-eb-m"
+    : cadence === "semiannual"
+      ? "sagenify-eb-s6"
+      : "sagenify-eb-y";
+}
 
 /** Flutterwave reports amounts in major units; our DB stores integer cents. */
 export function majorToCents(amount: number): number {
   return Math.round(amount * 100);
-}
-
-/**
- * Payment-plan first-charge date: the calendar day AFTER the 30-day first
- * month closes (≈ +31 days from payment). A calendar date is midnight by
- * definition, so deferring a full day past period end guarantees the plan can
- * never charge inside the $399 first month — in every time-of-day case.
- */
-export function deferredPlanStartDate(now = new Date()): string {
-  const d = new Date(now.getTime() + 31 * 86_400_000);
-  return d.toISOString().slice(0, 10); // YYYY-MM-DD (UTC midnight)
 }
 
 // ─── Signup metadata (subscribe-first) ───────────────────────────
@@ -68,6 +150,8 @@ export interface SignupMetadata {
   signupName: string;
   signupCompany: string;
   plan: "starter" | "professional";
+  /** Billing cadence chosen at checkout ("monthly" | "semiannual" | "annual"). */
+  cadence?: BillingCadence;
   paymentType?: string;
 }
 
@@ -96,40 +180,44 @@ export interface FlutterwavePlan {
 }
 
 /**
- * Ensure the $199/mo Sagenify payment plan exists exactly once. Looks the plan
- * up first (by name, then by amount+interval); creates it with start_date ≈
- * now + 31 days (day after month 1 closes) when missing. Safe to call on every
- * checkout and webhook — the plan id is what the subscription enrollment needs.
+ * Ensure the payment plan for a cadence exists exactly once (idempotent).
+ * Cadences without a native FW plan (semi-annual) return null — the charge is
+ * a per-period payment, not a plan subscription. Standard ($299) is NOT
+ * created here: it stays dormant until the cap logic ships.
  */
-export async function ensurePaymentPlan(): Promise<{ id: number }> {
-  const existing = await findPaymentPlan();
-  if (existing?.id) {
-    return { id: existing.id };
-  }
+export async function ensurePaymentPlan(
+  cadence: BillingCadence = "monthly",
+): Promise<{ id: number } | null> {
+  const option = BILLING_OPTIONS[resolveBillingCadence(cadence)];
+  if (!option.fwPlan) return null;
+  const existing = await findPaymentPlan(option);
+  if (existing?.id) return { id: existing.id };
   const created = await createPlan({
-    name: PLAN_NAME,
-    amount: RECURRING_FEE_MAJOR,
-    interval: PLAN_INTERVAL,
+    name: option.fwPlan.name,
+    amount: option.fwPlan.amount,
+    interval: option.fwPlan.interval,
     currency: CURRENCY,
   });
   if (!created?.data?.id) {
     throw new Error("Flutterwave payment-plan creation did not return a plan id");
   }
-  console.log(`[flutterwave] Payment plan created: id=${created.data.id}`);
+  console.log(`[flutterwave] Payment plan created (${cadence}): id=${created.data.id}`);
   return { id: created.data.id };
 }
 
-/** Find our $199/mo plan among existing plans (by name, then amount+interval). */
-async function findPaymentPlan(): Promise<FlutterwavePlan | null> {
+/** Find a cadence's plan among existing plans (by name, then amount+interval). */
+async function findPaymentPlan(
+  option: BillingOptionDef,
+): Promise<FlutterwavePlan | null> {
   try {
     const res = await getPaymentPlans();
     const plans: FlutterwavePlan[] = res?.data ?? [];
     return (
-      plans.find((p) => p.name === PLAN_NAME) ??
+      plans.find((p) => p.name === option.fwPlan?.name) ??
       plans.find(
         (p) =>
-          Math.round((p.amount ?? 0) * 100) === RECURRING_CENTS &&
-          p.interval === PLAN_INTERVAL,
+          Math.round((p.amount ?? 0) * 100) === option.amountCents &&
+          p.interval === option.fwPlan?.interval,
       ) ??
       null
     );
@@ -139,12 +227,12 @@ async function findPaymentPlan(): Promise<FlutterwavePlan | null> {
   }
 }
 
-// ─── Recurring enrollment ($199/mo from month 2, plan-deferred) ─
+// ─── Recurring enrollment (plan-attached; webhook resolves, never duplicates) ─
 /**
- * Idempotency guard for the setup webhook: once a business holds a Flutterwave
- * enrollment link, a retried webhook (lost 200/202 ack) must NOT enroll again —
- * a second plan subscription would double up the month-2 $199 charges.
- * Returns true when the business already has a flutterwave subscription id.
+ * Idempotency guard for the checkout webhook: once a business holds a
+ * Flutterwave enrollment id, a retried webhook (lost 200/202 ack) must NOT
+ * enroll again — the plan already bills on interval. Returns true when the
+ * business already has a flutterwave subscription id.
  */
 export function shouldSkipRecurringEnrollment(
   existingFlutterwaveSubId: string | null | undefined,
@@ -153,19 +241,21 @@ export function shouldSkipRecurringEnrollment(
 }
 
 /**
- * Enroll the customer in the $199/mo payment plan. The plan's start_date
- * (+31d, the day after month 1 closes) governs when its first charge can
- * occur — nothing is charged in month 1 (the $399 setup is the entire
- * first-month bill).
+ * Enroll the customer into a payment plan (used for cadences where the
+ * checkout charge is NOT plan-attached, e.g. legacy/semi-annual falls back).
+ * For monthly/annual the checkout attaches `payment_plan` itself, so the
+ * webhook only resolves the provider-side subscription id — calling this for
+ * those cadences would double-enroll. amount defaults to the cadence price.
  */
 export async function createFlutterwaveSubscription(
   customerEmail: string,
   planId: number,
   externalRef: string,
+  amountMajor: number = EARLY_BIRD_MAJOR,
 ): Promise<{ id: number }> {
   const res = await createSubscription({
     tx_ref: externalRef,
-    amount: RECURRING_FEE_MAJOR,
+    amount: amountMajor,
     currency: CURRENCY,
     payment_type: "card",
     customer: customerEmail,

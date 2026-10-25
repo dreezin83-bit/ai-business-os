@@ -217,8 +217,24 @@ export const subscription = pgTable("subscription", {
   currentPeriodStart: timestamp("current_period_start"),
   currentPeriodEnd: timestamp("current_period_end"),
   canceledAt: timestamp("canceled_at"),
+  // ── Early-bird price lock ("lock in $199/mo for life", owner 2026-10-24) ──
+  // priceLockedAt + lockedPlan: once set, the tenant always bills on the
+  // locked plan (lockedPlan = "early-bird"); no path may raise their price.
+  priceLockedAt: timestamp("price_locked_at"),
+  lockedPlan: text("locked_plan"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+// ── Early-bird enrollment counter (single row, id = 1) ──────────────────
+// REAL 10,000-signup cap backing the "first 10,000 users" offer. enrolled is
+// incremented atomically (enrolled < cap) at enrollment; GET
+// /api/early-bird-status exposes {eligible, enrolled, cap} for the landing.
+export const earlyBirdCounter = pgTable("early_bird_counter", {
+  id: integer("id").primaryKey(),
+  enrolled: integer("enrolled").notNull().default(0),
+  cap: integer("cap").notNull().default(10000),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
 
 // ── Usage tracking ──────────────────────────────────────
