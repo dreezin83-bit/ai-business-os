@@ -37,7 +37,7 @@ const INCLUSIONS = [
   "Email follow-up automation",
   "Knowledge base you control (services, pricing, areas)",
   "Reporting & analytics dashboard",
-  "10,000 AI credits included every month",
+  "4,000 AI credits included every month",
 ];
 
 /** Per-period presentation: every card shows its own billing model. */
