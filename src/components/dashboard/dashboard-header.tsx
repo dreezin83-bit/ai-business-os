@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useUser } from "@clerk/nextjs";
 import { Link2, PhoneCall } from "lucide-react";
@@ -20,7 +21,35 @@ function getGreeting() {
 export function DashboardHeader() {
   const { user } = useUser();
   const { toast } = useToast();
-  const firstName = user?.firstName?.trim() ?? "";
+  const [businessName, setBusinessName] = useState("");
+
+  // Greet with the tenant's Business Name (set during onboarding), never the
+  // personal name (owner spec 2026-10-24). Reads the same /api/settings
+  // business row the Co-Pilot workspace uses (business.name; PUT accepts
+  // `name`). Falls back to the Clerk-synced unsafeMetadata.businessName;
+  // when neither exists we prompt the user to add one.
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        const res = await fetch("/api/settings");
+        if (!res.ok) return;
+        const s = await res.json();
+        const name = typeof s?.name === "string" ? s.name.trim() : "";
+        if (mounted && name) setBusinessName(name);
+      } catch {
+        // Graceful: fall through to metadata, then to the add-name prompt.
+      }
+    })();
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  const metaBiz = user?.publicMetadata as Record<string, unknown> | undefined;
+  const metaName =
+    typeof metaBiz?.businessName === "string" ? metaBiz.businessName.trim() : "";
+  const greetingName = businessName || metaName;
 
   const shareBookingLink = async () => {
     // There is no public customer booking page yet, so share the
@@ -42,11 +71,22 @@ export function DashboardHeader() {
       <div className="min-w-0">
         <h1 className="text-2xl md:text-3xl font-bold tracking-tight dash-heading">
           {getGreeting()}
-          {firstName ? `, ${firstName}` : ""} 👋
+          {greetingName ? `, ${greetingName}` : ""} 👋
         </h1>
         <p className="text-sm dash-muted mt-1.5">
           Here&apos;s how your AI receptionist handled things.
         </p>
+        {!greetingName && (
+          <p className="dash-muted text-xs mt-1">
+            <Link
+              href="/dashboard/settings"
+              className="underline decoration-dotted underline-offset-2 hover:opacity-80"
+            >
+              Add your business name
+            </Link>{" "}
+            to personalize your dashboard.
+          </p>
+        )}
       </div>
 
       <div className="flex flex-wrap items-center gap-3">
