@@ -6,7 +6,7 @@ import { requireDashboardUser } from "@/lib/require-dashboard-user";
  * Renders the shared automation view; the old singular /dashboard/automation
  * route redirects here.
  */
-export default function AutomationsPage() {
+export default async function AutomationsPage() {
   await requireDashboardUser();
   return <AutomationView />;
 }

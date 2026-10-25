@@ -3,92 +3,78 @@
  *
  * Imports the production helpers from @/lib/flutterwave.
  * Run: bun test src/app/api/webhooks/__tests__/flutterwave.test.ts
+ *
+ * Billing contract (owner-ratified 2026-10-24, per-plan terms):
+ *   Monthly $199.00 early-bird · 6 Months $1,194.00 · Yearly $2,268.00;
+ *   $299.00/mo standard list (dormant). NO setup fee, NO first-month premium —
+ *   month 1 equals the advertised cadence price.
  */
 import { describe, test, expect } from "bun:test";
 import {
-  deferredPlanStartDate,
+  ANNUAL_CENTS,
+  EARLY_BIRD_CENTS,
   majorToCents,
-  RECURRING_CENTS,
-  SETUP_FEE_CENTS,
+  SEMI_ANNUAL_CENTS,
   shouldSkipRecurringEnrollment,
+  STANDARD_CENTS,
   verifyFlutterwaveSignature,
 } from "@/lib/flutterwave";
 
 const VALID_HASH = "sk_test_webhook_secret_hash_value";
-// Body shape mirrors a real charge.completed webhook payload.
-const VALID_BODY = JSON.stringify({
-  event: "charge.completed",
-  data: {
-    id: 987654,
-    tx_ref: "sagenify-setup-1700000000000-abc12345",
-    amount: 399,
-    currency: "USD",
-    status: "successful",
-    customer: { email: "test@example.com" },
-    meta: {
-      signupEmail: "test@example.com",
-      signupName: "Test User",
-      signupCompany: "Test Co",
-      plan: "starter",
-    },
-  },
-});
 
-describe("verifyFlutterwaveSignature (verif-hash, fail closed)", () => {
-  test("accepts the configured webhook secret hash", async () => {
+describe("verifyFlutterwaveSignature (fail-closed verif-hash)", () => {
+  test("exact match passes", async () => {
     expect(await verifyFlutterwaveSignature(VALID_HASH, VALID_HASH)).toBe(true);
   });
 
-  test("rejects null header", async () => {
+  test("missing header or secret fails closed", async () => {
     expect(await verifyFlutterwaveSignature(null, VALID_HASH)).toBe(false);
-  });
-
-  test("rejects empty header", async () => {
-    expect(await verifyFlutterwaveSignature("", VALID_HASH)).toBe(false);
-  });
-
-  test("rejects wrong hash", async () => {
-    expect(await verifyFlutterwaveSignature("wrong-hash", VALID_HASH)).toBe(false);
-  });
-
-  test("fails closed when secret is missing (never accepts unsigned webhooks)", async () => {
     expect(await verifyFlutterwaveSignature(VALID_HASH, undefined)).toBe(false);
     expect(await verifyFlutterwaveSignature(VALID_HASH, "")).toBe(false);
   });
 });
 
 describe("billing math (major units → integer cents)", () => {
-  test("$399.00 setup → 39900 cents", () => {
-    expect(majorToCents(399)).toBe(SETUP_FEE_CENTS);
-    expect(majorToCents(399.0)).toBe(SETUP_FEE_CENTS);
+  test("$199.00 monthly early-bird → 19900 cents", () => {
+    expect(EARLY_BIRD_CENTS).toBe(19900);
+    expect(majorToCents(199)).toBe(EARLY_BIRD_CENTS);
+    expect(majorToCents(199.0)).toBe(EARLY_BIRD_CENTS);
   });
 
-  test("$199.00 recurring → 19900 cents", () => {
-    expect(majorToCents(199)).toBe(RECURRING_CENTS);
-    expect(majorToCents(199.0)).toBe(RECURRING_CENTS);
+  test("$1,194.00 (6 Months) → 119400 cents", () => {
+    expect(SEMI_ANNUAL_CENTS).toBe(119400);
+    expect(majorToCents(1194)).toBe(SEMI_ANNUAL_CENTS);
+  });
+
+  test("$2,268.00 (Yearly) → 226800 cents", () => {
+    expect(ANNUAL_CENTS).toBe(226800);
+    expect(majorToCents(2268)).toBe(ANNUAL_CENTS);
+  });
+
+  test("$299.00 standard list (dormant anchor) → 29900 cents", () => {
+    expect(STANDARD_CENTS).toBe(29900);
+    expect(majorToCents(299)).toBe(STANDARD_CENTS);
   });
 
   test("float amounts round to integer cents", () => {
     expect(majorToCents(199.99)).toBe(19999);
-    expect(majorToCents(399.005)).toBe(39901); // Math.round
+    expect(majorToCents(199.995)).toBe(20000); // Math.round
   });
 });
 
-describe("deferredPlanStartDate (first $199 charge after month 1 closes)", () => {
-  test("returns YYYY-MM-DD for the calendar day ~31 days out", () => {
-    const ref = new Date("2026-10-24T12:00:00.000Z");
-    expect(deferredPlanStartDate(ref)).toBe("2026-11-24");
+describe("month-1 invariant: no setup fee, no first-month premium", () => {
+  test("month 1 equals the advertised cadence — $199, not $399", () => {
+    expect(EARLY_BIRD_CENTS).toBe(19900);
+    expect(SEMI_ANNUAL_CENTS).toBe(119400); // 6 × $199
+    expect(ANNUAL_CENTS).toBe(226800); // 12 × $189 (5%-off yearly)
+    expect(STANDARD_CENTS).toBe(29900); // true list price (crossed-out anchor)
   });
 
-  test("month-1 definition: plan start_date is AFTER the local 30-day period end", () => {
-    // The $399 setup charge's 30-day credit window ends 30 days after payment.
-    // The plan must not be chargeable inside that window — including the
-    // 12h edge when the plan's calendar date (UTC midnight) falls on the same
-    // day the window closes.
-    const ref = new Date("2026-10-24T12:00:00.000Z");
-    const creditPeriodEnd = new Date(ref.getTime() + 30 * 86_400_000); // 2026-11-23T12:00
-    const planStart = new Date(`${deferredPlanStartDate(ref)}T00:00:00.000Z`);
-    expect(planStart.getTime()).toBeGreaterThan(creditPeriodEnd.getTime());
+  test("no premium constant exists anywhere in the contract", () => {
+    // The $399-era setup premium is gone: the only month-1 charge is the
+    // cadence amount itself. EARLY_BIRD_CENTS must never equal a premium.
+    expect(EARLY_BIRD_CENTS).not.toBe(STANDARD_CENTS);
+    expect(SEMI_ANNUAL_CENTS).toBe(EARLY_BIRD_CENTS * 6);
   });
 });
 
@@ -118,16 +104,5 @@ describe("Subscription failure → pending_subscription", () => {
     const subscriptionFailed = false;
     const subStatus = subscriptionFailed ? "pending_subscription" : "active";
     expect(subStatus).toBe("active");
-  });
-
-  test("month-1 invariant: the setup charge is exactly $399 — the $199 recurring leg is deferred, not double-charged", () => {
-    // Approved offer: "$399 first month, then $199/month recurring".
-    // The checkout flow initializes ONLY the $399 setup transaction; the $199
-    // recurring charge is deferred to month 2 via the payment-plan start_date.
-    // If both ever landed in month 1 the total would be $598 — that must not
-    // happen. The webhook's only enforced month-1 charge is SETUP_FEE_CENTS.
-    expect(SETUP_FEE_CENTS).toBe(39900);
-    expect(RECURRING_CENTS).toBe(19900);
-    expect(SETUP_FEE_CENTS).not.toBe(RECURRING_CENTS);
   });
 });

@@ -13,7 +13,7 @@ const FW_BASE = "https://api.flutterwave.com/v3";
 
 export interface FlutterwavePaymentInput {
   tx_ref: string;           // unique transaction reference
-  amount: number;           // amount in the currency's MAJOR unit (e.g., 399 = $399.00)
+  amount: number;           // amount in the currency's MAJOR unit (e.g., 199 = $199.00)
   currency?: string;        // default: "USD"
   redirect_url?: string;     // where to redirect after payment
   customer: {
@@ -23,6 +23,8 @@ export interface FlutterwavePaymentInput {
   };
   meta?: Record<string, unknown>;  // custom metadata (businessId, etc.)
   payment_options?: string;  // "card,ussd,account,mpesa,barter"
+  /** Flutterwave payment-plan id — when set, this charge counts as the plan's first payment. */
+  paymentPlan?: number | null;
 }
 
 export interface FlutterwavePaymentResponse {
@@ -129,6 +131,7 @@ export async function initializePayment(
       customer: input.customer,
       meta: input.meta,
       payment_options: input.payment_options || "card",
+      payment_plan: input.paymentPlan ?? undefined,
     }
   );
   return res.data.link;

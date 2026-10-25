@@ -6,7 +6,7 @@ import { requireDashboardUser } from "@/lib/require-dashboard-user";
  * (/dashboard/automations). Server-side redirect so any old bookmarks or
  * links keep working without a dead end.
  */
-export default function AutomationRedirect() {
+export default async function AutomationRedirect() {
   await requireDashboardUser();
   redirect("/dashboard/automations");
 }

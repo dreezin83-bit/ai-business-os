@@ -17,7 +17,9 @@ export default function SubscribeModal({ open, onClose }: SubscribeModalProps) {
   const [email, setEmail] = useState("");
   const [name, setName] = useState("");
   const [companyName, setCompanyName] = useState("");
-  const [plan, setPlan] = useState<"starter" | "professional">("starter");
+  const [cadence, setCadence] = useState<"monthly" | "semiannual" | "annual">(
+    "monthly",
+  );
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
 
@@ -43,7 +45,8 @@ export default function SubscribeModal({ open, onClose }: SubscribeModalProps) {
           email: email.trim(),
           name: name.trim(),
           companyName: companyName.trim(),
-          plan,
+          plan: "starter",
+          cadence,
         }),
       });
 
@@ -81,32 +84,50 @@ export default function SubscribeModal({ open, onClose }: SubscribeModalProps) {
           <div className="grid grid-cols-2 gap-2">
             <button
               type="button"
-              onClick={() => setPlan("starter")}
+              onClick={() => setCadence("monthly")}
               className={`rounded-xl border p-3 text-left transition-all cursor-pointer ${
-                plan === "starter"
-                  ? "border-white/30 bg-white/[0.06]"
-                  : "border-white/[0.06] bg-transparent hover:bg-white/[0.03]"
-              }`}
-            >
-              <div className="text-xs font-semibold text-white/70">Starter</div>
-              <div className="text-[11px] text-white/30 mt-0.5">
-                For single-location service businesses
-              </div>
-            </button>
-            <button
-              type="button"
-              onClick={() => setPlan("professional")}
-              className={`rounded-xl border p-3 text-left transition-all cursor-pointer ${
-                plan === "professional"
+                cadence === "monthly"
                   ? "border-white/30 bg-white/[0.06]"
                   : "border-white/[0.06] bg-transparent hover:bg-white/[0.03]"
               }`}
             >
               <div className="text-xs font-semibold text-white/70">
-                Professional
+                Monthly <span className="text-white/50">— $199/mo</span>
               </div>
               <div className="text-[11px] text-white/30 mt-0.5">
-                For growing multi-location teams
+                Early-bird price lock — billed every month
+              </div>
+            </button>
+            <button
+              type="button"
+              onClick={() => setCadence("semiannual")}
+              className={`rounded-xl border p-3 text-left transition-all cursor-pointer ${
+                cadence === "semiannual"
+                  ? "border-white/30 bg-white/[0.06]"
+                  : "border-white/[0.06] bg-transparent hover:bg-white/[0.03]"
+              }`}
+            >
+              <div className="text-xs font-semibold text-white/70">
+                6 Months <span className="text-white/50">— $1,194</span>
+              </div>
+              <div className="text-[11px] text-white/30 mt-0.5">
+                6 payments at $199 — one charge per period
+              </div>
+            </button>
+            <button
+              type="button"
+              onClick={() => setCadence("annual")}
+              className={`rounded-xl border p-3 text-left transition-all cursor-pointer ${
+                cadence === "annual"
+                  ? "border-white/30 bg-white/[0.06]"
+                  : "border-white/[0.06] bg-transparent hover:bg-white/[0.03]"
+              }`}
+            >
+              <div className="text-xs font-semibold text-white/70">
+                Yearly <span className="text-white/50">— $2,268</span>
+              </div>
+              <div className="text-[11px] text-white/30 mt-0.5">
+                12 months — save 5% ($189/mo equivalent)
               </div>
             </button>
           </div>

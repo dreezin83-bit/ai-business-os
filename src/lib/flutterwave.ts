@@ -2,27 +2,24 @@
  * Flutterwave payment domain helpers — THE live payment path (owner decision
  * 2026-10-23; Paystack fully removed).
  *
- * Checkout flow (subscribe-first):
- *   1. POST /api/flutterwave/checkout — ensures the $199/mo payment plan exists
- *      (idempotent), then initializes a *standalone* $399 one-time transaction
- *      (no plan attached — plan amounts would override the $399).
- *   2. Flutterwave webhook (charge.completed, status "successful") — verifies
+ * Checkout flow (subscribe-first, per-plan terms ratified 2026-10-24):
+ *   1. POST /api/flutterwave/checkout — resolves the chosen cadence
+ *      (monthly / semiannual / annual), ensures that cadence's payment plan
+ *      exists (idempotent; monthly + annual only), and initializes ONE charge
+ *      for the cadence's full amount: $199 (Monthly), $1,194 (6 Months),
+ *      $2,268 (Yearly). No setup fee and no first-month premium — month 1 is
+ *      exactly the advertised price.
+ *   2. Monthly and Annual attach the cadence's plan (payment_plan), so the
+ *      checkout charge IS the plan's first payment — the plan is active
+ *      immediately and bills its own interval from the next cycle. 6 Months
+ *      (no native Flutterwave interval) stands alone and grants a 180-day
+ *      access window; its next period is a fresh checkout.
+ *   3. Flutterwave webhook (charge.completed, status "successful") — verifies
  *      verif-hash, server-verifies the transaction, creates the business from
- *      signup metadata, enrolls the customer in the $199/mo payment plan
- *      (subscription starting at plan.start_date = +30 days), persists the
- *      local subscription, opens the monthly credit period, and provisions
- *      Vapi voice once onboarding completes.
- *
- * First-month billing invariant (owner-ratified offer: "$399 first month,
- * then $199/month recurring"):
- *   - The $399 setup charge is standalone — nothing else is charged at
- *     checkout, so month-1 total can never exceed $399 from this flow.
- *   - The $199/mo payment plan is created with start_date ≈ now + 31 days
- *     (the calendar day AFTER the 30-day first month closes), which defers the
- *     FIRST recurring charge into the second month (the Reading-A behavior the
- *     pricing findings required). QA must CONFIRM in Flutterwave TEST MODE
- *     before launch that enrolling the subscription triggers NO immediate
- *     $199 charge (see shared FLUTTERWAVE-FIRST-MONTH-BILLING.md).
+ *      signup metadata, records the local subscription at the SAME amount for
+ *      the next cycle (the plan's own recurrence), stamps the per-tenant
+ *      early-bird price-lock, opens the credit period (periodDays by cadence),
+ *      and provisions Vapi voice once onboarding completes.
  *
  * Required env: FLUTTERWAVE_SECRET_KEY, FLUTTERWAVE_WEBHOOK_SECRET
  */
@@ -153,6 +150,8 @@ export interface SignupMetadata {
   signupName: string;
   signupCompany: string;
   plan: "starter" | "professional";
+  /** Billing cadence chosen at checkout ("monthly" | "semiannual" | "annual"). */
+  cadence?: BillingCadence;
   paymentType?: string;
 }
 
