@@ -6,28 +6,28 @@ import { Check } from "lucide-react";
 
 /**
  * PricingSection — single-plan pricing with a Monthly / 6 Months / Yearly
- * billing toggle. Truthful by construction:
- *   - Every plan: $399 for the first month, then the rate shown.
- *   - Yearly is 5% off the monthly rate ($199 → $189/mo), billed annually.
- * No crossed-out anchors, no urgency copy, no limited-offer claims (those are
- * pending owner confirmation per the business plan and must not ship).
+ * billing toggle rendering three DISTINCT plan presentations.
+ *
+ * Owner direction 2026-10-24 (task 0d1c5c78):
+ *   - Month 1 is $199/mo like every month — the first-month special is
+ *     GONE from billing and from this section.
+ *   - "$299/mo" is the real standard list price anchor (crossed out above the
+ *     active price; early bird gets $199).
+ *   - The banner text below is owner copy, shipped VERBATIM (single source
+ *     line so the exact string stays byte-identical).
+ *   - Periods: Monthly "$199/mo" (Billed monthly) · 6 Months "$1,194 every
+ *     6 months" with a truthful "6 × $199" badge · Yearly "$189/mo
+ *     equivalent", "Save 5%", "$2,268 billed annually".
+ * No fake % discounts, no invented deadlines — "Ending Soon" is backed by a
+ * real 10,000-slot early-bird cap being implemented in the same release.
  */
 type Period = "monthly" | "half" | "yearly";
 
 const PERIODS: { id: Period; label: string; badge?: string }[] = [
   { id: "monthly", label: "Monthly" },
-  { id: "half", label: "6 Months" },
+  { id: "half", label: "6 Months", badge: "6 × $199" },
   { id: "yearly", label: "Yearly", badge: "Save 5%" },
 ];
-
-const DETAILS: Record<
-  Period,
-  { rate: string; suffix: string; billed: string }
-> = {
-  monthly: { rate: "$199", suffix: "/mo", billed: "Billed monthly after the first month" },
-  half: { rate: "$199", suffix: "/mo", billed: "Billed every 6 months — $1,194 per period" },
-  yearly: { rate: "$189", suffix: "/mo", billed: "Billed annually — $2,268 per year (5% off)" },
-};
 
 const INCLUSIONS = [
   "AI phone receptionist — answers & qualifies calls 24/7",
@@ -40,9 +40,48 @@ const INCLUSIONS = [
   "10,000 AI credits included every month",
 ];
 
+/** Per-period presentation: every card shows its own billing model. */
+const PLANS: Record<
+  Period,
+  {
+    badge: string;
+    anchor: string;
+    rate: string;
+    unit: string;
+    billing: string;
+    total: string;
+  }
+> = {
+  monthly: {
+    badge: "Most popular",
+    anchor: "$299/mo",
+    rate: "$199",
+    unit: "/mo",
+    billing: "Billed monthly.",
+    total: "",
+  },
+  half: {
+    badge: "6 × $199",
+    anchor: "$299/mo",
+    rate: "$199",
+    unit: "/mo",
+    billing: "Billed every 6 months",
+    total: "$1,194 every 6 months",
+  },
+  yearly: {
+    badge: "Save 5%",
+    anchor: "$299/mo",
+    rate: "$189",
+    unit: "/mo",
+    billing: "$189/mo equivalent — billed annually",
+    total: "$2,268 billed annually",
+  },
+};
+
 export default function PricingSection() {
   const [period, setPeriod] = useState<Period>("monthly");
-  const detail = DETAILS[period];
+  const plan = PLANS[period];
+  const active = PERIODS.find((p) => p.id === period)!;
 
   return (
     <section
@@ -64,7 +103,7 @@ export default function PricingSection() {
         </div>
 
         {/* Billing toggle */}
-        <div className="flex justify-center mb-10">
+        <div className="flex justify-center mb-6">
           <div className="inline-flex items-center gap-1 rounded-full bg-white/[0.05] border border-white/[0.08] p-1">
             {PERIODS.map((p) => (
               <button
@@ -80,7 +119,13 @@ export default function PricingSection() {
               >
                 {p.label}
                 {p.badge && (
-                  <span className="inline-flex items-center rounded-full bg-emerald-500/15 border border-emerald-500/30 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-emerald-300">
+                  <span
+                    className={`inline-flex items-center rounded-full px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide ${
+                      period === p.id
+                        ? "bg-white/15 text-white"
+                        : "bg-emerald-500/15 border border-emerald-500/30 text-emerald-300"
+                    }`}
+                  >
                     {p.badge}
                   </span>
                 )}
@@ -89,9 +134,18 @@ export default function PricingSection() {
           </div>
         </div>
 
-        {/* Plan card */}
+        {/* Early-bird banner — owner copy, verbatim (real 10,000-slot cap backing "Ending Soon") */}
+        <div className="max-w-2xl mx-auto mb-8">
+          <div className="rounded-2xl border border-amber-400/25 bg-gradient-to-r from-amber-500/[0.08] via-purple-500/[0.06] to-amber-500/[0.08] px-5 py-4 text-center">
+            <p className="text-[13px] font-semibold text-amber-200 leading-relaxed">
+              Early Bird Discount for the first 10,000 users — Ending Soon! Lock in $199/mo for life (No future price increases).
+            </p>
+          </div>
+        </div>
+
+        {/* Plan card — distinct presentation per period */}
         <div className="glass rounded-3xl p-8 md:p-10 max-w-2xl mx-auto relative overflow-hidden">
-          <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center justify-between mb-2">
             <div>
               <h3 className="text-lg font-bold text-white">
                 Sagenify AI
@@ -101,22 +155,32 @@ export default function PricingSection() {
               </p>
             </div>
             <span className="inline-flex items-center rounded-full bg-purple-500/10 border border-purple-500/25 px-3 py-1 text-[10px] font-semibold uppercase tracking-wide text-purple-300">
-              Most popular
+              {plan.badge}
             </span>
           </div>
 
-          <div className="flex items-baseline gap-2 mb-1">
-            <span className="text-5xl font-bold tracking-tight text-white">
-              {detail.rate}
-            </span>
-            <span className="text-lg text-slate-400 font-medium">
-              {detail.suffix}
+          {/* Real list-price anchor, crossed out (tab index 0 so SR users hear the list price first) */}
+          <div className="pt-5 pb-0">
+            <span className="inline-block text-base font-semibold text-slate-500 line-through decoration-slate-500/70 decoration-2">
+              {plan.anchor}
             </span>
           </div>
-          <p className="text-xs text-slate-400 mb-2">{detail.billed}</p>
-          <p className="text-xs text-slate-500 mb-8">
-            First month $399, then the rate above. Prices in USD.
-          </p>
+
+          <div className="flex items-baseline gap-2">
+            <span className="text-5xl font-bold tracking-tight text-white">
+              {plan.rate}
+            </span>
+            <span className="text-lg text-slate-400 font-medium">
+              {plan.unit}
+            </span>
+          </div>
+
+          {plan.total ? (
+            <p className="text-sm font-semibold text-emerald-300 mt-2">
+              {plan.total}
+            </p>
+          ) : null}
+          <p className="text-xs text-slate-400 mt-1.5 mb-7">{plan.billing}</p>
 
           <ul className="grid sm:grid-cols-2 gap-x-6 gap-y-2.5 mb-8">
             {INCLUSIONS.map((item) => (
@@ -134,11 +198,8 @@ export default function PricingSection() {
             href="/sign-up"
             className="inline-flex h-12 w-full items-center justify-center rounded-full bg-purple-500 hover:bg-purple-400 text-white font-semibold text-[15px] transition-colors"
           >
-            Start Free Trial
+            Subscribe
           </Link>
-          <p className="text-center text-[11px] text-slate-500 mt-3">
-            No credit card required to start.
-          </p>
         </div>
       </div>
     </section>
