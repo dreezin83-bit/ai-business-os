@@ -2,8 +2,9 @@
  * credits.ts — Central AI credit metering + enforcement (Phase 2, owner-ratified 2026-09-19;
  * weights reconciled to CREDIT-CALIBRATION.md v2026-09-cal-v1, owner-ratified 2026-10-07).
  *
- * CALIBRATED ANCHOR: 1 credit ≙ $0.005 of blended provider list-price cost. 10,000 credits
- * included per $199/month → ≈ $50 provider ceiling at full burn (74.9% gross margin).
+ * CALIBRATED ANCHOR: 1 credit ≙ $0.005 of blended provider list-price cost. 4,000 credits
+ * included per $199/month → ≈ $20 provider ceiling at full burn (owner-ratified 2026-10-24:
+ * "$20/month of AI provider cost = 4,000 credits", ~10% cost ratio at $199 revenue).
  * Balances are stored as INTEGER milli-credits (1 credit = 1,000 milli) so fractional weights
  * are auditable; the UI/dashboard divides by 1,000 (GET /api/dashboard/stats returns credit units).
  *
@@ -11,7 +12,8 @@
  *  1. Single internal credit weighted by ACTUAL per-model/provider AI consumption (tokens/minutes),
  *     never per-HTTP-request. Weight table per CREDIT-CALIBRATION.md §3; unknown models fail closed
  *     to the most expensive listed weight so an env typo can never under-meter spend.
- *  2. 10,000 credits included per $199/month subscription (env CREDITS_INCLUDED_PER_PERIOD, default 10000).
+ *  2. 4,000 credits included per $199/month subscription (env CREDITS_INCLUDED_PER_PERIOD, default 4000) — this
+ *     replaced the earlier 10,000 (~$50) assumption on 2026-10-24 and is what the landing advertises.
  *  3. Voice: never drop an active call; no NEW expensive AI work starts when hard-stopped.
  *  4. Top-ups: data model supports purchased credits; grants only via an authorized owner/admin mechanism.
  *  5. Grace: warn at <=15% remaining; at 0 mark exhausted_grace with a 24h window AND a bounded
@@ -32,7 +34,7 @@ import { MILLI, computeCreditsMilli } from "@/lib/credit-weights";
 export { modelWeights, voiceWeight, normalizeModelId } from "@/lib/credit-weights";
 
 // ── Config (spec §6 — single place costs/limits change) ───────────────────────
-export const CREDITS_INCLUDED_PER_PERIOD = Number(process.env.CREDITS_INCLUDED_PER_PERIOD ?? 10000);
+export const CREDITS_INCLUDED_PER_PERIOD = Number(process.env.CREDITS_INCLUDED_PER_PERIOD ?? 4000);
 export const CREDITS_WARN_REMAINING_PCT = Number(process.env.CREDITS_WARN_REMAINING_PCT ?? 15);
 export const CREDITS_GRACE_HOURS = Number(process.env.CREDITS_GRACE_HOURS ?? 24);
 export const CREDITS_GRACE_OVERDRAFT_CREDITS = Number(process.env.CREDITS_GRACE_OVERDRAFT_CREDITS ?? 500);
@@ -153,7 +155,7 @@ export async function openCreditPeriod(businessId: string, start: Date, end: Dat
 
 /** Close the old period as an idempotent snapshot (never overwrites previous snapshots). */
 export async function closePeriodSnapshot(acct: typeof creditAccount.$inferSelect): Promise<void> {
-  // Real granted total for the period (milli-credits; = 10,000,000 for a standard monthly refill) —
+  // Real granted total for the period (milli-credits; = 4,000,000 for a standard monthly refill) —
   // the snapshot is the per-tenant provider-cost KPI source, so it must carry true grant values.
   const grants = await db
     .select({ total: sql<number>`coalesce(sum(${creditGrant.amount}), 0)` })
