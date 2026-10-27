@@ -179,14 +179,13 @@ export async function closePeriodSnapshot(acct: typeof creditAccount.$inferSelec
 
 /** Ensure a credit_account row exists for the CURRENT subscription window. Lazily opens one if missing. Returns the row. */
 export async function ensureCreditAccount(businessId: string): Promise<typeof creditAccount.$inferSelect> {
-  const { start } = await getPeriodWindow(businessId);
+  const { start, end } = await getPeriodWindow(businessId);
   const [existing] = await db
     .select()
     .from(creditAccount)
     .where(and(eq(creditAccount.businessId, businessId), eq(creditAccount.periodStartAt, start)))
     .limit(1);
   if (existing) return existing;
-  const { end } = await getPeriodWindow(businessId);
   await db
     .insert(creditAccount)
     .values({

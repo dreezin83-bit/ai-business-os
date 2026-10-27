@@ -48,6 +48,7 @@ export async function GET() {
       lastWeekLeads,
       recentConvos,
       recentComms,
+      aiCredits,
     ] = await Promise.all([
       // Total lead count
       db.select({ count: sql<number>`count(*)::int` }).from(lead).where(eq(lead.businessId, businessId)),
@@ -132,6 +133,22 @@ export async function GET() {
         .where(eq(communicationLog.businessId, businessId))
         .orderBy(desc(communicationLog.sentAt))
         .limit(5),
+
+      // ─── AI credit balance ───────────────────────────────────────────
+      // Folded INTO the batch above: this used to be awaited serially after
+      // the 12 queries finished, and the helper itself chains several
+      // queries (period window → wallet read → possible lazy open), so the
+      // serialisation cost a whole extra round-trip chain on the hottest
+      // dashboard endpoint. Read defensively — before migration 0006 lands
+      // the credit tables may not exist, and a missing balance must never
+      // take the core dashboard down.
+      getCreditStatus(businessId).catch((err) => {
+        console.error("[dashboard/stats] Failed to read AI credit status", {
+          businessId,
+          error: err instanceof Error ? err.message : String(err),
+        });
+        return null;
+      }),
     ]);
 
     // ─── Build weekly chart data (fill gaps for days with 0 leads) ───
@@ -154,19 +171,6 @@ export async function GET() {
     const weeklyChange = lastWeekTotal > 0
       ? Math.round(((thisWeekTotal - lastWeekTotal) / lastWeekTotal) * 100)
       : thisWeekTotal > 0 ? 100 : 0;
-
-    // ─── AI credit balance (owner decision #1 — one simple number: credits used / credits included) ───
-    // Read defensively: before migration 0006 lands in an environment, the credit tables may not
-    // exist yet. A missing balance must never take the core dashboard down.
-    let aiCredits: Awaited<ReturnType<typeof getCreditStatus>> | null = null;
-    try {
-      aiCredits = await getCreditStatus(businessId);
-    } catch (err) {
-      console.error("[dashboard/stats] Failed to read AI credit status", {
-        businessId,
-        error: err instanceof Error ? err.message : String(err),
-      });
-    }
 
     // ─── Chat vs voice credit split (dashboard usage bars) ──────────────
     // Sums the usage ledger for THIS billing period: chat = all non-voice
