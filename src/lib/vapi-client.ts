@@ -7,6 +7,8 @@
  * Required env: VAPI_PRIVATE_KEY (owner-saved name; VAPI_API_KEY kept as legacy fallback)
  */
 
+import { getVapiMasterKey } from "@/lib/vapi-master-key";
+
 const VAPI_BASE = "https://api.vapi.ai";
 
 export interface VapiPhoneNumber {
@@ -100,10 +102,9 @@ async function vapiFetch<T>(
   path: string,
   options: RequestInit = {}
 ): Promise<T> {
-  const apiKey = process.env.VAPI_PRIVATE_KEY ?? process.env.VAPI_API_KEY;
-  if (!apiKey) {
-    throw new Error("VAPI key is not configured (VAPI_PRIVATE_KEY or legacy VAPI_API_KEY)");
-  }
+  // One controller owns the master credential (see lib/vapi-master-key.ts) so
+  // the env names and their precedence are declared exactly once.
+  const apiKey = getVapiMasterKey();
 
   const res = await fetch(`${VAPI_BASE}${path}`, {
     ...options,
