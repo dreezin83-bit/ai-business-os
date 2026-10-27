@@ -12,6 +12,14 @@ const isPublicRoute = createRouteMatcher([
   "/terms",
   "/sign-in(.*)",
   "/sign-up(.*)",
+  // Crawler + metadata files are PUBLIC. They used to fall through to the auth
+  // gate: Googlebot sends no sec-fetch-dest header so auth.protect() let it
+  // through, but a human opening /robots.txt in an address bar sends
+  // `sec-fetch-dest: document`, which the gate treats as a page navigation and
+  // 307s to /sign-in (DevOps found this post-#85). No SEO impact (Googlebot was
+  // never affected) — it is a correctness fix for anyone who opens the file.
+  "/robots.txt",
+  "/sitemap.xml",
   // NOTE: /onboarding is intentionally NOT public — signed-out visitors
   // hitting /onboarding must be redirected to /sign-in (QA issue 004).
   // Signed-in users are handled by the onboarding DB check below, and the
