@@ -33,6 +33,7 @@ import { aiBrainConfig, business, subscription } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { generateId } from "@/lib/utils";
 import { openCreditPeriod } from "@/lib/credits";
+import { fulfilCreditTopup, isTopupCharge } from "@/lib/credit-topup";
 import {
   BILLING_OPTIONS,
   CURRENCY,
@@ -173,6 +174,35 @@ export async function POST(request: Request) {
         { error: "Payment not verified server-side" },
         { status: 402 },
       );
+    }
+
+    // ── Credit top-up branch ─────────────────────────────────────
+    // Runs BEFORE business resolution on purpose: a top-up is a one-off charge,
+    // not an enrollment. It must never create a business, touch the subscription
+    // row, or extend the billing period. The tenant comes from the metadata we
+    // set in /api/flutterwave/topup, and the credits come from the amount in
+    // this signed, server-verified charge — never from what the client asked for.
+    // Idempotent on tx_ref, so Flutterwave's webhook retries cannot double-credit.
+    if (isTopupCharge(data.tx_ref, data.meta)) {
+      const topupBusinessId = (data.meta?.businessId as string) || null;
+      if (!topupBusinessId) {
+        console.error(
+          `[flutterwave-webhook] Top-up charge ${data.tx_ref} carries no businessId — skipping`
+        );
+        return NextResponse.json({
+          received: true,
+          note: "Top-up missing businessId",
+        });
+      }
+      const fulfilment = await fulfilCreditTopup({
+        businessId: topupBusinessId,
+        txRef: String(data.tx_ref),
+        verifiedAmountUsd: majorToCents(data.amount) / 100,
+      });
+      console.log(
+        `[flutterwave-webhook] Top-up ${data.tx_ref} for ${topupBusinessId}: ${JSON.stringify(fulfilment)}`
+      );
+      return NextResponse.json({ received: true, topup: fulfilment });
     }
 
     // ── Resolve business ──
