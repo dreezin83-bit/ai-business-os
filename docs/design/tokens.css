@@ -1,0 +1,427 @@
+/* ============================================================================
+   SAGENIFY AI — DESIGN TOKENS  v1
+   Source of truth for the landing page, the marketing site and the dashboard.
+   Implements docs/DESIGN-BRIEF.md (owner direction 2026-10-31) exactly.
+
+   Consumers: import once (globally) and never hard-code a hex, a px radius,
+   a shadow or a duration anywhere else. If a value is missing, add it here.
+
+   Naming:  --<category>-<role>[-<step>]
+   Brand ramps keep the brief's own step numbers (700 = the canonical colour).
+   ========================================================================== */
+
+:root {
+  /* --------------------------------------------------------------------------
+     1. BRAND RAMPS
+     Five brand colours plus derived neutrals. Do not invent a sixth.
+     -------------------------------------------------------------------------- */
+
+  /* Midnight Abyss — primary surface / page base */
+  --midnight-900: #0d1229;
+  --midnight-800: #121936;
+  --midnight-700: #171f44; /* canonical base */
+  --midnight-600: #1e2a5c;
+  --midnight-500: #26356f;
+
+  /* Charcoal Black — secondary surface / cards */
+  --charcoal-900: #14151c;
+  --charcoal-800: #1a1c25;
+  --charcoal-700: #21232e; /* canonical card */
+  --charcoal-600: #2a2d3a;
+  --charcoal-500: #343849;
+
+  /* Royal Blue — PRIMARY ACTION. Fill only. Never text on a dark base. */
+  --blue-700: #0b46cc;
+  --blue-500: #105bff; /* canonical action */
+  --blue-300: #4a85ff;
+  --blue-100: #d9e6ff;
+
+  /* Tangerine Orange — HIGHLIGHT / CTA. Fill pairs with near-black text. */
+  --orange-700: #cc6a00;
+  --orange-500: #fe8500; /* canonical highlight */
+  --orange-300: #ffa23d;
+  --orange-100: #ffebd1;
+
+  /* Glow accents — LIGHT, not paint.
+     Allowed: glow, gradient stop, 1px accent line, active-state ring, particle.
+     Forbidden: body text, button fill, large flat areas. */
+  --pink-500: #fe81d1;
+  --aqua-500: #74ffed;
+
+  /* Neutrals */
+  --white: #ffffff;
+  --near-black: #14151c;
+  --text-primary: #ffffff;
+  --text-secondary: #b9c0d4;
+  --text-tertiary: #7c86a0;
+  --border: rgba(255, 255, 255, 0.08);
+  --border-strong: rgba(255, 255, 255, 0.16);
+
+  /* --------------------------------------------------------------------------
+     2. SEMANTIC COLOUR ROLES  — use these in components, not the ramps.
+     -------------------------------------------------------------------------- */
+  --color-bg: var(--midnight-900);
+  --color-bg-elevated: var(--midnight-700);
+  --color-surface: var(--charcoal-700);
+  --color-surface-raised: var(--charcoal-600);
+  --color-surface-sunken: var(--charcoal-900);
+
+  --color-text: var(--text-primary);
+  --color-text-muted: var(--text-secondary);
+  --color-text-faint: var(--text-tertiary);
+
+  --color-hairline: var(--border);
+  --color-hairline-strong: var(--border-strong);
+
+  /* Primary action: Royal Blue block, white label. */
+  --color-action: var(--blue-500);
+  --color-action-hover: var(--blue-300);
+  --color-action-pressed: var(--blue-700);
+  --color-on-action: var(--white);
+
+  /* Highlight action: Tangerine block, near-black label. */
+  --color-highlight: var(--orange-500);
+  --color-highlight-hover: var(--orange-300);
+  --color-highlight-pressed: var(--orange-700);
+  --color-on-highlight: var(--near-black);
+
+  /* Focus / active ring — aqua hairline, never a text colour. */
+  --color-focus-ring: var(--aqua-500);
+  --focus-ring-width: 2px;
+  --focus-ring-offset: 2px;
+
+  /* --------------------------------------------------------------------------
+     3. GLOW + SHADOW
+     Pink and aqua exist here as light. Opacities are tuned for Midnight Abyss.
+     -------------------------------------------------------------------------- */
+  --glow-pink: 0 0 60px rgba(254, 129, 209, 0.45);
+  --glow-aqua: 0 0 60px rgba(116, 255, 237, 0.38);
+  --glow-blue: 0 0 80px rgba(16, 91, 255, 0.55);
+  --glow-blue-soft: 0 0 120px rgba(16, 91, 255, 0.32);
+  --glow-orange: 0 0 40px rgba(254, 133, 0, 0.35);
+
+  /* Soft elevation — dark shadows read as depth on a dark base. */
+  --shadow-1: 0 1px 2px rgba(6, 9, 20, 0.45);
+  --shadow-2: 0 6px 18px rgba(6, 9, 20, 0.5);
+  --shadow-3: 0 18px 48px rgba(6, 9, 20, 0.55);
+  --shadow-4: 0 32px 90px rgba(6, 9, 20, 0.6);
+
+  /* Glass: translucent fills instead of backdrop-filter (perf contract §3). */
+  --glass-fill: linear-gradient(
+    180deg,
+    rgba(42, 45, 58, 0.72) 0%,
+    rgba(23, 31, 68, 0.58) 100%
+  );
+  --glass-fill-strong: linear-gradient(
+    180deg,
+    rgba(52, 56, 73, 0.86) 0%,
+    rgba(26, 28, 37, 0.78) 100%
+  );
+  --glass-edge: 1px solid var(--border);
+  --glass-highlight: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+
+  /* Ambient light — reusable radial gradients for section backgrounds. */
+  --light-pink: radial-gradient(
+    circle at 50% 50%,
+    rgba(254, 129, 209, 0.4) 0%,
+    rgba(254, 129, 209, 0) 70%
+  );
+  --light-aqua: radial-gradient(
+    circle at 50% 50%,
+    rgba(116, 255, 237, 0.34) 0%,
+    rgba(116, 255, 237, 0) 70%
+  );
+  --light-blue: radial-gradient(
+    circle at 50% 50%,
+    rgba(16, 91, 255, 0.42) 0%,
+    rgba(16, 91, 255, 0) 72%
+  );
+
+  /* --------------------------------------------------------------------------
+     4. RADIUS
+     -------------------------------------------------------------------------- */
+  --radius-none: 0;
+  --radius-xs: 4px;
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 20px;
+  --radius-2xl: 24px;
+  --radius-3xl: 32px;
+  --radius-pill: 999px;
+  --radius-full: 50%;
+
+  /* --------------------------------------------------------------------------
+     5. SPACING  (4px base; 2px hairline step for optical nudges)
+     -------------------------------------------------------------------------- */
+  --space-0: 0;
+  --space-1: 2px;
+  --space-2: 4px;
+  --space-3: 6px;
+  --space-4: 8px;
+  --space-5: 12px;
+  --space-6: 16px;
+  --space-7: 20px;
+  --space-8: 24px;
+  --space-9: 32px;
+  --space-10: 40px;
+  --space-11: 48px;
+  --space-12: 64px;
+  --space-13: 80px;
+  --space-14: 96px;
+  --space-15: 128px;
+
+  /* Semantic rhythm — mobile-first, widened at >=1024px. */
+  --space-gutter: 20px; /* page side padding on mobile */
+  --space-section-y: 72px; /* vertical section rhythm on mobile */
+  --space-stack-sm: 12px;
+  --space-stack-md: 20px;
+  --space-stack-lg: 32px;
+  --space-card-pad: 20px;
+
+  /* Layout */
+  --container-max: 1200px;
+  --container-narrow: 760px;
+  --measure: 62ch;
+  --nav-h: 64px;
+  --touch-min: 44px; /* every tappable target */
+
+  /* --------------------------------------------------------------------------
+     6. TYPOGRAPHY
+     Two families. Display = Sora, text = Inter. System fallbacks are safe.
+     -------------------------------------------------------------------------- */
+  --font-display: "Sora", "Inter", ui-sans-serif, system-ui, -apple-system,
+    "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-text: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI",
+    Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-mono: ui-monospace, "SFMono-Regular", "SF Mono", Menlo, Consolas,
+    monospace;
+
+  --weight-regular: 400;
+  --weight-medium: 500;
+  --weight-semibold: 600;
+  --weight-bold: 700;
+
+  /* Mobile-first sizes. Fluid tokens take over from 1024px. */
+  --text-display-1: 40px; /* hero H1 */
+  --text-display-2: 32px; /* section H2 */
+  --text-h3: 20px; /* card titles */
+  --text-h4: 17px;
+  --text-body-lg: 17px;
+  --text-body: 16px;
+  --text-body-sm: 14px;
+  --text-caption: 13px;
+  --text-overline: 12px;
+
+  --leading-display: 1.04;
+  --leading-heading: 1.15;
+  --leading-body: 1.6;
+  --leading-tight: 1.35;
+
+  --tracking-display: -0.03em;
+  --tracking-heading: -0.02em;
+  --tracking-body: 0;
+  --tracking-overline: 0.14em;
+
+  /* --------------------------------------------------------------------------
+     7. MOTION
+     Durations are short by design. Ambient loops are the only long timings.
+     -------------------------------------------------------------------------- */
+  --dur-instant: 80ms;
+  --dur-fast: 140ms; /* taps, focus */
+  --dur-base: 220ms; /* small UI transitions */
+  --dur-slow: 340ms; /* card reveals */
+  --dur-slower: 560ms; /* section reveals */
+  --dur-ambient: 9000ms; /* breathing orb */
+  --dur-orbit: 24000ms; /* orbital rings */
+
+  --ease-standard: cubic-bezier(0.2, 0, 0.2, 1);
+  --ease-decel: cubic-bezier(0.05, 0.7, 0.1, 1); /* things entering */
+  --ease-accel: cubic-bezier(0.4, 0, 1, 1); /* things leaving */
+  --ease-emphasis: cubic-bezier(0.34, 1.26, 0.64, 1); /* small overshoot */
+  --ease-linear: linear;
+
+  --delay-step: 60ms; /* stagger between sibling reveals */
+
+  /* --------------------------------------------------------------------------
+     8. LAYERING
+     -------------------------------------------------------------------------- */
+  --z-base: 0;
+  --z-ambient: 1; /* particles, orb glow */
+  --z-content: 2;
+  --z-sticky: 40;
+  --z-nav: 50;
+  --z-overlay: 80;
+  --z-toast: 90;
+
+  /* --------------------------------------------------------------------------
+     9. EFFECTS AFFORDANCE SWITCH
+     Set on <html> by the runtime: "full" | "reduced".
+     Reduced = no parallax, no particles, no ambient loops (brief §3).
+     -------------------------------------------------------------------------- */
+  --effect-parallax: 1;
+  --effect-particles: 1;
+}
+
+/* ============================================================================
+   RESPONSIVE STEP-UP  — desktop is the adaptation, never the source.
+   ========================================================================== */
+@media (min-width: 768px) {
+  :root {
+    --space-gutter: 32px;
+    --space-section-y: 96px;
+    --space-card-pad: 24px;
+    --text-display-1: 52px;
+    --text-display-2: 40px;
+    --text-h3: 22px;
+    --text-body-lg: 18px;
+  }
+}
+
+@media (min-width: 1024px) {
+  :root {
+    --space-gutter: 48px;
+    --space-section-y: 120px;
+    --space-card-pad: 28px;
+    --text-display-1: clamp(52px, 4.4vw, 68px);
+    --text-display-2: clamp(36px, 2.8vw, 46px);
+    --text-h3: 22px;
+    --text-body-lg: 19px;
+    --nav-h: 76px;
+  }
+}
+
+/* ============================================================================
+   REDUCED MOTION — the page must be complete with motion switched off.
+   ========================================================================== */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --dur-instant: 1ms;
+    --dur-fast: 1ms;
+    --dur-base: 1ms;
+    --dur-slow: 1ms;
+    --dur-slower: 1ms;
+    --dur-ambient: 1ms;
+    --dur-orbit: 1ms;
+    --delay-step: 0ms;
+    --effect-parallax: 0;
+    --effect-particles: 0;
+  }
+}
+
+html[data-motion="reduced"] {
+  --dur-instant: 1ms;
+  --dur-fast: 1ms;
+  --dur-base: 1ms;
+  --dur-slow: 1ms;
+  --dur-slower: 1ms;
+  --dur-ambient: 1ms;
+  --dur-orbit: 1ms;
+  --delay-step: 0ms;
+  --effect-parallax: 0;
+  --effect-particles: 0;
+}
+
+/* ============================================================================
+   PRIMITIVE CLASSES — optional. Delete if the app layer owns components.
+   ========================================================================== */
+
+.t-display-1 {
+  font-family: var(--font-display);
+  font-size: var(--text-display-1);
+  line-height: var(--leading-display);
+  letter-spacing: var(--tracking-display);
+  font-weight: var(--weight-bold);
+  color: var(--color-text);
+}
+
+.t-display-2 {
+  font-family: var(--font-display);
+  font-size: var(--text-display-2);
+  line-height: var(--leading-heading);
+  letter-spacing: var(--tracking-heading);
+  font-weight: var(--weight-semibold);
+  color: var(--color-text);
+}
+
+.t-body-lg {
+  font-family: var(--font-text);
+  font-size: var(--text-body-lg);
+  line-height: var(--leading-body);
+  color: var(--color-text-muted);
+}
+
+.t-overline {
+  font-family: var(--font-text);
+  font-size: var(--text-overline);
+  font-weight: var(--weight-semibold);
+  letter-spacing: var(--tracking-overline);
+  text-transform: uppercase;
+  color: var(--color-text-faint);
+}
+
+/* Buttons: one primary per screen. Blue fill / white label. */
+.btn-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-4);
+  min-height: var(--touch-min);
+  padding: 0 var(--space-8);
+  border: 0;
+  border-radius: var(--radius-pill);
+  background: var(--color-action);
+  color: var(--color-on-action);
+  font-family: var(--font-text);
+  font-size: var(--text-body);
+  font-weight: var(--weight-semibold);
+  box-shadow: var(--shadow-2), var(--glow-blue-soft);
+  transition: background var(--dur-fast) var(--ease-standard),
+    transform var(--dur-fast) var(--ease-standard),
+    box-shadow var(--dur-base) var(--ease-standard);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.btn-primary:active {
+  background: var(--color-action-pressed);
+  transform: scale(0.985);
+}
+
+.btn-primary:focus-visible {
+  outline: var(--focus-ring-width) solid var(--color-focus-ring);
+  outline-offset: var(--focus-ring-offset);
+}
+
+/* Secondary: text link, never a second filled button. */
+.link-secondary {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-height: var(--touch-min);
+  color: var(--color-text-muted);
+  font-family: var(--font-text);
+  font-size: var(--text-body);
+  font-weight: var(--weight-medium);
+  text-decoration: none;
+  transition: color var(--dur-fast) var(--ease-standard);
+}
+
+.link-secondary:active {
+  color: var(--color-text);
+}
+
+.link-secondary:focus-visible {
+  outline: var(--focus-ring-width) solid var(--color-focus-ring);
+  outline-offset: var(--focus-ring-offset);
+  border-radius: var(--radius-sm);
+}
+
+/* Glass card */
+.card-glass {
+  background: var(--glass-fill);
+  border: var(--glass-edge);
+  border-radius: var(--radius-2xl);
+  box-shadow: var(--shadow-3), var(--glass-highlight);
+  padding: var(--space-card-pad);
+}
