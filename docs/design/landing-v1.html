@@ -12,7 +12,10 @@
 
 <!--
   ============================================================================
-  SAGENIFY AI — LANDING PAGE COMP v1   (design/landing-v1)
+  SAGENIFY AI — LANDING PAGE COMP v1.1   (design/landing-v1)
+  v1.1 = defect pass on the approved comp: anchor/nav clearance + scroll
+  scrim, rebalanced photography pair, seeded demo thread, tightened section
+  rhythm, reduced-motion verified at 390 and 1440. Hero and copy unchanged.
   Owner brief: docs/DESIGN-BRIEF.md. Tokens mirrored from docs/design/tokens.css.
   Self-contained: no build step, no JS libraries, one optional webfont.
   Designed at 390x844 first; desktop is the adaptation (breakpoints 768 / 1024).
@@ -74,18 +77,18 @@
   --ease-decel:cubic-bezier(.05,.7,.1,1);
   --ease-emphasis:cubic-bezier(.34,1.26,.64,1);
 
-  --space-gutter:20px; --space-section-y:68px;
+  --space-gutter:20px; --space-section-y:56px;
   --container-max:1200px; --nav-h:60px; --touch-min:44px;
   --orb-size:206px;
 }
 
 @media (min-width:768px){
-  :root{ --space-gutter:32px; --space-section-y:92px; --text-display-1:52px;
+  :root{ --space-gutter:32px; --space-section-y:78px; --text-display-1:52px;
          --text-display-2:38px; --text-h3:21px; --text-body-lg:18px;
          --nav-h:68px; --orb-size:300px; }
 }
 @media (min-width:1024px){
-  :root{ --space-gutter:48px; --space-section-y:116px; --nav-h:76px;
+  :root{ --space-gutter:48px; --space-section-y:88px; --nav-h:76px;
          --text-display-1:clamp(46px,3.85vw,58px); --text-display-2:clamp(34px,2.6vw,44px);
          --orb-size:440px; }
 }
@@ -124,6 +127,11 @@ button{ font:inherit; color:inherit; background:none; border:0; cursor:pointer; 
 
 .wrap{ width:100%; max-width:var(--container-max); margin-inline:auto; padding-inline:var(--space-gutter); }
 .section{ position:relative; z-index:2; padding-block:var(--space-section-y); }
+
+/* ANCHORS — the nav is fixed and opaque, so every in-page target has to land
+   clear of it. scroll-margin covers the nav height plus one rhythm step, so a
+   jumped-to section shows its full eyebrow under the bar, never sliced by it. */
+:where(section, main, footer)[id]{ scroll-margin-top:calc(var(--nav-h) + var(--space-9)); }
 
 /* Grain: kills banding on the big gradients, costs one static texture. */
 .grain{
@@ -198,7 +206,16 @@ button{ font:inherit; color:inherit; background:none; border:0; cursor:pointer; 
   border-bottom:1px solid transparent;
   transition:border-color var(--dur-base) var(--ease-standard), background var(--dur-base) var(--ease-standard);
 }
-.nav.is-stuck{ border-bottom-color:var(--border); background:rgba(13,18,41,.86); }
+.nav.is-stuck{ border-bottom-color:var(--border); background:rgba(13,18,41,.94); }
+/* Scroll scrim: content dissolves out under the bar instead of being sliced in
+   half by it. One gradient, no extra paint of consequence. */
+.nav::after{
+  content:""; position:absolute; left:0; right:0; top:100%; height:44px;
+  pointer-events:none; opacity:0;
+  background:linear-gradient(180deg,rgba(13,18,41,.92),rgba(13,18,41,.55) 42%,rgba(13,18,41,0));
+  transition:opacity var(--dur-base) var(--ease-standard);
+}
+.nav.is-stuck::after{ opacity:1; }
 .nav__inner{ width:100%; max-width:var(--container-max); margin-inline:auto; padding-inline:var(--space-gutter);
   display:flex; align-items:center; justify-content:space-between; gap:16px; }
 .brand{ display:inline-flex; align-items:center; gap:10px; min-height:var(--touch-min); }
@@ -454,10 +471,10 @@ button{ font:inherit; color:inherit; background:none; border:0; cursor:pointer; 
   padding:4px 9px; white-space:nowrap;
 }
 .chat__body{
-  position:relative; height:352px; padding:16px 14px 10px;
+  position:relative; height:286px; padding:16px 14px 10px;
   display:flex; flex-direction:column; justify-content:flex-end; gap:9px; overflow:hidden;
-  -webkit-mask-image:linear-gradient(180deg,transparent 0,#000 11%,#000 100%);
-  mask-image:linear-gradient(180deg,transparent 0,#000 11%,#000 100%);
+  -webkit-mask-image:linear-gradient(180deg,transparent 0,#000 15%,#000 100%);
+  mask-image:linear-gradient(180deg,transparent 0,#000 15%,#000 100%);
 }
 .msg{ max-width:84%; padding:10px 13px; font-size:14px; line-height:1.42; border-radius:16px;
   opacity:0; transform:translateY(10px) scale(.98); animation:msgIn var(--dur-slow) var(--ease-decel) forwards; }
@@ -476,6 +493,9 @@ button{ font:inherit; color:inherit; background:none; border:0; cursor:pointer; 
   background:linear-gradient(180deg,rgba(116,255,237,0),rgba(116,255,237,.85),rgba(116,255,237,0));
 }
 .msg--ai{ position:relative; padding-left:15px; }
+/* Seeded history: the earliest bubbles settle in faster than the live ones,
+   so the thread reads as already-in-progress rather than starting cold. */
+.msg.msg--seed{ animation-duration:var(--dur-fast); animation-timing-function:var(--ease-standard); }
 .typing{
   align-self:flex-start; display:inline-flex; gap:5px; align-items:center;
   padding:12px 14px; border-radius:16px; border-bottom-left-radius:5px;
@@ -487,15 +507,26 @@ button{ font:inherit; color:inherit; background:none; border:0; cursor:pointer; 
 .typing i:nth-child(3){ animation-delay:.32s; }
 @keyframes blink{ 0%,80%,100%{ opacity:.28; transform:translateY(0); } 40%{ opacity:1; transform:translateY(-2px); } }
 
+/* The booked card is collapsed to zero height until it lands, so the widget
+   never reserves a slab of empty glass under the conversation. */
 .bookcard{
-  margin:12px 14px 16px; border-radius:var(--radius-lg);
+  margin:0 14px; border-radius:var(--radius-lg); overflow:hidden;
   background:linear-gradient(180deg,rgba(33,35,46,.98),rgba(20,21,28,.98));
-  border:1px solid var(--border-strong); box-shadow:var(--shadow-3);
-  padding:13px 14px; display:flex; align-items:center; gap:12px;
-  transform:translateY(130%); opacity:0;
-  transition:transform var(--dur-slower) var(--ease-emphasis), opacity var(--dur-slow) var(--ease-standard);
+  border:1px solid transparent; box-shadow:var(--shadow-3);
+  padding:0 14px; max-height:0;
+  display:flex; align-items:center; gap:12px;
+  transform:translateY(16px); opacity:0;
+  transition:max-height var(--dur-slower) var(--ease-decel),
+             margin var(--dur-slower) var(--ease-decel),
+             padding var(--dur-slower) var(--ease-decel),
+             transform var(--dur-slower) var(--ease-emphasis),
+             opacity var(--dur-base) var(--ease-standard),
+             border-color var(--dur-base) linear;
 }
-.bookcard.is-in{ transform:none; opacity:1; }
+.bookcard.is-in{
+  margin:12px 14px 16px; padding:13px 14px; max-height:120px;
+  transform:none; opacity:1; border-color:var(--border-strong);
+}
 .bookcard__badge{
   flex:none; width:40px; height:40px; border-radius:12px; display:grid; place-items:center;
   background:var(--color-highlight); color:var(--color-on-highlight);
@@ -551,8 +582,11 @@ button{ font:inherit; color:inherit; background:none; border:0; cursor:pointer; 
 .people__grid{ display:grid; gap:26px; }
 .people__copy .h2{ margin-top:14px; max-width:20ch; }
 .people__copy p{ margin-top:14px; max-width:46ch; font-size:15px; color:var(--text-secondary); line-height:1.55; }
-.shots{ display:grid; gap:16px; margin-top:24px; }
-.shot{ display:flex; flex-direction:column; gap:10px; }
+/* Photo slots: a matched pair. Both frames are the same portrait ratio and the
+   columns are minmax(0,1fr) so one caption can never starve the other frame —
+   the pair fills its column instead of leaving void beside a runt. */
+.shots{ display:grid; grid-template-columns:1fr; gap:16px; margin-top:24px; }
+.shot{ display:flex; flex-direction:column; gap:10px; min-width:0; }
 .shot__frame{
   position:relative; border-radius:var(--radius-2xl); overflow:hidden;
   aspect-ratio:4/3; border:1px dashed rgba(255,255,255,.22);
@@ -596,6 +630,9 @@ button{ font:inherit; color:inherit; background:none; border:0; cursor:pointer; 
   color:var(--text-tertiary); opacity:.75; font-weight:600; margin-bottom:3px;
 }
 .shot--tall .shot__frame{ aspect-ratio:3/4; }
+@media (min-width:768px){
+  .shot .shot__frame{ aspect-ratio:3/4; }
+}
 
 /* ==========================================================================
    8. PRICING
@@ -714,8 +751,7 @@ details .answer{ padding:0 30px 18px 2px; font-size:14.5px; line-height:1.55; co
   .hero__cta .btn{ width:auto; min-width:260px; }
   .proof__grid{ grid-template-columns:repeat(4,1fr); }
   .cards{ grid-template-columns:1fr 1fr; }
-  .shots{ grid-template-columns:1fr 1fr; }
-  .shot--tall{ aspect-ratio:4/3; }
+  .shots{ grid-template-columns:repeat(2,minmax(0,1fr)); }
   .plans{ grid-template-columns:repeat(3,1fr); align-items:start; }
   .included ul{ grid-template-columns:1fr 1fr; gap:9px 24px; }
   .final .btn{ width:auto; min-width:320px; }
@@ -738,12 +774,11 @@ details .answer{ padding:0 30px 18px 2px; font-size:14.5px; line-height:1.55; co
   .hero__scroll{ display:none; }
   .demo__grid{ grid-template-columns:.92fr 1.08fr; gap:56px; align-items:start; }
   .demo__copy{ position:sticky; top:calc(var(--nav-h) + 40px); }
-  .chat__body{ height:360px; }
+  .chat__body{ height:300px; }
   .features__head{ max-width:44ch; }
   .cards{ grid-template-columns:repeat(3,1fr); gap:16px; margin-top:40px; }
   .people__grid{ grid-template-columns:.86fr 1.14fr; gap:48px; align-items:center; }
   .shots{ margin-top:0; gap:18px; }
-  .shot--tall{ aspect-ratio:3/4; }
   .pricing__head{ max-width:none; }
   .plans{ margin-top:34px; gap:18px; }
   .plan{ padding:24px; }
@@ -767,29 +802,36 @@ details .answer{ padding:0 30px 18px 2px; font-size:14.5px; line-height:1.55; co
     animation-duration:.001ms !important; animation-iteration-count:1 !important;
     transition-duration:.001ms !important;
   }
-  .orb,.orb__halo,.orb__sphere,.orb__energy,.orb__ring{ animation:none !important; }
+  .orb,.orb__halo,.orb__sphere,.orb__energy,.orb__ring,.chip__dot{ animation:none !important; }
   .card,.msg,.bookcard,.typing{ opacity:1 !important; transform:none !important; }
-  .hero{ min-height:auto; }
+  /* The booked card is open in the still frame — nothing to reveal without motion. */
+  .bookcard{
+    max-height:none !important; margin:12px 14px 16px !important; padding:13px 14px !important;
+    border-color:var(--border-strong) !important;
+  }
   .progress{ display:none; }
 }
 html[data-motion="reduced"] .orb,
 html[data-motion="reduced"] .orb__halo,
 html[data-motion="reduced"] .orb__sphere,
-
 html[data-motion="reduced"] .orb__ring,
 html[data-motion="reduced"] .chip__dot{ animation:none !important; }
 html[data-motion="reduced"] .card,
 html[data-motion="reduced"] .msg,
 html[data-motion="reduced"] .bookcard,
 html[data-motion="reduced"] .typing{ opacity:1 !important; transform:none !important; }
+html[data-motion="reduced"] .bookcard{
+  max-height:none !important; margin:12px 14px 16px !important; padding:13px 14px !important;
+  border-color:var(--border-strong) !important;
+}
 
 /* People section: copy and photo slots sit side by side on desktop even though
    both live inside .people__copy in the DOM (mobile order stays stacked). */
 @media (min-width:1024px){
   .people__grid{ grid-template-columns:1fr; }
   .people__copy{
-    display:grid; grid-template-columns:.84fr 1.16fr;
-    column-gap:56px; row-gap:14px; align-items:center;
+    display:grid; grid-template-columns:.74fr 1.26fr;
+    column-gap:52px; row-gap:16px; align-items:center;
   }
   .people__copy > .overline{ grid-column:1; align-self:end; }
   .people__copy > .h2{ grid-column:1; }
@@ -1031,10 +1073,10 @@ html[data-motion="reduced"] .typing{ opacity:1 !important; transform:none !impor
         <!-- PHOTO SLOT 02 — placeholder. Real photography to be commissioned. -->
         <figure class="shot">
           <span class="shot__frame">
-            <span class="shot__label">Photo slot 02 · 4:3</span>
+            <span class="shot__label">Photo slot 02 · 3:4</span>
             <svg class="shot__icon" width="26" height="26" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="2.5" y="5.5" width="19" height="14" rx="2.5" stroke="#fff" stroke-width="1.4"/><circle cx="12" cy="12.5" r="3.2" stroke="#fff" stroke-width="1.4"/><path d="M8 3.5h8" stroke="#fff" stroke-width="1.4" stroke-linecap="round"/></svg>
           </span>
-          <figcaption class="shot__note"><b>Art direction — van on a job site</b>Subject: a wrapped service van on a suburban driveway at golden hour, rear doors open, ladder rack visible, no legible third-party branding. Crop: 4:3, wide enough to carry a headline overlay on the left third. Grade: warm highlights, deep blue shadows to match Midnight Abyss.</figcaption>
+          <figcaption class="shot__note"><b>Art direction — van on a job site</b>Subject: a wrapped service van on a suburban driveway at golden hour, rear doors open, ladder rack visible, no legible third-party branding. Crop: 3:4 vertical, rear three-quarter of the van, roofline and open sky above for a caption. Grade: warm highlights, deep blue shadows to match Midnight Abyss.</figcaption>
         </figure>
       </div>
     </div>
@@ -1400,6 +1442,14 @@ html[data-motion="reduced"] .typing{ opacity:1 !important; transform:none !impor
     var replay = document.getElementById("replay");
     if (!chat || !thread || !bookcard) return;
 
+    /* Two messages the thread already contains. Rendered on load and on every
+       replay, so the pane is never an empty box a visitor scrolls past. */
+    var SEED = [
+      { kind: "ai",   text: "Northline Air & Heat \u2014 you've reached our after-hours assistant. How can I help?" },
+      { kind: "them", text: "Hi, do you cover Round Rock?" },
+      { kind: "ai",   text: "We do \u2014 AC repair, tune-ups and installs across Round Rock and Cedar Park." }
+    ];
+
     var SCRIPT = [
       { kind: "typing", ms: 1150 },
       { kind: "them", text: "I need an AC repair." },
@@ -1409,8 +1459,7 @@ html[data-motion="reduced"] .typing{ opacity:1 !important; transform:none !impor
       { kind: "typing", ms: 1250 },
       { kind: "ai", text: "Thanks. I have Thursday, 2\u20134 PM with Marcus \u2014 he covers AC repair in Round Rock. Want me to lock that in?" },
       { kind: "them", text: "Yes please." },
-      { kind: "booked" },
-      { kind: "hold", ms: 4200 }
+      { kind: "booked" }
     ];
 
     var timers = [], step = 0, running = false, inView = false;
@@ -1446,11 +1495,19 @@ html[data-motion="reduced"] .typing{ opacity:1 !important; transform:none !impor
         thread.removeChild(first);
       }
     }
+    function seedThread() {
+      for (var i = 0; i < SEED.length; i++) {
+        var el = bubble(SEED[i].kind, SEED[i].text);
+        el.classList.add("msg--seed");
+        el.style.animationDelay = (i * 80) + "ms";
+      }
+    }
     function reset() {
       clearTimers();
       thread.innerHTML = "";
       bookcard.classList.remove("is-in");
       step = 0;
+      seedThread();
     }
     function endState() {
       reset();
@@ -1464,7 +1521,9 @@ html[data-motion="reduced"] .typing{ opacity:1 !important; transform:none !impor
 
     function tick() {
       if (!running) return;
-      if (step >= SCRIPT.length) { reset(); later(tick, 700); return; }
+      /* The sequence ends where it lands. No silent loop: a reset would pull the
+         booked card back and move the page under anyone reading below it. */
+      if (step >= SCRIPT.length) { running = false; return; }
       var s = SCRIPT[step++];
 
       if (s.kind === "typing") {
@@ -1482,7 +1541,6 @@ html[data-motion="reduced"] .typing{ opacity:1 !important; transform:none !impor
         later(tick, 700);
         return;
       }
-      if (s.kind === "hold") { later(tick, s.ms); return; }
     }
 
     function start(force) {
@@ -1498,18 +1556,24 @@ html[data-motion="reduced"] .typing{ opacity:1 !important; transform:none !impor
     }
 
     if (reduced) { endState(); }
-    else if ("IntersectionObserver" in window) {
-      new IntersectionObserver(function (entries) {
-        var e = entries[0];
-        inView = e.isIntersecting && e.intersectionRatio > 0.3;
-        if (inView) { if (!running) start(true); }
-        else { stop(); }
-      }, { threshold: [0, 0.3, 0.6] }).observe(chat);
-      document.addEventListener("visibilitychange", function () {
-        if (document.hidden) stop();
-        else if (inView) start(false);
-      });
-    } else { start(true); }
+    else {
+      /* Seed immediately: the thread has content before the section is ever in
+         view, so scrolling past it shows a conversation, not an empty pane. */
+      reset();
+      if ("IntersectionObserver" in window) {
+        new IntersectionObserver(function (entries) {
+          var e = entries[0];
+          var was = inView;
+          inView = e.isIntersecting && e.intersectionRatio > 0.3;
+          if (inView && !was) { start(step > 0); }
+          else if (!inView && was) { stop(); }
+        }, { threshold: [0, 0.3, 0.6] }).observe(chat);
+        document.addEventListener("visibilitychange", function () {
+          if (document.hidden) stop();
+          else if (inView) start(false);
+        });
+      } else { start(false); }
+    }
 
     if (replay) {
       replay.addEventListener("click", function () {
