@@ -1,0 +1,29 @@
+:root {
+  --v2-black: #09090b;
+  --v2-black-deep: #050506;
+  --v2-silver: #e2e8f0;
+  --v2-silver-soft: #b8c0cf;
+  --v2-silver-muted: #7e8796;
+  --v2-silver-faint: #4f5662;
+  --v2-line: rgba(226, 232, 240, .14);
+  --v2-line-strong: rgba(226, 232, 240, .28);
+  --v2-purple: #8b5cf6;
+  --v2-purple-deep: #6d3fe5;
+  --v2-blue: #3b82f6;
+  --v2-blue-deep: #1d4ed8;
+  --v2-glow-purple: rgba(139, 92, 246, .36);
+  --v2-glow-blue: rgba(59, 130, 246, .3);
+  --v2-gradient-action: linear-gradient(110deg, #8b5cf6 0%, #3b82f6 100%);
+  --v2-gradient-hairline: linear-gradient(90deg, rgba(139,92,246,.8), rgba(59,130,246,.8));
+  --v2-panel: rgba(19, 19, 24, .76);
+  --v2-panel-solid: #131318;
+  --v2-panel-soft: rgba(255,255,255,.045);
+  --v2-radius-sm: 12px;
+  --v2-radius-md: 20px;
+  --v2-radius-lg: 28px;
+  --v2-radius-pill: 999px;
+  --v2-shadow-glow: 0 24px 80px rgba(89, 55, 191, .18);
+  --v2-shadow-card: 0 24px 90px rgba(0, 0, 0, .44);
+  --v2-max: 1180px;
+  --v2-ease: cubic-bezier(.22, 1, .36, 1);
+}
