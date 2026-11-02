@@ -1,8 +1,55 @@
 @import "tailwindcss";
+/* Design tokens — the single source of truth for colour, type, spacing,
+   radius, motion and layering, shared by the marketing landing and the
+   dashboard. Values live in design-tokens.css; nothing here re-declares them. */
+@import "./design-tokens.css";
 
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
+  /* ── Brand tokens exposed as Tailwind utilities ──────────────────────
+     `inline` makes a utility emit `var(--midnight-700)` rather than a copied
+     literal, so design-tokens.css stays the only place a hex lives. Names
+     deliberately avoid Tailwind's built-in palettes (midnight-* / charcoal-*
+     / royal-* / tangerine-*) so adding the brand system cannot silently
+     recolour an existing dashboard utility. */
+  --color-midnight-900: var(--midnight-900);
+  --color-midnight-800: var(--midnight-800);
+  --color-midnight-700: var(--midnight-700);
+  --color-midnight-600: var(--midnight-600);
+  --color-midnight-500: var(--midnight-500);
+
+  --color-charcoal-900: var(--charcoal-900);
+  --color-charcoal-800: var(--charcoal-800);
+  --color-charcoal-700: var(--charcoal-700);
+  --color-charcoal-600: var(--charcoal-600);
+  --color-charcoal-500: var(--charcoal-500);
+
+  --color-royal-700: var(--blue-700);
+  --color-royal-500: var(--blue-500);
+  --color-royal-300: var(--blue-300);
+  --color-royal-100: var(--blue-100);
+
+  --color-tangerine-700: var(--orange-700);
+  --color-tangerine-500: var(--orange-500);
+  --color-tangerine-300: var(--orange-300);
+  --color-tangerine-100: var(--orange-100);
+
+  --color-glow-pink: var(--pink-500);
+  --color-glow-aqua: var(--aqua-500);
+
+  --color-ink: var(--text-primary);
+  --color-ink-muted: var(--text-secondary);
+  --color-ink-faint: var(--text-tertiary);
+
+  --color-hairline: var(--border);
+  --color-hairline-strong: var(--border-strong);
+
+  --color-surface: var(--charcoal-700);
+  --color-action: var(--blue-500);
+  --color-highlight: var(--orange-500);
+  --color-on-highlight: var(--near-black);
+
   --color-background: hsl(0 0% 0%);
   --color-foreground: hsl(0 0% 93%);
   --color-card: hsl(0 0% 100% / 0.02);
