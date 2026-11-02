@@ -1,319 +1,560 @@
+import type { CSSProperties } from "react";
+import type { Metadata, Viewport } from "next";
 import Link from "next/link";
-import dynamic from "next/dynamic";
-import {
-  ArrowRight,
-  MessageCircle,
-  Mail,
-  ChevronRight,
-  MessagesSquare,
-} from "lucide-react";
-import ChatSimulator from "@/components/landing/chat-simulator";
-import SubscribeCta from "@/components/landing/subscribe-cta";
-import LazySection from "@/components/landing/lazy-section";
-import MobileDrawer from "@/components/landing/mobile-drawer";
-import IndustryTicker from "@/components/landing/industry-ticker";
-import ProductSection from "@/components/landing/product-section";
-import PricingSection from "@/components/landing/pricing-section";
-import Comparison from "@/components/landing/comparison";
-import {
-  DISCORD_INVITE_URL,
-  WHATSAPP_SUPPORT_URL,
-  SUPPORT_EMAIL,
-} from "@/components/landing/site-links";
+import { Sora } from "next/font/google";
 
-// Below-the-fold interactive islands — code-split into deferred chunks and
-// mounted only when scrolled into view (see LazySection), so the initial
-// eager JS payload stays small and never blocks first paint. LazySection
-// renders nothing until visible, so these imports are never fetched during
-// SSR or first paint, even without ssr:false.
-const RoiCalculator = dynamic(() => import("@/components/landing/roi-calculator"));
-const BentoGrid = dynamic(() => import("@/components/landing/bento-grid"));
-const FaqAccordion = dynamic(() => import("@/components/landing/faq-accordion"));
+import "./landing-v1.css";
+import LandingRuntime from "@/components/landing/v1/landing-runtime";
+import ParticleField from "@/components/landing/v1/particle-field";
+import DemoChat from "@/components/landing/v1/demo-chat";
+import PeopleSection from "@/components/landing/v1/people-section";
 
 /**
- * Landing page — React Server Component. All interactivity lives in the
- * client islands below (ChatSimulator, RoiCalculator, BentoGrid,
- * FaqAccordion, SubscribeCta) so the static shell can be CDN-cached.
+ * Sagenify AI — marketing landing page (approved design v1).
+ *
+ * Source of truth: docs/design/landing-v1.html @ 03ba72f. Layout, colour,
+ * spacing and copy are the owner-approved comp; this file reproduces them in
+ * production React/Next rather than restyling them. Copy must not be rewritten
+ * here — if a word changes, it changes in the comp first.
+ *
+ * Architecture:
+ *   • This page is a Server Component. Everything static — nav, hero copy, orb
+ *     markup, proof strip, feature cards, pricing, FAQ, footer — is rendered on
+ *     the server and shipped as HTML. The FAQ is native <details>, so it needs
+ *     no JS at all.
+ *   • Exactly three client islands, all small and all below/behind the fold of
+ *     the critical path: LandingRuntime (scroll progress, nav state, reveals),
+ *     ParticleField (hero canvas) and DemoChat (the simulated tour).
+ *   • landing-v1.css is imported here, so it is route-scoped: the dashboard
+ *     never downloads it. Tokens live once in src/app/design-tokens.css and are
+ *     shared with the product.
  */
+
+const sora = Sora({
+  subsets: ["latin"],
+  weight: ["600", "700"],
+  variable: "--font-sora",
+  display: "swap",
+});
+
+export const metadata: Metadata = {
+  title: "Sagenify AI — Every call answered. Every job booked.",
+  description:
+    "Sagenify AI answers your phone and your website chat, qualifies the lead, checks your calendar and books the appointment. Built for HVAC, roofing, plumbing and the trades.",
+  alternates: { canonical: "/" },
+  openGraph: {
+    title: "Sagenify AI — Every call answered. Every job booked.",
+    description:
+      "Sagenify AI answers your phone and your website chat, qualifies the lead, checks your calendar and books the appointment. Built for HVAC, roofing, plumbing and the trades.",
+    type: "website",
+    siteName: "Sagenify AI",
+    url: "/",
+    images: [
+      {
+        url: "/opengraph-image.png",
+        width: 1200,
+        height: 630,
+        alt: "Sagenify AI — your AI office manager",
+        type: "image/png",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Sagenify AI — Every call answered. Every job booked.",
+    description:
+      "Sagenify AI answers your phone and your website chat, qualifies the lead, checks your calendar and books the appointment. Built for HVAC, roofing, plumbing and the trades.",
+    images: ["/opengraph-image.png"],
+  },
+};
+
+/* The page sits on Midnight Abyss, not the dashboard's black — the browser
+   chrome should match the surface the visitor actually lands on. */
+export const viewport: Viewport = {
+  themeColor: "#0D1229",
+};
+
+/** Feature cards: order is the comp's, `--i` drives the reveal stagger. */
+const FEATURES = [
+  {
+    title: "AI phone receptionist",
+    body: "Picks up in one ring, day or night. Takes the name, the address, the problem and how urgent it is — then books the slot or hands it to you.",
+    icon: (
+      <svg width="19" height="19" viewBox="0 0 24 24" fill="none">
+        <path
+          d="M6.5 3.5h3l1.6 4-2 1.4a12 12 0 0 0 6 6l1.4-2 4 1.6v3a2 2 0 0 1-2.2 2A17 17 0 0 1 4.5 5.7a2 2 0 0 1 2-2.2Z"
+          stroke="currentColor"
+          strokeWidth="1.6"
+          strokeLinejoin="round"
+        />
+      </svg>
+    ),
+  },
+  {
+    title: "Website chatbot",
+    body: "Answers from your services, your pricing rules and your service area. Visitors get a real answer instead of a contact form.",
+    icon: (
+      <svg width="19" height="19" viewBox="0 0 24 24" fill="none">
+        <path
+          d="M4 5.5A1.5 1.5 0 0 1 5.5 4h13A1.5 1.5 0 0 1 20 5.5v9a1.5 1.5 0 0 1-1.5 1.5H9l-4 4v-4H5.5A1.5 1.5 0 0 1 4 14.5v-9Z"
+          stroke="currentColor"
+          strokeWidth="1.6"
+          strokeLinejoin="round"
+        />
+      </svg>
+    ),
+  },
+  {
+    title: "Leads and CRM",
+    body: "Every call, chat and form becomes one lead record with the full transcript attached. Nothing lives in a notebook on the dash.",
+    icon: (
+      <svg width="19" height="19" viewBox="0 0 24 24" fill="none">
+        <path d="M4 6.5h16M4 12h16M4 17.5h9" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+        <circle cx="18" cy="17.5" r="2.4" stroke="currentColor" strokeWidth="1.6" />
+      </svg>
+    ),
+  },
+  {
+    title: "Appointment booking",
+    body: "Real availability, not a promise to call back. The customer picks a window, gets a confirmation, and the job shows up on the schedule.",
+    icon: (
+      <svg width="19" height="19" viewBox="0 0 24 24" fill="none">
+        <rect x="3.5" y="5" width="17" height="15" rx="2.5" stroke="currentColor" strokeWidth="1.6" />
+        <path
+          d="M3.5 9.5h17M8 3.5v3M16 3.5v3M8 14h3"
+          stroke="currentColor"
+          strokeWidth="1.6"
+          strokeLinecap="round"
+        />
+      </svg>
+    ),
+  },
+  {
+    title: "Email follow-up",
+    body: "Quotes chased, reviews requested, cold leads re-warmed — on a schedule you set once and then stop thinking about.",
+    icon: (
+      <svg width="19" height="19" viewBox="0 0 24 24" fill="none">
+        <rect x="3.5" y="5.5" width="17" height="13" rx="2.5" stroke="currentColor" strokeWidth="1.6" />
+        <path
+          d="m4.5 7.5 7.5 5.5 7.5-5.5"
+          stroke="currentColor"
+          strokeWidth="1.6"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      </svg>
+    ),
+  },
+  {
+    title: "Reporting that answers a question",
+    body: "Which calls became jobs, what the AI handled on its own, what it cost you in credits. Not a dashboard of pretty numbers.",
+    icon: (
+      <svg width="19" height="19" viewBox="0 0 24 24" fill="none">
+        <path
+          d="M4 19.5V13M9.3 19.5V8M14.7 19.5v-4.5M20 19.5V4.5"
+          stroke="currentColor"
+          strokeWidth="1.9"
+          strokeLinecap="round"
+        />
+      </svg>
+    ),
+  },
+];
+
+const INCLUDED = [
+  "4,000 AI credits each month",
+  "AI phone receptionist, 24/7",
+  "Website chatbot widget",
+  "CRM, leads and transcripts",
+  "Appointment booking and reminders",
+  "Email follow-up automations",
+  "Your own knowledge base",
+  "Usage and cost reporting",
+];
+
+const FAQ = [
+  {
+    q: "Do I have to change my phone number?",
+    a: "No. Forward your existing line to your Sagenify number, or set it to forward only after hours and at weekends. The number on the van stays the number on the van.",
+  },
+  {
+    q: "What happens when it doesn't know the answer?",
+    a: "It says so, takes a message, and hands the call to you by text and email within seconds. It never invents a price, a warranty or a promise on your behalf.",
+  },
+  {
+    q: "How long does setup actually take?",
+    a: "About thirty minutes. You enter your services, service area, hours and the questions you get asked every day. The knowledge base does the rest, and it sharpens with every real conversation.",
+  },
+  {
+    q: "What are credits, and will I run out?",
+    a: "Credits are AI usage. Every paid workspace includes 4,000 a month — roughly $20 of AI at our cost, which covers several hundred conversations including voice minutes. You get a warning at 15% remaining, then 24 hours of grace before anything is cut off. Top-ups start at $10.",
+  },
+  {
+    q: "Is my customer data separate from other businesses?",
+    a: "Yes. Every workspace is isolated — its own knowledge base, call records, leads and number. Nothing is shared between accounts and nothing is trained across them.",
+  },
+  {
+    q: "What is the founding member price lock?",
+    a: "$199 a month for as long as your subscription stays active — even after the standard $299 rate applies to new signups. If you cancel and come back later, you rejoin at the current rate.",
+  },
+];
+
+const Tick = ({ size = 14 }: { size?: number }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" aria-hidden="true">
+    <path
+      d="M4 12.5l5 5L20 6.5"
+      stroke="#74FFED"
+      strokeWidth="2.4"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  </svg>
+);
+
+const Arrow = ({ size = 17, stroke = "#fff" }: { size?: number; stroke?: string }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" aria-hidden="true">
+    <path
+      d="M5 12h13M13 6l6 6-6 6"
+      stroke={stroke}
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  </svg>
+);
+
 export default function HomePage() {
   return (
-    <div className="bg-black text-slate-50 overflow-x-hidden">
-      {/* ─── Nav ─────────────────────────────────────────────────────── */}
-      <header className="fixed top-0 left-0 right-0 z-50 bg-black/85 backdrop-blur-xl border-b border-white/[0.06]">
-        <div className="max-w-7xl mx-auto px-6 lg:px-8 flex items-center justify-between h-16">
-          <a href="#top" className="flex items-center gap-2.5">
-            <div className="h-7 w-7 rounded-lg bg-purple-500 flex items-center justify-center text-[10px] font-bold text-white shadow-lg shadow-purple-500/30">
-              AI
-            </div>
-            <span className="font-semibold text-[15px] tracking-tight">
-              Sagenify AI
+    <div className={`landing ${sora.variable}`}>
+      <LandingRuntime />
+
+      {/* ───────────────────────── NAV ───────────────────────── */}
+      <header className="nav" id="nav">
+        <div className="nav__inner">
+          <a className="brand" href="#top" aria-label="Sagenify AI — home">
+            <span className="brand__mark" aria-hidden="true" />
+            <span className="brand__name">
+              Sagenify <span>AI</span>
             </span>
           </a>
-          <nav className="hidden md:flex items-center gap-6 text-[13px] text-slate-400">
-            <a href="#features" className="hover:text-white transition-colors">
-              Features
-            </a>
-            <a href="#roi" className="hover:text-white transition-colors">
-              ROI Calculator
-            </a>
-            <a href="#pricing" className="hover:text-white transition-colors">
-              Pricing
-            </a>
-            <a href="#faq" className="hover:text-white transition-colors">
-              FAQ
-            </a>
-            <Link href="/docs" className="hover:text-white transition-colors">
-              Docs
-            </Link>
+          <nav className="nav__links" aria-label="Sections">
+            <a href="#demo">How it works</a>
+            <a href="#features">Platform</a>
+            <a href="#pricing">Pricing</a>
+            <a href="#faq">FAQ</a>
           </nav>
-          <div className="flex items-center gap-2">
-            <a
-              href={DISCORD_INVITE_URL}
-              target="_blank"
-              rel="noreferrer"
-              className="hidden md:flex items-center gap-1.5 text-[13px] text-slate-400 hover:text-white transition-colors px-3 py-1.5 rounded-full hover:bg-white/5"
-            >
-              <MessageCircle className="h-3.5 w-3.5" /> Discord
-            </a>
-            <Link
-              href="/sign-in"
-              className="hidden md:inline-flex text-[13px] text-slate-400 hover:text-white transition-colors px-3 py-1.5"
-            >
-              Sign In
-            </Link>
-            <Link
-              href="/sign-up"
-              className="hidden md:inline-flex bg-purple-500 hover:bg-purple-400 text-white font-semibold text-xs h-9 px-5 rounded-full items-center justify-center transition-colors"
-            >
-              Get Started
-            </Link>
-            <MobileDrawer />
-          </div>
+          <Link className="btn-quiet" href="/sign-in">
+            Sign in
+          </Link>
         </div>
       </header>
 
-      {/* ─── Hero ────────────────────────────────────────────────────── */}
-      <section id="top" className="relative pt-32 pb-16 md:pt-40 md:pb-20 overflow-hidden">
-        {/* Radial purple glow */}
-        <div
-          aria-hidden
-          className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-purple-950/40 via-black/0 to-transparent"
-        />
-        {/* Subtle grid */}
-        <div
-          aria-hidden
-          className="pointer-events-none absolute inset-0 opacity-[0.35]"
-          style={{
-            backgroundImage:
-              "linear-gradient(to right, rgba(148,163,184,0.05) 1px, transparent 1px), linear-gradient(to bottom, rgba(148,163,184,0.05) 1px, transparent 1px)",
-            backgroundSize: "56px 56px",
-            maskImage:
-              "radial-gradient(ellipse 80% 60% at 50% 0%, black 40%, transparent 100%)",
-            WebkitMaskImage:
-              "radial-gradient(ellipse 80% 60% at 50% 0%, black 40%, transparent 100%)",
-          }}
-        />
+      <main id="top">
+        {/* ─────────────────────── HERO ─────────────────────── */}
+        <section className="hero" id="hero">
+          <ParticleField />
+          <div className="grain hero__grain" aria-hidden="true" />
 
-        <div className="relative max-w-7xl mx-auto px-6 lg:px-8">
-          <div className="mx-auto max-w-3xl text-center">
-
-            <h1 className="text-3xl sm:text-4xl md:text-6xl font-bold tracking-tight leading-[1.05] animate-fade-up">
-              Never miss{" "}
-              <span className="text-gradient-indigo">another customer</span>{" "}
-              again.
-            </h1>
-            <p className="text-sm md:text-base text-slate-300 font-medium mt-4 animate-fade-up delay-75">
-              No $2,000 agency setup required. Deploy your AI office manager in minutes.
-            </p>
-            <p className="text-base md:text-lg text-slate-400 mt-6 leading-relaxed max-w-xl mx-auto animate-fade-up delay-100">
-              Sagenify answers your calls and chats 24/7, qualifies every lead,
-              books appointments, and follows up automatically — so no customer
-              ever slips through the cracks.
-            </p>
-
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-3 mt-9 animate-fade-up delay-200">
-              <Link
-                href="/sign-up"
-                className="inline-flex items-center gap-1.5 h-12 px-8 rounded-full bg-purple-500 hover:bg-purple-400 text-white font-semibold text-[15px] transition-colors"
-              >
-                Get Started
-                <ArrowRight className="h-4 w-4 ml-1.5" />
-              </Link>
-              <SubscribeCta
-                size="lg"
-                className="bg-white hover:bg-white/90 text-black font-semibold text-[15px] h-12 px-8 rounded-full"
-              >
-                Subscribe Now
-              </SubscribeCta>
-              <a
-                href="#features"
-                className="inline-flex items-center gap-1.5 h-12 px-7 rounded-full border border-white/15 text-slate-200 text-[15px] font-medium hover:bg-white/5 hover:border-white/25 transition-colors"
-              >
-                See how it works
-                <ChevronRight className="h-4 w-4" />
-              </a>
+          <div className="hero__inner">
+            <div className="hero__orbwrap">
+              {/* AI orb: pure CSS. Three masked conic rings, a breathing sphere
+                  and blurred halos. No WebGL, no images, no library. */}
+              <div className="orb" id="orb" aria-hidden="true">
+                <div className="orb__halo" />
+                <div className="orb__halo orb__halo--aqua" />
+                <div className="orb__halo orb__halo--pink" />
+                <div className="orb__ring orb__ring--b" />
+                <div className="orb__ring orb__ring--c" />
+                <div className="orb__sphere">
+                  <div className="orb__core" />
+                  <div className="orb__core orb__core--pink" />
+                </div>
+                <div className="orb__limb" />
+                <div className="orb__iris" />
+                <div className="orb__ring orb__ring--a" />
+              </div>
             </div>
 
-            
-          </div>
+            <div className="hero__copy">
+              <span className="chip">
+                <span className="chip__dot" aria-hidden="true" />
+                Founding member rate — $199/mo for life
+              </span>
+              <h1>Every call answered. Every job booked.</h1>
+              <p className="hero__sub">
+                Sagenify answers your phone and your website chat in your business&apos;s voice
+                — qualifies the lead, checks your calendar, and books the appointment while
+                you&apos;re still on the roof.
+              </p>
 
-          {/* Interactive chat simulator */}
-          <div className="mx-auto max-w-xl mt-14 animate-fade-up delay-300">
-            <ChatSimulator />
-          </div>
-        </div>
-      </section>
-      {/* ─── Industry ticker ───────────────────────────────────────── */}
-      <IndustryTicker />
-      {/* ─── What Sagenify does (replaces the old testimonials section) ── */}
-      <ProductSection />
-      {/* ─── Without vs With Sagenify ────────────────────────────────── */}
-      <Comparison />
-      {/* ─── ROI Calculator ──────────────────────────────────────────── */}
-      <section id="roi" className="py-16 md:py-24 border-t border-white/[0.04]">
-        <div className="max-w-7xl mx-auto px-6 lg:px-8 grid lg:grid-cols-2 gap-10 lg:gap-16 items-center">
-          <div>
-            <p className="text-xs uppercase tracking-[0.2em] text-purple-400 font-semibold mb-3">
-              ROI Calculator
-            </p>
-            <h2 className="text-3xl md:text-4xl font-bold tracking-tight mb-4">
-              See what a missed call really costs
-            </h2>
-            <p className="text-slate-400 leading-relaxed mb-6">
-              Every unanswered call is a customer your competitor answers. Drag
-              the slider to your missed-call volume and pick your average ticket
-              — we&apos;ll show the annual revenue an AI receptionist helps you
-              recover.
-            </p>
-            <ul className="space-y-2.5 text-sm text-slate-300">
-              {[
-                "No more lost calls after hours or during lunch",
-                "Every lead captured, qualified & followed up",
-                "Booked appointments, not just voicemails",
-              ].map((t) => (
-                <li key={t} className="flex items-start gap-2.5">
-                  <ArrowRight className="h-4 w-4 text-purple-400 mt-0.5 shrink-0" />
-                  {t}
-                </li>
-              ))}
-            </ul>
-          </div>
-          <LazySection minHeight={380}>
-            <RoiCalculator />
-          </LazySection>
-        </div>
-      </section>
-
-      {/* ─── Bento grid ──────────────────────────────────────────────── */}
-      <section id="features" className="py-16 md:py-24 border-t border-white/[0.04]">
-        <div className="max-w-7xl mx-auto px-6 lg:px-8">
-          <div className="text-center mb-12">
-            <p className="text-xs uppercase tracking-[0.2em] text-purple-400 font-semibold mb-3">
-              What you get
-            </p>
-            <h2 className="text-3xl md:text-4xl font-bold tracking-tight mb-4">
-              Everything a service business needs to never miss a lead
-            </h2>
-            <p className="text-slate-400 max-w-xl mx-auto">
-              One workspace for your AI receptionist, leads, bookings, and
-              follow-ups — no scattered tools.
-            </p>
-          </div>
-          <LazySection minHeight={280}>
-            <BentoGrid />
-          </LazySection>
-        </div>
-      </section>
-
-      {/* ─── Pricing ─────────────────────────────────────────────────── */}
-      <PricingSection />
-
-      {/* ─── FAQ ─────────────────────────────────────────────────────── */}
-      <section id="faq" className="py-16 md:py-24 border-t border-white/[0.04]">
-        <div className="max-w-7xl mx-auto px-6 lg:px-8">
-          <div className="text-center mb-12">
-            <p className="text-xs uppercase tracking-[0.2em] text-purple-400 font-semibold mb-3">
-              FAQ
-            </p>
-            <h2 className="text-3xl md:text-4xl font-bold tracking-tight mb-4">
-              Questions, answered
-            </h2>
-          </div>
-          <LazySection minHeight={400}>
-            <FaqAccordion />
-          </LazySection>
-        </div>
-      </section>
-      {/* ─── Footer ──────────────────────────────────────────────────── */}
-      <footer className="border-t border-white/[0.04] py-12">
-        <div className="max-w-7xl mx-auto px-6 lg:px-8">
-          <div className="grid sm:grid-cols-3 gap-10 mb-10">
-            <div>
-              <div className="flex items-center gap-2 mb-4">
-                <div className="h-6 w-6 rounded-md bg-purple-500 flex items-center justify-center text-[10px] font-bold text-white">
-                  AI
-                </div>
-                <span className="font-semibold text-sm">Sagenify AI</span>
+              <div className="hero__cta">
+                <Link className="btn" href="/sign-up">
+                  Start at $199/month
+                  <span className="btn__arrow" aria-hidden="true">
+                    <Arrow />
+                  </span>
+                </Link>
+                <a className="textlink" href="#demo">
+                  Watch it take a call
+                  <Arrow size={15} stroke="currentColor" />
+                </a>
               </div>
-              <p className="text-xs text-slate-500 leading-relaxed">
-                AI-powered operating system for service businesses.
+
+              <p className="hero__micro">
+                <span>50 free chat messages to try it</span>
+                <i aria-hidden="true" />
+                <span>Voice on paid plans</span>
+                <i aria-hidden="true" />
+                <span>Setup in ~30 min</span>
               </p>
             </div>
-            <div>
-              <h4 className="text-xs font-semibold text-slate-400 mb-3">
-                Contact
-              </h4>
-              <div className="space-y-2 text-xs text-slate-500">
-                <a
-                  href={DISCORD_INVITE_URL}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="flex items-center gap-2 hover:text-white transition-colors"
-                >
-                  <MessagesSquare className="h-3 w-3" /> Discord Support
-                </a>
-                <a
-                  href={WHATSAPP_SUPPORT_URL}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="flex items-center gap-2 hover:text-white transition-colors"
-                >
-                  <MessageCircle className="h-3 w-3" /> WhatsApp
-                </a>
-                <a
-                  href={`mailto:${SUPPORT_EMAIL}`}
-                  className="flex items-center gap-2 hover:text-white transition-colors"
-                >
-                  <Mail className="h-3 w-3" /> Email Support
-                </a>
+          </div>
+        </section>
+
+        {/* ──────────────────── PROOF STRIP ──────────────────── */}
+        <section className="proof" aria-label="What Sagenify does">
+          <div className="wrap">
+            <div className="proof__grid">
+              <div className="proof__item">
+                <span className="proof__k">Answers calls</span>
+                <span className="proof__v">24/7, first ring</span>
               </div>
-            </div>
-            <div>
-              <h4 className="text-xs font-semibold text-slate-400 mb-3">
-                Resources
-              </h4>
-              <div className="space-y-2 text-xs text-slate-500">
-                <Link href="/docs" className="hover:text-white transition-colors">
-                  Docs & Help Center
-                </Link>
-                <Link
-                  href="/privacy"
-                  className="cursor-pointer hover:text-white transition-colors"
-                >
-                  Privacy Policy
-                </Link>
-                <Link
-                  href="/terms"
-                  className="cursor-pointer hover:text-white transition-colors"
-                >
-                  Terms of Service
-                </Link>
+              <div className="proof__item">
+                <span className="proof__k">Qualifies leads</span>
+                <span className="proof__v">Service, address, urgency</span>
+              </div>
+              <div className="proof__item">
+                <span className="proof__k">Books jobs</span>
+                <span className="proof__v">Into your real calendar</span>
+              </div>
+              <div className="proof__item">
+                <span className="proof__k">Follows up</span>
+                <span className="proof__v">Quotes, reminders, reviews</span>
               </div>
             </div>
           </div>
-          <div className="pt-8 border-t border-white/[0.04] text-center text-[11px] text-slate-600">
-            © 2026 Sagenify AI
+        </section>
+
+        {/* ─────────────────────── DEMO ─────────────────────── */}
+        <section className="section demo" id="demo">
+          <div className="demo__glow" aria-hidden="true" />
+          <div className="wrap demo__grid">
+            <div className="demo__copy">
+              <span className="overline">Simulated tour</span>
+              <h2 className="h2">Watch it take a call.</h2>
+              <p className="lede">
+                A homeowner messages at 9:47 on a Tuesday night. The AI answers from your
+                services and your calendar — then puts a booked job on Thursday afternoon with
+                a tech&apos;s name on it.
+              </p>
+              <ul className="demo__list">
+                <li>
+                  <Tick size={15} />
+                  Reads from your services, hours and service area — not a generic model.
+                </li>
+                <li>
+                  <Tick size={15} />
+                  Checks real availability before it offers a slot.
+                </li>
+                <li>
+                  <Tick size={15} />
+                  Sends the confirmation text, then the reminder the morning of the job.
+                </li>
+              </ul>
+            </div>
+
+            <div>
+              <DemoChat />
+            </div>
           </div>
+        </section>
+
+        {/* ────────────────────── FEATURES ───────────────────── */}
+        <section className="section features" id="features">
+          <div className="wrap">
+            <div className="features__head">
+              <span className="overline">The platform</span>
+              <h2 className="h2">One workspace for everything the phone used to swallow.</h2>
+            </div>
+
+            <div className="cards" id="cards">
+              {FEATURES.map((f, i) => (
+                <article
+                  className="card reveal"
+                  key={f.title}
+                  style={{ "--i": i } as CSSProperties}
+                >
+                  <span className="card__line" aria-hidden="true" />
+                  <div className="card__icon" aria-hidden="true">
+                    {f.icon}
+                  </div>
+                  <h3>{f.title}</h3>
+                  <p>{f.body}</p>
+                </article>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* ─────────────── WHO IT'S FOR (editorial) ─────────────── */}
+        <PeopleSection />
+
+        {/* ─────────────────────── PRICING ─────────────────────── */}
+        <section className="section pricing" id="pricing">
+          <div className="pricing__glow" aria-hidden="true" />
+          <div className="wrap">
+            <div className="pricing__head">
+              <span className="overline">Founding member pricing</span>
+              <h2 className="h2">One price. Locked for as long as you stay.</h2>
+              <p>
+                $199 a month is the founding member rate — and you keep it for life while your
+                subscription stays active, even after the standard $299 rate applies to new
+                signups.
+              </p>
+            </div>
+
+            <div className="plans">
+              <article className="plan plan--featured">
+                <div className="plan__top">
+                  <span className="plan__name">Monthly</span>
+                  <span className="plan__flag">Early bird</span>
+                </div>
+                <div className="plan__price">
+                  <span className="plan__amount">$199</span>
+                  <span className="plan__per">/month</span>
+                  <span className="plan__was">$299</span>
+                </div>
+                <p className="plan__sub">
+                  Billed monthly, from month one. Your rate is locked for life.
+                </p>
+                <Link className="btn btn--wide" href="/sign-up">
+                  Start monthly
+                </Link>
+                <p className="plan__saving">
+                  Cancel any time. Your rate never rises while you stay.
+                </p>
+              </article>
+
+              <article className="plan">
+                <div className="plan__top">
+                  <span className="plan__name">6 months</span>
+                </div>
+                <div className="plan__price">
+                  <span className="plan__amount">$1,194</span>
+                  <span className="plan__per">/6 months</span>
+                </div>
+                <p className="plan__sub">
+                  $199 a month, paid twice a year. Fewer invoices to think about.
+                </p>
+                <Link className="btn-quiet" href="/sign-up">
+                  Start 6-month plan
+                </Link>
+              </article>
+
+              <article className="plan">
+                <div className="plan__top">
+                  <span className="plan__name">Yearly</span>
+                </div>
+                <div className="plan__price">
+                  <span className="plan__amount">$2,268</span>
+                  <span className="plan__per">/year</span>
+                </div>
+                <p className="plan__sub">$189 a month — 5% off the monthly rate, paid once.</p>
+                <Link className="btn-quiet" href="/sign-up">
+                  Start yearly plan
+                </Link>
+              </article>
+            </div>
+
+            <div className="included">
+              <h3>Every plan includes</h3>
+              <ul>
+                {INCLUDED.map((item) => (
+                  <li key={item}>
+                    <Tick />
+                    {item}
+                  </li>
+                ))}
+              </ul>
+              <p className="included__foot">
+                4,000 credits is roughly $20 of AI usage at our provider cost — several hundred
+                conversations a month, voice minutes included. You get a warning at 15%
+                remaining, and top-ups start at $10. Prices in USD, billed from month one.
+              </p>
+            </div>
+          </div>
+        </section>
+
+        {/* ──────────────────────── FAQ ──────────────────────── */}
+        <section className="section faq" id="faq">
+          <div className="wrap faq__grid">
+            <div className="faq__head">
+              <span className="overline">Questions</span>
+              <h2 className="h2">The things every owner asks first.</h2>
+            </div>
+
+            <div className="faq__list">
+              {FAQ.map((item, i) => (
+                <details key={item.q} open={i === 0}>
+                  <summary>
+                    {item.q}
+                    <span className="pm" aria-hidden="true" />
+                  </summary>
+                  <div className="answer">{item.a}</div>
+                </details>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* ───────────────────── FINAL CTA ───────────────────── */}
+        <section className="final">
+          <div className="final__glow" aria-hidden="true" />
+          <div className="wrap final__inner">
+            <h2 className="h2">The next call is the one that pays for this.</h2>
+            <p>
+              Enter your services, your hours and your calendar in about thirty minutes. Then
+              go back to the job you were already on.
+            </p>
+            <Link className="btn" href="/sign-up">
+              Start at $199/month
+              <span className="btn__arrow" aria-hidden="true">
+                <Arrow />
+              </span>
+            </Link>
+            <p className="final__micro">
+              Founding member rate locked for life · Billed from month one
+            </p>
+          </div>
+        </section>
+      </main>
+
+      {/* ─────────────────────── FOOTER ─────────────────────── */}
+      <footer className="foot">
+        <div className="wrap foot__inner">
+          <div className="foot__brand">
+            <span className="brand__mark" aria-hidden="true" />
+            <div>
+              <div className="brand__name">
+                Sagenify <span>AI</span>
+              </div>
+              <p className="foot__tag">
+                AI receptionist, website chat and CRM for service businesses.
+              </p>
+            </div>
+          </div>
+          <nav className="foot__links" aria-label="Footer">
+            <a href="#demo">How it works</a>
+            <a href="#features">Platform</a>
+            <a href="#pricing">Pricing</a>
+            <a href="#faq">FAQ</a>
+            <Link href="/sign-in">Sign in</Link>
+            <Link href="/privacy">Privacy</Link>
+            <Link href="/terms">Terms</Link>
+          </nav>
+          <p className="foot__legal">
+            © 2026 Sagenify AI. <span>All rights reserved.</span>
+          </p>
         </div>
       </footer>
     </div>
