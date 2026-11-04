@@ -1,7 +1,12 @@
 import { SignUp } from "@clerk/nextjs";
+import { LaunchingSoon } from "@/components/launching-soon";
 import { clerkAppearance } from "@/lib/clerk-appearance";
 
-export default function SignUpPage() {
+// Keep the Clerk form reachable for a future launch while the public route is
+// intentionally held behind the pre-launch screen.
+const SHOW_CLERK_SIGN_UP = false;
+
+function ClerkSignUpForm() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-black relative overflow-hidden">
       {/* Ambient glow */}
@@ -25,4 +30,8 @@ export default function SignUpPage() {
       </div>
     </div>
   );
+}
+
+export default function SignUpPage() {
+  return SHOW_CLERK_SIGN_UP ? <ClerkSignUpForm /> : <LaunchingSoon />;
 }

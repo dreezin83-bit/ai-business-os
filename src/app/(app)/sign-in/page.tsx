@@ -1,7 +1,8 @@
 import { SignIn } from "@clerk/nextjs";
+import { LaunchingSoon } from "@/components/launching-soon";
 import { clerkAppearance } from "@/lib/clerk-appearance";
 
-export default function SignInPage() {
+function ClerkSignInForm() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-black relative overflow-hidden">
       {/* Ambient glow */}
@@ -25,4 +26,17 @@ export default function SignInPage() {
       </div>
     </div>
   );
+}
+
+type SignInPageProps = {
+  searchParams: Promise<{
+    form?: string | string[] | undefined;
+  }>;
+};
+
+export default async function SignInPage({ searchParams }: SignInPageProps) {
+  const { form } = await searchParams;
+  const showClerkForm = Array.isArray(form) ? form.includes("1") : form === "1";
+
+  return showClerkForm ? <ClerkSignInForm /> : <LaunchingSoon />;
 }
