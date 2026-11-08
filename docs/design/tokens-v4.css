@@ -1,0 +1,12 @@
+:root {
+  --v4-bg: #09090B;
+  --v4-surface: #111114;
+  --v4-surface-raised: #17171C;
+  --v4-text: #E2E8F0;
+  --v4-text-secondary: #A1A1AA;
+  --v4-muted: #71717A;
+  --v4-purple: #8B5CF6;
+  --v4-blue: #3B82F6;
+  --v4-line: rgba(255, 255, 255, 0.08);
+  --v4-line-strong: rgba(255, 255, 255, 0.16);
+}

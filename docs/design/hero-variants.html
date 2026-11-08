@@ -1,0 +1,364 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Sagenify AI — Hero explorations v4</title>
+  <link rel="stylesheet" href="tokens-v4.css">
+  <style>
+    :root { color-scheme: dark; }
+    * { box-sizing: border-box; }
+    html { background: var(--v4-bg); scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      background: var(--v4-bg);
+      color: var(--v4-text);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      -webkit-font-smoothing: antialiased;
+      overflow-x: hidden;
+    }
+    button, a { font: inherit; }
+    a { color: inherit; }
+    :focus-visible { outline: 2px solid var(--v4-text); outline-offset: 4px; }
+    .site-mark {
+      position: fixed; z-index: 20; top: 18px; left: 24px;
+      display: flex; align-items: center; gap: 10px;
+      color: var(--v4-text); font-size: 11px; letter-spacing: .16em; text-transform: uppercase;
+      mix-blend-mode: difference;
+    }
+    .site-mark i { display:block; width: 8px; height: 8px; background: var(--v4-text); border-radius: 50%; }
+    .variant { min-height: 100svh; position: relative; display: flex; align-items: center; }
+    .variant-inner { width: min(1160px, calc(100% - 64px)); margin: 0 auto; padding: 72px 0 52px; }
+    .variant-rule {
+      position: absolute; left: 0; right: 0; bottom: 0; height: 36px;
+      border-top: 1px solid var(--v4-line); display: flex; align-items: center; justify-content: center;
+      color: var(--v4-muted); font-size: 10px; letter-spacing: .18em; text-transform: uppercase;
+    }
+    .variant-rule span { background: var(--v4-bg); padding: 0 15px; }
+    .kicker { margin: 0; color: var(--v4-muted); font-size: 11px; letter-spacing: .18em; line-height: 1.4; text-transform: uppercase; }
+    h1, h2, p { margin-top: 0; }
+    h1 { margin-bottom: 22px; color: var(--v4-text); font-size: clamp(44px, 6vw, 82px); line-height: .94; letter-spacing: -.075em; font-weight: 650; }
+    h1 em { font-style: normal; color: var(--v4-text); }
+    .lede { max-width: 470px; margin-bottom: 30px; color: var(--v4-text-secondary); font-size: 17px; line-height: 1.5; }
+    .primary-cta {
+      min-height: 48px; padding: 0 19px; border: 1px solid var(--v4-text); border-radius: 3px;
+      display: inline-flex; align-items: center; justify-content: center; text-decoration: none;
+      background: var(--v4-text); color: var(--v4-bg); font-size: 13px; font-weight: 700; letter-spacing: .01em;
+      transition: background .2s ease, color .2s ease;
+    }
+    .primary-cta:hover { background: var(--v4-bg); color: var(--v4-text); }
+    .demo-note { margin: 18px 0 0; color: var(--v4-muted); font-size: 11px; line-height: 1.45; }
+
+    /* Variant A — one call, one job. */
+    .variant-a { background: var(--v4-bg); }
+    .a-grid { display: grid; grid-template-columns: minmax(280px, .83fr) minmax(500px, 1.17fr); gap: clamp(45px, 8vw, 120px); align-items: center; }
+    .a-copy h1 { max-width: 560px; }
+    .a-copy h1 em { color: var(--v4-purple); }
+    .a-statement { display:flex; align-items:center; gap:10px; margin: 0 0 24px; color: var(--v4-text-secondary); font-size: 12px; }
+    .a-statement i { width: 7px; height: 7px; border-radius: 50%; background: var(--v4-purple); box-shadow: 0 0 18px rgba(139,92,246,.65); }
+    .call-shell { min-height: 604px; position: relative; overflow: hidden; padding: 23px; border: 1px solid var(--v4-line-strong); background: var(--v4-surface); }
+    .call-shell::before { content:""; position:absolute; inset: 0; background: linear-gradient(90deg, transparent 0 49.8%, var(--v4-line) 50%, transparent 50.2%); opacity:.5; pointer-events:none; }
+    .call-top { position:relative; z-index:1; display:flex; justify-content:space-between; align-items:center; padding-bottom:17px; border-bottom: 1px solid var(--v4-line); color:var(--v4-muted); font-size:10px; letter-spacing:.14em; text-transform:uppercase; }
+    .call-top strong { color:var(--v4-text-secondary); font-weight:600; }
+    .live-dot { display:inline-block; width:6px; height:6px; margin-right:7px; border-radius:50%; background:var(--v4-purple); box-shadow:0 0 12px rgba(139,92,246,.9); }
+    .call-stage { position:relative; z-index:1; min-height: 535px; display:grid; grid-template-rows:auto 1fr auto; padding: 27px 4px 3px; }
+    .call-meta { display:flex; justify-content:space-between; gap:15px; align-items:flex-start; }
+    .call-status { color:var(--v4-purple); font-size:10px; font-weight:700; letter-spacing:.16em; text-transform:uppercase; }
+    .call-time { color:var(--v4-muted); font-size:11px; font-variant-numeric:tabular-nums; }
+    .call-body { display:grid; grid-template-columns: 1fr 1fr; gap: 28px; align-items:center; }
+    .caller { position:relative; }
+    .caller h2 { margin:0 0 8px; font-size: clamp(24px, 3vw, 42px); line-height: .98; letter-spacing:-.06em; }
+    .caller p { max-width: 210px; margin:0; color:var(--v4-muted); font-size:12px; line-height:1.45; }
+    .phone-ring { width: 114px; height: 114px; margin: 0 0 30px; position:relative; display:grid; place-items:center; border:1px solid rgba(139,92,246,.5); border-radius:50%; color:var(--v4-purple); }
+    .phone-ring::before, .phone-ring::after { content:""; position:absolute; inset:-13px; border:1px solid rgba(139,92,246,.25); border-radius:50%; animation: ring 2.2s ease-out infinite; }
+    .phone-ring::after { animation-delay:1.1s; }
+    .phone-icon { width:30px; height:30px; fill:none; stroke:currentColor; stroke-width:1.7; stroke-linecap:round; stroke-linejoin:round; }
+    .answered-ring { display:none; width:114px; height:114px; margin: 0 0 30px; position:relative; align-items:center; justify-content:center; border:1px solid rgba(139,92,246,.7); border-radius:50%; color:var(--v4-purple); }
+    .answered-ring::after { content:""; position:absolute; inset:13px; border:1px solid rgba(139,92,246,.35); border-radius:50%; }
+    .answered-ring .phone-icon { position:relative; z-index:1; }
+    .caller > .ringing-copy, .caller > .answered-copy { position: absolute; left: 0; top: 174px; }
+    .call-status .ringing-copy, .call-status .answered-copy { position: static; }
+    .answered-copy { opacity:0; }
+    .wave-panel { align-self:end; padding: 17px 0 0; border-top:1px solid var(--v4-line); }
+    .wave-label { display:flex; justify-content:space-between; margin-bottom:10px; color:var(--v4-muted); font-size:10px; letter-spacing:.12em; text-transform:uppercase; }
+    .waveform { height: 52px; display:flex; align-items:center; gap:4px; }
+    .waveform i { display:block; width:4px; height: 8px; border-radius:4px; background: var(--v4-purple); opacity:.2; }
+    .waveform i:nth-child(2n) { height: 22px; } .waveform i:nth-child(3n) { height: 35px; } .waveform i:nth-child(5n) { height: 46px; }
+    .transcript { min-height: 140px; padding: 15px 0 0; }
+    .transcript p { opacity:0; transform:translateY(8px); margin: 0 0 10px; color:var(--v4-text-secondary); font-size:12px; line-height:1.45; }
+    .transcript p b { display:inline-block; width: 53px; color:var(--v4-muted); font-size:9px; font-weight:500; letter-spacing:.12em; text-transform:uppercase; }
+    .job-ticket { opacity:0; transform:translateX(20px); margin-top: 12px; padding: 15px 16px; border-left: 2px solid var(--v4-purple); background: var(--v4-surface-raised); }
+    .job-ticket .ticket-top { display:flex; justify-content:space-between; gap:15px; margin-bottom:9px; color:var(--v4-purple); font-size:10px; font-weight:700; letter-spacing:.13em; text-transform:uppercase; }
+    .job-ticket strong { display:block; color:var(--v4-text); font-size:14px; font-weight:650; }
+    .job-ticket small { display:block; margin-top:4px; color:var(--v4-muted); font-size:11px; }
+    .a-next { margin-top: 22px; color:var(--v4-muted); font-size: 11px; }
+    .a-next b { color:var(--v4-text-secondary); font-weight:500; }
+    @keyframes ring { 0% { opacity:0; transform:scale(.7); } 15% { opacity:1; } 70%,100% { opacity:0; transform:scale(1.18); } }
+    @keyframes ring-hide { 0%, 21% { opacity:1; } 26%,100% { opacity:0; } }
+    @keyframes answer-in { 0%, 20% { opacity:0; } 27%,100% { opacity:1; } }
+    @keyframes answered-label { 0%, 22% { opacity:0; } 27%,100% { opacity:1; } }
+    @keyframes line-in-one { 0%, 27% { opacity:0; transform:translateY(8px); } 32%, 100% { opacity:1; transform:translateY(0); } }
+    @keyframes line-in-two { 0%, 38% { opacity:0; transform:translateY(8px); } 43%, 100% { opacity:1; transform:translateY(0); } }
+    @keyframes line-in-three { 0%, 49% { opacity:0; transform:translateY(8px); } 54%, 100% { opacity:1; transform:translateY(0); } }
+    @keyframes ticket-in { 0%, 68% { opacity:0; transform:translateX(20px); } 75%,100% { opacity:1; transform:translateX(0); } }
+    .call-shell:not(.is-paused) .ringing-copy { animation: ring-hide 12s linear infinite; }
+    .call-shell:not(.is-paused) .phone-ring { animation: ring-hide 12s linear infinite; }
+    .call-shell:not(.is-paused) .answered-copy { animation: answer-in 12s linear infinite; }
+    .call-shell:not(.is-paused) .answered-ring { display:flex; animation: answer-in 12s linear infinite; }
+    .call-shell:not(.is-paused) .waveform i { animation: pulse 1.1s ease-in-out infinite alternate; }
+    .call-shell:not(.is-paused) .transcript p:nth-child(1) { animation: line-in-one 12s linear infinite; }
+    .call-shell:not(.is-paused) .transcript p:nth-child(2) { animation: line-in-two 12s linear infinite; }
+    .call-shell:not(.is-paused) .transcript p:nth-child(3) { animation: line-in-three 12s linear infinite; }
+    .call-shell:not(.is-paused) .job-ticket { animation: ticket-in 12s linear infinite; }
+    @keyframes pulse { from { transform:scaleY(.4); opacity:.35; } to { transform:scaleY(1); opacity:1; } }
+    .call-shell:not(.is-paused) .waveform i:nth-child(2) { animation-delay:.13s; } .call-shell:not(.is-paused) .waveform i:nth-child(3) { animation-delay:.22s; } .call-shell:not(.is-paused) .waveform i:nth-child(4) { animation-delay:.31s; } .call-shell:not(.is-paused) .waveform i:nth-child(5) { animation-delay:.38s; }
+    .reduced-end { display:none; }
+
+    /* Variant B — a missed call is a number, not an abstraction. */
+    .variant-b { background:var(--v4-surface); }
+    .b-inner { width:100%; padding: 72px 0 52px; }
+    .b-frame { min-height: calc(100svh - 108px); position:relative; display:grid; grid-template-columns: 1fr minmax(350px, 1fr); align-items:center; overflow:hidden; }
+    .b-frame::before { content:""; position:absolute; left:50%; top:0; bottom:0; border-left:1px solid var(--v4-line); }
+    .b-copy { position:relative; z-index:2; width:min(590px, calc(100% - 64px)); margin-left: max(32px, calc((100vw - 1160px) / 2)); }
+    .b-copy h1 { max-width: 610px; margin-bottom: 28px; }
+    .b-copy h1 em { color:var(--v4-blue); }
+    .b-copy .lede { max-width: 390px; }
+    .counter-stage { min-height:calc(100svh - 108px); position:relative; display:flex; flex-direction:column; justify-content:center; padding: 0 clamp(32px, 7vw, 120px); }
+    .counter-small { margin-bottom: 8px; color:var(--v4-muted); font-size:10px; letter-spacing:.16em; text-transform:uppercase; }
+    .counter-number { position:relative; width:max-content; color:var(--v4-text); font-size:clamp(160px, 25vw, 360px); line-height:.72; letter-spacing:-.12em; font-weight:650; font-variant-numeric:tabular-nums; }
+    .counter-number::after { content:""; position:absolute; right:-18px; bottom:10px; width:12px; height:12px; background:var(--v4-blue); box-shadow:0 0 32px rgba(59,130,246,.7); }
+    .counter-label { display:flex; align-items:center; gap:13px; margin-top: 34px; color:var(--v4-text-secondary); font-size:13px; letter-spacing:.08em; text-transform:uppercase; }
+    .counter-label i { width:33px; border-top:1px solid var(--v4-blue); }
+    .catch-line { margin-top: 62px; padding-top: 16px; border-top:1px solid var(--v4-line); color:var(--v4-muted); font-size:11px; line-height:1.5; text-transform:uppercase; letter-spacing:.1em; }
+    .catch-line strong { display:block; margin-top:5px; color:var(--v4-text); font-size:16px; letter-spacing:0; text-transform:none; }
+    .number-rail { position:absolute; left:clamp(32px, 7vw, 120px); right:clamp(32px, 7vw, 120px); bottom:32px; display:flex; justify-content:space-between; border-top:1px solid var(--v4-line); padding-top:12px; color:var(--v4-muted); font-size:10px; letter-spacing:.14em; }
+    .number-rail b { color:var(--v4-text-secondary); font-weight:500; }
+    @keyframes count { 0%, 17% { opacity:1; } 18%, 20% { opacity:.1; } 21%, 42% { opacity:1; } 43%, 45% { opacity:.1; } 46%, 67% { opacity:1; } 68%, 70% { opacity:.1; } 71%, 100% { opacity:1; } }
+    .counter-number { animation:count 8s steps(1,end) infinite; }
+
+    /* Variant C — the same phone at two different outcomes. */
+    .variant-c { background:var(--v4-bg); }
+    .c-inner { width:min(1280px, 100%); margin:0 auto; padding:72px 0 52px; }
+    .c-head { width:min(1160px, calc(100% - 64px)); margin:0 auto 26px; position:relative; z-index:3; }
+    .c-head h1 { max-width: 850px; margin-bottom:20px; font-size:clamp(44px, 5.3vw, 72px); }
+    .c-head h1 em { color:var(--v4-purple); }
+    .c-head .lede { max-width: 470px; margin-bottom: 22px; }
+    .c-split { min-height: calc(100svh - 306px); display:grid; grid-template-columns:1fr 1fr; border-top:1px solid var(--v4-line); border-bottom:1px solid var(--v4-line); }
+    .c-half { position:relative; min-height: 440px; padding: clamp(28px, 5vw, 70px); overflow:hidden; }
+    .c-left { background: #09090B; border-right:1px solid var(--v4-line); }
+    .c-right { background:var(--v4-surface-raised); }
+    .c-half::after { content:""; position:absolute; left:0; right:0; top:48%; border-top:1px solid var(--v4-line); opacity:.8; }
+    .c-label { position:relative; z-index:1; display:flex; justify-content:space-between; gap:14px; color:var(--v4-muted); font-size:10px; letter-spacing:.15em; text-transform:uppercase; }
+    .c-label strong { color:var(--v4-text-secondary); font-weight:600; }
+    .phone-scene { position:absolute; z-index:1; inset: 24% 0 0; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; }
+    .scene-phone { width:100px; height:160px; position:relative; border:2px solid var(--v4-muted); border-radius:18px; color:var(--v4-muted); }
+    .scene-phone::before { content:""; position:absolute; top:10px; left:50%; width:26px; height:3px; transform:translateX(-50%); border-radius:4px; background:currentColor; }
+    .scene-phone::after { content:""; position:absolute; bottom:10px; left:50%; width:25px; height:4px; transform:translateX(-50%); border-radius:4px; background:currentColor; }
+    .scene-phone svg { position:absolute; width:33px; height:33px; left:50%; top:50%; transform:translate(-50%,-50%); fill:none; stroke:currentColor; stroke-width:1.5; stroke-linecap:round; stroke-linejoin:round; }
+    .ring-lines { position:absolute; inset:-23px; border:1px solid var(--v4-line-strong); border-radius:26px; animation:shake 1.5s ease-in-out infinite; }
+    .ring-lines::before, .ring-lines::after { content:""; position:absolute; top:36%; width:18px; border-top:1px solid var(--v4-muted); }
+    .ring-lines::before { left:-16px; transform:rotate(-24deg); } .ring-lines::after { right:-16px; transform:rotate(24deg); }
+    @keyframes shake { 0%,100% { transform:rotate(0); } 25% { transform:rotate(-2deg); } 75% { transform:rotate(2deg); } }
+    .scene-title { margin:23px 0 7px; color:var(--v4-text); font-size:22px; letter-spacing:-.04em; }
+    .scene-copy { max-width:230px; margin:0; color:var(--v4-muted); font-size:12px; line-height:1.45; }
+    .c-right .scene-phone { border-color:var(--v4-purple); color:var(--v4-purple); box-shadow:0 0 0 14px rgba(139,92,246,.06), 0 0 44px rgba(139,92,246,.12); }
+    .c-right .ring-lines { display:none; }
+    .c-right .scene-title { color:var(--v4-text); }
+    .booked-line { display:flex; align-items:center; gap:8px; margin-top:16px; color:var(--v4-purple); font-size:10px; font-weight:700; letter-spacing:.13em; text-transform:uppercase; }
+    .booked-line i { width:7px; height:7px; border:1px solid var(--v4-purple); border-radius:50%; }
+    .c-side-note { position:absolute; z-index:2; right:clamp(28px, 5vw, 70px); bottom:24px; max-width:190px; color:var(--v4-muted); font-size:10px; line-height:1.45; text-align:right; }
+
+    @media (max-width: 850px) {
+      .site-mark { top:14px; left:18px; font-size:9px; }
+      .variant-inner, .c-head { width:calc(100% - 40px); }
+      .variant-inner { padding-top:65px; padding-bottom:53px; }
+      .variant-rule { height:34px; }
+      h1 { font-size:clamp(45px, 13vw, 63px); line-height:.93; }
+      .lede { font-size:15px; }
+      .a-grid { grid-template-columns:1fr; gap: 30px; align-items:start; }
+      .a-copy { padding-top: 10px; }
+      .a-copy h1 { font-size: clamp(42px, 11.8vw, 58px); }
+      .a-copy .lede { margin-bottom: 21px; font-size: 14px; line-height: 1.38; }
+      .a-copy .a-next { display:none; }
+      .a-statement { margin-bottom:16px; }
+      .call-shell { min-height: 380px; padding:15px; }
+      .call-stage { min-height: 315px; padding-top:16px; }
+      .call-stage > .a-next { display:none; }
+      .call-body { align-items:start; }
+      .transcript { min-height:0; padding-top:10px; }
+      .wave-panel { padding-top:10px; }
+      .transcript p { margin-bottom:6px; }
+      .job-ticket { margin-top:7px; padding:10px 11px; }
+      .job-ticket .ticket-top { margin-bottom:5px; font-size:8px; }
+      .job-ticket strong { font-size:12px; }
+      .job-ticket small { font-size:9px; }
+      .call-body { gap:17px; }
+      .caller h2 { font-size:30px; }
+      .caller > .ringing-copy, .caller > .answered-copy { top: 135px; }
+      .phone-ring, .answered-ring { width:92px; height:92px; margin-bottom:21px; }
+      .phone-icon { width:26px; height:26px; }
+      .a-next { margin-top:13px; }
+      .b-inner, .c-inner { padding-top:65px; padding-bottom:53px; }
+      .b-frame { min-height:calc(100svh - 105px); display:flex; flex-direction:column; align-items:stretch; justify-content:center; }
+      .b-frame::before { display:none; }
+      .b-copy { width:calc(100% - 40px); margin:0 auto; padding-top:20px; }
+      .b-copy h1 { margin-bottom:22px; }
+      .b-copy .lede { margin-bottom:23px; }
+      .counter-stage { min-height:300px; padding:44px 20px 82px; justify-content:start; }
+      .counter-number { font-size: min(63vw, 250px); }
+      .counter-number::after { right:-13px; bottom:4px; width:9px; height:9px; }
+      .counter-label { margin-top:25px; }
+      .catch-line { margin-top:30px; }
+      .number-rail { left:20px; right:20px; bottom:26px; }
+      .c-head { margin-bottom:22px; padding-top:15px; }
+      .c-split { min-height:calc(100svh - 330px); display:grid; grid-template-columns:1fr; }
+      .c-half { min-height: 310px; padding:25px 20px 28px; }
+      .c-left { border-right:0; border-bottom:1px solid var(--v4-line); }
+      .c-half::after { top:50%; }
+      .phone-scene { inset:18% 0 0; }
+      .scene-phone { width:73px; height:118px; border-radius:14px; }
+      .scene-phone::before { top:7px; width:19px; height:2px; } .scene-phone::after { bottom:7px; width:18px; height:3px; }
+      .scene-phone svg { width:25px; height:25px; }
+      .scene-title { margin-top:17px; font-size:20px; }
+      .c-side-note { right:20px; bottom:17px; }
+    }
+    @media (max-width: 420px) {
+      .variant-inner, .c-head { width:calc(100% - 32px); }
+      .a-copy { padding-top: 16px; }
+      .a-copy h1 { font-size:47px; }
+      .call-shell { min-height: 350px; padding:13px; }
+      .call-stage { min-height: 286px; }
+      .call-body { grid-template-columns:1fr 1fr; gap:10px; }
+      .caller h2 { font-size:25px; }
+      .caller > .ringing-copy, .caller > .answered-copy { top: 112px; }
+      .caller p { font-size:11px; }
+      .waveform { gap:3px; }
+      .waveform i { width:3px; }
+      .transcript p { font-size:11px; }
+      .transcript p b { width:45px; font-size:8px; }
+      .b-copy { width:calc(100% - 32px); }
+      .b-copy h1 { font-size:46px; }
+      .counter-stage { padding-left:16px; padding-right:16px; }
+      .number-rail { left:16px; right:16px; font-size:9px; }
+      .c-head { width:calc(100% - 32px); }
+      .c-head h1 { font-size:46px; }
+      .c-half { min-height:285px; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { animation-duration:.001ms !important; animation-iteration-count:1 !important; scroll-behavior:auto !important; transition-duration:.001ms !important; }
+      .call-shell:not(.is-paused) .ringing-copy, .call-shell:not(.is-paused) .phone-ring { display:none; animation:none; }
+      .call-shell:not(.is-paused) .answered-copy { opacity:1; animation:none; }
+      .call-shell:not(.is-paused) .answered-ring { display:flex; animation:none; }
+      .call-shell:not(.is-paused) .transcript p { opacity:1; transform:none; animation:none; }
+      .call-shell:not(.is-paused) .job-ticket { opacity:1; transform:none; animation:none; }
+      .call-shell:not(.is-paused) .waveform i { opacity:1; animation:none; }
+      .counter-number { animation:none; }
+      .ring-lines { animation:none; }
+      .reduced-end { display:block; }
+      .motion-note { display:none; }
+    }
+  </style>
+</head>
+<body>
+  <div class="site-mark" aria-label="Sagenify AI"><i></i><span>Sagenify AI / hero explorations</span></div>
+
+  <main>
+    <section class="variant variant-a" id="variant-a" aria-labelledby="a-title">
+      <div class="variant-inner a-grid">
+        <div class="a-copy">
+          <p class="kicker">Variant A / recommended direction</p>
+          <p class="a-statement"><i></i><span>A call comes in. The job does not wait.</span></p>
+          <h1 id="a-title">You keep the wrench moving. <em>We book the next job.</em></h1>
+          <p class="lede">Sagenify answers the customer while you are up a ladder or under a sink — then turns the call into a booked diagnostic visit.</p>
+          <a class="primary-cta" href="#variant-a-demo">Watch the call become a booking</a>
+          <p class="demo-note">Simulated product demo · no customer data · loops every 12 seconds.</p>
+          <p class="a-next"><b>Only one thing matters:</b> a ring that ends with a real slot on the calendar.</p>
+        </div>
+        <div class="call-shell" id="variant-a-demo" aria-label="Simulated Sagenify AI receptionist call">
+          <div class="call-top"><span><span class="live-dot"></span>Sagenify AI / receptionist demo</span><strong>Voice workflow</strong></div>
+          <div class="call-stage">
+            <div class="call-meta"><span class="call-status"><span class="ringing-copy">Incoming call</span><span class="answered-copy">Answered by Sagenify</span></span><span class="call-time">09:42 AM · 02:18</span></div>
+            <div class="call-body">
+              <div class="caller">
+                <div class="phone-ring">
+                  <svg class="phone-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M6.6 3.8 9 3l2.1 4.9-2.3 1.5a13.2 13.2 0 0 0 5.8 5.8l1.5-2.3L21 15l-.8 2.4a2.2 2.2 0 0 1-2.5 1.4C10 17.3 6.7 14 5.2 6.3a2.2 2.2 0 0 1 1.4-2.5Z"/></svg>
+                </div>
+                <div class="answered-ring"><svg class="phone-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M6.6 3.8 9 3l2.1 4.9-2.3 1.5a13.2 13.2 0 0 0 5.8 5.8l1.5-2.3L21 15l-.8 2.4a2.2 2.2 0 0 1-2.5 1.4C10 17.3 6.7 14 5.2 6.3a2.2 2.2 0 0 1 1.4-2.5Z"/></svg></div>
+                <div class="ringing-copy"><h2>Maple Street<br>HVAC</h2><p>(555) 014-0149 · New customer</p></div>
+                <div class="answered-copy"><h2>Maple Street<br>HVAC</h2><p>Call connected · lead captured</p></div>
+              </div>
+              <div class="transcript" aria-live="polite">
+                <div class="wave-panel"><div class="wave-label"><span>AI receptionist</span><span>Listening</span></div><div class="waveform" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div></div>
+                <p><b>Customer</b> “My AC stopped blowing cold.”</p>
+                <p><b>Sagenify</b> “I can get a technician out. What ZIP code should I use?”</p>
+                <p><b>Customer</b> “33131. Tomorrow morning works.”</p>
+                <div class="job-ticket"><div class="ticket-top"><span>✓ Job booked</span><span>CRM updated</span></div><strong>Diagnostic visit</strong><small>Tue 14 May · 10:30 AM · 33131</small></div>
+              </div>
+            </div>
+            <div class="a-next"><span class="motion-note">The call keeps moving while the owner keeps working.</span><span class="reduced-end">End state shown: call answered, customer qualified, job booked.</span></div>
+          </div>
+        </div>
+      </div>
+      <div class="variant-rule"><span>VARIANT A / THE CALL PANEL</span></div>
+    </section>
+
+    <section class="variant variant-b" id="variant-b" aria-labelledby="b-title">
+      <div class="b-inner">
+        <div class="b-frame">
+          <div class="b-copy">
+            <p class="kicker">Variant B / the counter</p>
+            <h1 id="b-title">Every missed call is a job sent to the <em>next contractor.</em></h1>
+            <p class="lede">Make the cost visible. Sagenify catches the next ring, asks the right question and puts the appointment on your calendar.</p>
+            <a class="primary-cta" href="#variant-b-counter">See the next call get caught</a>
+            <p class="demo-note">Simulated product demo · count resets after the fifth call.</p>
+          </div>
+          <div class="counter-stage" id="variant-b-counter" aria-label="Simulated missed call counter">
+            <span class="counter-small">Calls the owner did not have to take</span>
+            <div class="counter-number" aria-live="polite">04</div>
+            <div class="counter-label"><i></i><span>missed calls</span></div>
+            <div class="catch-line">then the next call comes in<strong>05 / answered + booked</strong></div>
+            <div class="number-rail"><span>01 <b>missed</b></span><span>02 <b>missed</b></span><span>03 <b>missed</b></span><span>04 <b>missed</b></span><span>05 <b>answered</b></span></div>
+          </div>
+        </div>
+      </div>
+      <div class="variant-rule"><span>VARIANT B / THE COUNTER</span></div>
+    </section>
+
+    <section class="variant variant-c" id="variant-c" aria-labelledby="c-title">
+      <div class="c-inner">
+        <div class="c-head">
+          <p class="kicker">Variant C / night shift split</p>
+          <h1 id="c-title">When you are under a sink, <em>Sagenify answers the phone.</em></h1>
+          <p class="lede">Two outcomes from the same 9 PM ring: a customer gives up, or an AI receptionist books the visit.</p>
+          <a class="primary-cta" href="#variant-c-split">See both outcomes</a>
+        </div>
+        <div class="c-split" id="variant-c-split" aria-label="Comparison of an unanswered call and an AI-answered call">
+          <div class="c-half c-left">
+            <div class="c-label"><span>9:00 PM · incoming</span><strong>nobody answered</strong></div>
+            <div class="phone-scene"><div class="scene-phone"><div class="ring-lines"></div><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6.6 3.8 9 3l2.1 4.9-2.3 1.5a13.2 13.2 0 0 0 5.8 5.8l1.5-2.3L21 15l-.8 2.4a2.2 2.2 0 0 1-2.5 1.4C10 17.3 6.7 14 5.2 6.3a2.2 2.2 0 0 1 1.4-2.5Z"/></svg></div><h2 class="scene-title">Call went to voicemail.</h2><p class="scene-copy">The customer is still looking for someone who can come tomorrow.</p></div>
+          </div>
+          <div class="c-half c-right">
+            <div class="c-label"><span>9:00 PM · connected</span><strong>AI receptionist</strong></div>
+            <div class="phone-scene"><div class="scene-phone"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6.6 3.8 9 3l2.1 4.9-2.3 1.5a13.2 13.2 0 0 0 5.8 5.8l1.5-2.3L21 15l-.8 2.4a2.2 2.2 0 0 1-2.5 1.4C10 17.3 6.7 14 5.2 6.3a2.2 2.2 0 0 1 1.4-2.5Z"/></svg></div><h2 class="scene-title">Booked for tomorrow.</h2><p class="scene-copy">The caller gave a ZIP code. Sagenify found the opening and locked in the diagnostic visit.</p><div class="booked-line"><i></i><span>Tue 14 May · 10:30 AM</span></div></div>
+          </div>
+          <p class="c-side-note">Simulated product demo.<br>No customer data shown.</p>
+        </div>
+      </div>
+      <div class="variant-rule"><span>VARIANT C / NIGHT SHIFT SPLIT</span></div>
+    </section>
+  </main>
+  <script>
+    (function () {
+      const number = document.querySelector('.counter-number');
+      const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      if (!number || reduce) return;
+      const values = ['01', '02', '03', '04', '05'];
+      let index = 3;
+      window.setInterval(function () {
+        index = (index + 1) % values.length;
+        number.textContent = values[index];
+      }, 1600);
+    }());
+  </script>
+</body>
+</html>
