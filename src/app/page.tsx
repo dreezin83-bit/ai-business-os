@@ -194,8 +194,8 @@ const FAQ = [
     a: "Yes. Every workspace is isolated — its own knowledge base, call records, leads and number. Nothing is shared between accounts and nothing is trained across them.",
   },
   {
-    q: "What is the founding member price lock?",
-    a: "$199 a month for as long as your subscription stays active — even after the standard $299 rate applies to new signups. If you cancel and come back later, you rejoin at the current rate.",
+    q: "How does billing work?",
+    a: "$199 a month, billed monthly, cancel any time. The six-month and yearly plans are paid up front at a lower monthly rate. There is no lifetime rate — the price you pay is the current price.",
   },
 ];
 
@@ -278,7 +278,7 @@ export default function HomePage() {
             <div className="hero__copy">
               <span className="chip">
                 <span className="chip__dot" aria-hidden="true" />
-                Founding member rate — $199/mo for life
+                $199/month · 300 voice minutes included
               </span>
               <h1>Every call answered. Every job booked.</h1>
               <p className="hero__sub">
@@ -404,12 +404,11 @@ export default function HomePage() {
           <div className="pricing__glow" aria-hidden="true" />
           <div className="wrap">
             <div className="pricing__head">
-              <span className="overline">Founding member pricing</span>
-              <h2 className="h2">One price. Locked for as long as you stay.</h2>
+              <span className="overline">Pricing</span>
+              <h2 className="h2">One plan. Pay monthly, twice a year, or yearly.</h2>
               <p>
-                $199 a month is the founding member rate — and you keep it for life while your
-                subscription stays active, even after the standard $299 rate applies to new
-                signups.
+                $199 a month. Every plan includes the same thing: 300 voice minutes, 15,000 AI
+                conversations and 5,000 emails each month.
               </p>
             </div>
 
@@ -417,7 +416,6 @@ export default function HomePage() {
               <article className="plan plan--featured">
                 <div className="plan__top">
                   <span className="plan__name">Monthly</span>
-                  <span className="plan__flag">Early bird</span>
                 </div>
                 <div className="plan__price">
                   <span className="plan__amount">$199</span>
@@ -425,13 +423,13 @@ export default function HomePage() {
                   <span className="plan__was">$299</span>
                 </div>
                 <p className="plan__sub">
-                  Billed monthly, from month one. Your rate is locked for life.
+                  Billed monthly, from month one.
                 </p>
                 <Link className="btn btn--wide" href="/sign-up">
                   Start monthly
                 </Link>
                 <p className="plan__saving">
-                  Cancel any time. Your rate never rises while you stay.
+                  Cancel any time.
                 </p>
               </article>
 
@@ -523,7 +521,7 @@ export default function HomePage() {
               </span>
             </Link>
             <p className="final__micro">
-              Founding member rate locked for life · Billed from month one
+              Billed monthly · Cancel any time
             </p>
           </div>
         </section>

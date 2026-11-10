@@ -64,10 +64,10 @@ export default function PeopleSection() {
           <span className="overline">Who this is for</span>
           <h2 className="h2">Built for people whose office has a steering wheel.</h2>
           <p>
-            We&apos;re building Sagenify alongside our founding members — HVAC, roofing,
-            plumbing and electrical businesses who told us exactly what a missed call costs
-            them. If you&apos;ve ever lost a nine-thousand-dollar install because you were
-            elbow-deep in a condenser, this was built for you.
+            Built for HVAC, roofing, plumbing and electrical businesses — the trades that
+            lose a job every time nobody picks up. If you&apos;ve ever lost a
+            nine-thousand-dollar install because you were elbow-deep in a condenser, this was
+            built for you.
           </p>
           <TradeIndex />
         </div>

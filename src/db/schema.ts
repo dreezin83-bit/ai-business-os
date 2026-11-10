@@ -217,7 +217,7 @@ export const subscription = pgTable("subscription", {
   currentPeriodStart: timestamp("current_period_start"),
   currentPeriodEnd: timestamp("current_period_end"),
   canceledAt: timestamp("canceled_at"),
-  // ── Early-bird price lock ("lock in $199/mo for life", owner 2026-10-24) ──
+  // ── Legacy early-bird price lock — retired 2026-11-02 (no lifetime rate) ──
   // priceLockedAt + lockedPlan: once set, the tenant always bills on the
   // locked plan (lockedPlan = "early-bird"); no path may raise their price.
   priceLockedAt: timestamp("price_locked_at"),

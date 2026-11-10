@@ -12,7 +12,7 @@ import { Check } from "lucide-react";
  *   - Month 1 is $199/mo like every month — the first-month special is
  *     GONE from billing and from this section.
  *   - "$299/mo" is the real standard list price anchor (crossed out above the
- *     active price; early bird gets $199).
+ *     active price).
  *   - The banner text below is owner copy, shipped VERBATIM (single source
  *     line so the exact string stays byte-identical).
  *   - Periods: Monthly "$199/mo" (Billed monthly) · 6 Months "$1,194 every
@@ -138,7 +138,7 @@ export default function PricingSection() {
         <div className="max-w-2xl mx-auto mb-8">
           <div className="rounded-2xl border border-amber-400/25 bg-gradient-to-r from-amber-500/[0.08] via-purple-500/[0.06] to-amber-500/[0.08] px-5 py-4 text-center">
             <p className="text-[13px] font-semibold text-amber-200 leading-relaxed">
-              Early Bird Discount for the first 10,000 users — Ending Soon! Lock in $199/mo for life (No future price increases).
+              $199 a month. No setup fee, cancel any time.
             </p>
           </div>
         </div>
