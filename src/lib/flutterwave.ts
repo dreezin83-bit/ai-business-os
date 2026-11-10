@@ -93,7 +93,7 @@ export const BILLING_OPTIONS: Record<BillingCadence, BillingOptionDef> = {
     interval: "month",
     periodDays: 30,
     fwPlan: {
-      name: "Sagenify AI — Early Bird Monthly ($199)",
+      name: "Sagenify AI — Monthly ($199)",
       interval: "monthly",
       amount: EARLY_BIRD_MAJOR,
     },
