@@ -1,4 +1,4 @@
-# AI Business OS
+# sagenify Ai
 
 A **white-label, multi-tenant SaaS platform** for service businesses to automate customer communication, lead management, appointment booking, and support — all from one dashboard.
 
@@ -15,7 +15,7 @@ A **white-label, multi-tenant SaaS platform** for service businesses to automate
 - **Customer Profiles** — AI summaries, activity timeline
 - **Reporting** — Charts, filters, AI insights, export
 - **Super Admin Panel** — Manage businesses, audit logs, subscriptions
-- **Dark/Light Mode** — Full theme support
+  
 - **RBAC** — Super Admin, Client Owner, Staff roles
 
 ## Tech Stack
